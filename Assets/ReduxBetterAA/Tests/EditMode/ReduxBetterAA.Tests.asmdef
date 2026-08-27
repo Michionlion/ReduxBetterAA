@@ -1,0 +1,14 @@
+{
+    "name": "ReduxBetterAA.Tests",
+    "rootNamespace": "ReduxBetterAA.Tests",
+    "references": [
+        "ReduxBetterAA"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false
+}

@@ -2,16 +2,68 @@
 
 Experimental temporal anti-aliasing and reconstruction for **Kerbal Space Program 2 Redux**.
 
-The project begins with a safe, diagnostic rendering probe; progresses to a synchronized implementation of Unity Post Processing Stack v2 temporal anti-aliasing; then replaces that prototype with a purpose-built modern TAA backend. If the Redux player exposes Unity's NVIDIA module, the same camera, depth, motion-vector, jitter, and history infrastructure will be reused for NVIDIA DLAA and, later, DLSS Super Resolution.
+The project begins with a safe, diagnostic rendering probe; progresses to a synchronized implementation of Unity Post Processing Stack v2 temporal anti-aliasing; then replaces that prototype with a purpose-built modern TAA backend. The same camera, depth, motion-vector, jitter, and history infrastructure is reused for managed NVIDIA DLAA and an experimental native-resolution Unity AMD FSR2 path before lower-resolution reconstruction changes are attempted.
 
 > [!IMPORTANT]
 > This repository should be developed phase by phase. Do not start with DLSS. The difficult part is not invoking an upscaler; it is proving that KSP2 Redux can provide a coherent scene-color, depth, motion-vector, and camera-jitter data set across its scaled-space and physics-space camera stacks.
 
 ## Project status
 
-**Planning / pre-implementation.**
+**Phase 2 / Phase 3 / Phase 4 plus native-resolution FSR2 comparison build — disabled by default.**
 
-The documents in this repository define the intended architecture, phase gates, testing requirements, and contributor workflow. The first executable milestone is the Phase 1 render probe.
+Version 0.5.19 assigns the engineering panel to `Ctrl+F10` and the combined
+same-moment report and screenshot to plain `F10`. Modifier checks are exclusive,
+so opening the panel cannot also arm a capture.
+
+Version 0.5.18 removes all cloud-renderer overrides, shaders, settings,
+diagnostics, and history manipulation from Redux Better AA. Those independent
+features now live in Redux Better Clouds.
+
+Version 0.5.17 exposes the stock spatial modes alongside the temporal and
+vendor paths in Better AA settings. `FXAA Low` is KSP's fast PPv2 FXAA variant,
+`FXAA High` is its quality variant, and `SMAA` is the existing PPv2 SMAA effect
+using its shipped High quality preset. They are mutually exclusive with TAA,
+DLAA, and FSR2 and do not create temporal history.
+
+Version 0.5.16 makes Redux Better AA the sole owner of scene anti-aliasing while
+the mod is loaded. KSP's separate MSAA selector is disabled and points users to
+`Settings > Mods > Redux Better AA`; runtime MSAA is held at Off to prevent
+double filtering. The normal mod settings contain exactly Mode, Sharpness, TAA
+stability, and DLAA preset. Mode is hardware-aware, calls the custom backend
+`TAA`, hides PPv2, omits DLAA unless Unity reports DLSS/DLAA support on the
+active NVIDIA GPU, and orders DLAA before FSR2 when both are available. A single
+0-to-1 Sharpness value drives every backend that supports sharpening, with zero
+disabling it. DLAA preset K is the default and the legacy Default choice is
+removed. Ctrl+F10 retains all engineering and comparison controls.
+
+Version 0.5.15 corrects the FSR2 dispatch-jitter sign for the PPv2-style
+projection helper used by Redux Better AA. FSR2 now receives the unit-pixel
+offset that describes the projection sample actually rendered, matching AMD's
+contract and the already-correct DLAA mapping. F10 schema 17 reports record both the
+projection-helper input and FSR2 dispatch value. The output-aligned depth view
+is also relabeled as a jitter-compensated point sample: it cannot reconstruct
+missing coverage at a single-sample hard edge, so matching raw edge toggles do
+not by themselves demonstrate camera or geometry shake.
+
+Version 0.5.14 synchronizes temporal jitter across the main menu's predecessor
+`Skybox` camera and `Camera.Scaled` resolve. Background objects whose color is
+preserved while depth is cleared now receive the same subpixel sequence as the
+resolve, allowing Custom TAA, DLAA, and FSR2 to reconstruct their edges with a
+valid far-plane depth convention.
+
+Version 0.5.13 aligns Custom TAA depth tests and history depth with its
+de-jittered current color, and makes camera-motion fallback reconstruct raw
+jittered depth in non-jittered coordinates. The Buffers tab now exposes paired
+raw-jittered and output-aligned depth views so residual upstream camera or
+geometry motion can be distinguished from the expected Halton sequence.
+
+Version 0.5.12 replaces the absolute 64-pixel motion cutoff with a coherence-aware
+policy: camera motion may exceed 256 pixels when it agrees with project-tracked
+reprojection, while unverified motion above 256 pixels and disagreement above 96
+pixels are rejected. Custom TAA now consumes the same sanitized input as DLAA and
+FSR2 using non-jittered matrices. PPv2 remains an internal comparison path.
+
+Phase 1 selected a unified final-scene resolve before UI composition. The mod keeps the Phase 2 PPv2, Phase 3 project-owned Custom TAA, and Phase 4 managed NVIDIA DLAA backends for direct comparison, adds an opt-in Unity AMD FSR2 Native AA experiment, and exposes KSP's two stock FXAA variants plus the existing PPv2 SMAA effect. `F12` cycles the supported public modes: Off, FXAA Low, SMAA, FXAA High, TAA, then hardware-supported vendor modes with DLAA preferred before FSR2. PPv2 remains available only in Ctrl+F10. The `Ctrl+F10` panel uses one spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar: choosing an AA mode both activates it and opens its settings, while Buffers leaves the current AA mode unchanged. Its content area scrolls independently so screenshot, report, and close controls remain visible. Advanced AA quality, exposure, supersampling, stability, and diagnostic controls remain in Ctrl+F10 rather than the normal settings page. Version 0.5.11 investigates the intermittent launchpad motion failure: DLAA and FSR2 negate both components of Unity's previous-to-current motion, then a 16-anchor same-frame GPU classifier replaces the observed screen-wide radial field before vendor execution. A 64 px/frame hard ceiling and bounded camera reprojection remain as local safeguards. The raw, sanitized-vendor, and sanitizer-decision views stay separate, and Ctrl+F10 can capture a fixed six-view diagnostic burst while the user pans. Matching reports record Unity's internal `_NonJitteredVP` and `_PreviousVP` beside project-tracked matrices to distinguish an engine previous-matrix fault from buffer reuse or sign configuration. Version 0.5.10 extended the temporal camera graph to KSC and the main menu and added same-scene state rediscovery. Automatic exposure prefers PPv2's asynchronously read 1x1 GPU result at a bounded 10 Hz and falls back to vendor auto exposure. DLAA defaults to preset K and may optionally run on Redux render scales above 100% before Redux downsamples the scene; FSR2 remains native-scale-only. Vendor paths provide a moving solid-depth-edge bias mask while leaving broad no-depth transparent and volumetric regions available for temporal accumulation. The exact KSP floating-origin snap is an explicit lightweight temporal reset without vendor-context recreation. Every AA page and Off baseline can run a fixed 240-frame performance profile. This workstation's test installation uses explicitly approved local copies of the signed Unity 6000.4.1f1 NVIDIA and AMD player runtimes; a future distributable must source licensed files from Redux core's matching Unity export. XeSS remains deferred. See [`docs/performance-profiling.md`](docs/performance-profiling.md), [`docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md`](docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md), and the later motion-diagnosis decision record.
 
 ## Goals
 
@@ -19,7 +71,7 @@ The project has five primary goals:
 
 1. Determine exactly how Redux composes scaled-space, physics-space, presentation, map, VAB, and UI cameras at runtime.
 2. Deliver a usable, stable TAA option without requiring native code.
-3. Build a higher-quality, cross-vendor custom TAA backend designed around KSP2's thin geometry, large camera ranges, camera discontinuities, clouds, exhaust, and multi-camera scene composition.
+3. Build a higher-quality, cross-vendor custom TAA backend designed around KSP2's thin geometry, large camera ranges, camera discontinuities, transparent effects, exhaust, and multi-camera scene composition.
 4. Add NVIDIA DLAA when the required Unity runtime module and buffers are available.
 5. Integrate DLSS Super Resolution into Redux's scene render-scale/presentation path while preserving native-resolution UI.
 
@@ -85,7 +137,7 @@ Build a C# render backend and HLSL resolve pipeline with:
 - Neighborhood or variance clipping, preferably in YCoCg or another luminance-aware space.
 - Catmull-Rom history sampling.
 - Velocity-adaptive history weighting.
-- Reactive/transparency masks for clouds, exhaust, particles, and rapidly changing shading.
+- Reactive/transparency masks for exhaust, particles, and rapidly changing transparent shading.
 - Optional mild sharpening.
 - Explicit history ownership and deterministic reset behavior.
 
@@ -133,7 +185,7 @@ Build:
 
 ### One temporal owner per output
 
-Exactly one active backend owns temporal jitter, history, and the final resolve for a scene output. Do not stack PPv2 TAA, custom TAA, DLAA, or DLSS on top of one another.
+Exactly one active backend owns temporal jitter, history, and the final resolve for a scene output. Do not stack PPv2 TAA, custom TAA, DLAA, FSR2, or DLSS on top of one another.
 
 ### Scene reconstruction before UI
 
@@ -338,7 +390,7 @@ Every phase must be tested in at least these contexts:
 - Flight at the launchpad.
 - Slow and fast camera orbit around a vessel.
 - Thin geometry such as struts, antennae, ladders, landing gear, and procedural edges.
-- Engine ignition, exhaust, reentry, clouds, atmosphere, and particles.
+- Engine ignition, exhaust, reentry, atmosphere, and particles.
 - Surface terrain at low altitude.
 - Orbit with planet-limb and distant-object edges.
 - Flight-to-map and map-to-flight transitions.

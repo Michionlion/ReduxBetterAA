@@ -1,0 +1,24 @@
+{
+  "spec": "2.0",
+  "mod_id": "ReduxBetterAA",
+  "name": "Redux Better AA",
+  "author": "Michionlion",
+  "description": "Renderer diagnostics plus stock FXAA/SMAA, experimental PPv2 and custom TAA, managed NVIDIA DLAA, and FSR2 Native AA for KSP2 Redux.",
+  "source": "https://github.com/Michionlion/ReduxBetterAA",
+  "version": "0.5.19",
+  "ksp2_version": {
+    "min": "0.2.8.5",
+    "max": "*"
+  },
+  "dependencies": [
+    {
+      "id": "SpaceWarp2",
+      "version": {
+        "min": "2.0.0",
+        "max": "*"
+      }
+    }
+  ],
+  "conflicts": [],
+  "main_assembly": "ReduxBetterAA.dll"
+}
