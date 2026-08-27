@@ -678,7 +678,7 @@ Generate or infer a mask for:
 
 - engine exhaust and plumes
 - particles
-- clouds/atmosphere where history is unreliable
+- atmospheric and volumetric effects where history is unreliable
 - transparent cockpit/canopy elements
 - emissive rapidly changing effects
 - UI-like world-space markers if present in scene color
@@ -1036,7 +1036,7 @@ Required categories:
 - launchpad with detailed vessel
 - thin struts/antennae/landing gear
 - engine plume and particle-heavy launch
-- atmospheric flight with clouds
+- atmospheric flight with volumetric effects
 - low-altitude terrain pan
 - orbit with planet limb and stars
 - rapid camera rotation
@@ -1077,7 +1077,7 @@ Compare:
 - temporal shimmer
 - thin-geometry persistence
 - disocclusion trails
-- exhaust/cloud ghosting
+- exhaust/volumetric-effect ghosting
 - planet-limb stability
 - texture detail retention
 - motion softness
@@ -1146,7 +1146,7 @@ Separate GPU-bound and CPU/physics-bound scenes. DLSS SR performance conclusions
 
 ### R6 — Transparent effects lack useful motion vectors
 
-**Impact:** Plume/cloud ghosting.  
+**Impact:** Plume or transparent-effect ghosting.
 **Mitigation:** reactive masks, transparency masks, reduced history, or effect-specific instrumentation.
 
 ### R7 — Post-processing order conflicts with reconstruction

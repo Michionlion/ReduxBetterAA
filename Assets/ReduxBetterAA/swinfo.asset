@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9065a46703c44e8fabd263388eaeb6e7, type: 3}
+  m_Name: swinfo
+  m_EditorClassIdentifier: 
+  id: ReduxBetterAA
+  name: Redux Better AA
+  author: Michionlion
+  description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
+    DLAA, and FSR2 Native AA for KSP2 Redux.
+  version: 0.5.19
+  versionCheck: 
+  minKsp2Version: 0.2.8.5
+  maxKsp2Version: '*'
+  source: https://github.com/Michionlion/ReduxBetterAA
+  allGroup: {fileID: 11400000, guid: 8e7c3f4a33a784b48a8c437c55490441, type: 2}
+  partsGroup: {fileID: 11400000, guid: baa345e904b38304889aea253ccdccf7, type: 2}
+  missionsGroup: {fileID: 11400000, guid: 6c32c9ae0e6021c42913fabc02f7e0e1, type: 2}
+  celestialBodiesGroup: {fileID: 11400000, guid: 31732815283af654382c2b602cdd1948, type: 2}
+  scienceExperimentGroup: {fileID: 11400000, guid: 16c2b6906ded8ef4fbffd717e82ace76, type: 2}
+  techNodeDataGroup: {fileID: 11400000, guid: 3ffb7cfb750e4794c8828f3c8bcc606a, type: 2}
+  addressablesProfileId: bf15044412951d64f83514043795738f
+  dependencies:
+  - id: SpaceWarp2
+    min: 2.0.0
+    max: '*'
+  incompatibilities: []
