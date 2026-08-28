@@ -44,6 +44,7 @@ namespace ReduxBetterAA.Rendering
         public bool allowHdr;
         public bool allowMsaa;
         public bool allowDynamicResolution;
+        public bool forceIntoRenderTexture;
         public bool useOcclusionCulling;
         public string pixelRect;
         public int pixelWidth;

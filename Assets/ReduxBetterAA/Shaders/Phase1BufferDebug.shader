@@ -28,6 +28,8 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
         sampler2D _SanitizedMotionTexture;
         sampler2D _MotionCorruptionTexture;
         float4 _MainTex_TexelSize;
+        float4 _CameraDepthTexture_TexelSize;
+        float4 _CameraMotionVectorsTexture_TexelSize;
         float _MotionScale;
         float _MotionQuietPixels;
         float _MotionOutlierPixels;
@@ -39,6 +41,13 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
         float2 _CurrentJitter;
         float4x4 _CurrentInverseViewProjection;
         float4x4 _PreviousViewProjection;
+        float4x4 _CurrentInverseViewProjectionScreen;
+        float4x4 _PreviousViewProjectionScreen;
+        float4x4 _CurrentInverseViewProjectionRenderTexture;
+        float4x4 _PreviousViewProjectionRenderTexture;
+        float4x4 _ManagedPreviousViewProjection;
+        float4x4 unity_MatrixPreviousVP;
+        float4x4 _PrevViewProjMatrix;
         float _MatrixHistoryValid;
 
         float2 DiagnosticUv(float2 uv)
@@ -49,6 +58,49 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
                 uv.y = 1.0 - uv.y;
             #endif
             return saturate(uv);
+        }
+
+        float2 TextureUv(float2 uv, float4 texelSize)
+        {
+            // A command-buffer blit source, camera depth, and camera motion can
+            // have different backing orientations. Never use _MainTex as a
+            // proxy for the depth or motion-vector texture.
+            #if UNITY_UV_STARTS_AT_TOP
+            if (texelSize.y < 0.0)
+                uv.y = 1.0 - uv.y;
+            #endif
+            return saturate(uv);
+        }
+
+        float2 MotionUv(float2 uv)
+        {
+            return TextureUv(uv, _CameraMotionVectorsTexture_TexelSize);
+        }
+
+        float2 DepthUv(float2 uv)
+        {
+            return TextureUv(uv, _CameraDepthTexture_TexelSize);
+        }
+
+        float2 UnityTextureUvToProjectionUv(float2 uv, bool convertY)
+        {
+            // Unity's built-in motion-vector shader projects in clip space and
+            // then converts both current and previous UV.y on top-origin APIs.
+            // Undo that conversion before applying an inverse VP.
+            #if UNITY_UV_STARTS_AT_TOP
+            if (convertY)
+                uv.y = 1.0 - uv.y;
+            #endif
+            return uv;
+        }
+
+        float2 UnityProjectionUvToTextureUv(float2 uv, bool convertY)
+        {
+            #if UNITY_UV_STARTS_AT_TOP
+            if (convertY)
+                uv.y = 1.0 - uv.y;
+            #endif
+            return uv;
         }
 
         bool MotionIsInvalid(float2 motion)
@@ -76,7 +128,13 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
             return Linear01Depth(rawDepth);
         }
 
-        float2 CalculateCameraMotion(float2 uv, float rawDepth, out float valid)
+        float2 CalculateCameraMotionWithMatrices(
+            float2 motionUv,
+            float rawDepth,
+            float4x4 currentInverseViewProjection,
+            float4x4 previousViewProjection,
+            bool convertUnityY,
+            out float valid)
         {
             valid = 0.0;
             if (_MatrixHistoryValid < 0.5)
@@ -89,26 +147,51 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
 
             // The sampled depth was rasterized with the active projection
             // jitter; the diagnostic matrices deliberately exclude it.
-            float2 currentUv = uv + _CurrentJitter;
+            // _CurrentJitter is expressed in the output texture's UV axes.
+            float2 currentTextureUv = motionUv + _CurrentJitter;
+            float2 currentProjectionUv = UnityTextureUvToProjectionUv(
+                currentTextureUv,
+                convertUnityY
+            );
             float4 currentClip = float4(
-                currentUv * 2.0 - 1.0,
+                currentProjectionUv * 2.0 - 1.0,
                 deviceDepth,
                 1.0
             );
-            float4 world = mul(_CurrentInverseViewProjection, currentClip);
+            float4 world = mul(currentInverseViewProjection, currentClip);
             if (abs(world.w) < 0.000001)
                 return 0.0;
             world /= world.w;
 
-            float4 previousClip = mul(_PreviousViewProjection, world);
+            float4 previousClip = mul(previousViewProjection, world);
             if (abs(previousClip.w) < 0.000001)
                 return 0.0;
-            float2 previousUv = previousClip.xy / previousClip.w * 0.5 + 0.5;
-            float2 motion = currentUv - previousUv;
+            float2 previousProjectionUv =
+                previousClip.xy / previousClip.w * 0.5 + 0.5;
+            float2 previousTextureUv = UnityProjectionUvToTextureUv(
+                previousProjectionUv,
+                convertUnityY
+            );
+            float2 motion = currentTextureUv - previousTextureUv;
             if (MotionIsInvalid(motion))
                 return 0.0;
             valid = 1.0;
             return motion;
+        }
+
+        float2 CalculateCameraMotion(
+            float2 motionUv,
+            float rawDepth,
+            out float valid)
+        {
+            return CalculateCameraMotionWithMatrices(
+                motionUv,
+                rawDepth,
+                _CurrentInverseViewProjection,
+                _PreviousViewProjection,
+                true,
+                valid
+            );
         }
 
         float3 HsvToRgb(float3 hsv)
@@ -146,6 +229,54 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
         {
             float2 motion = SafeMotion(DiagnosticUv(input.uv));
             return float4(saturate(motion * _MotionScale + 0.5), 0.5, 1.0);
+        }
+
+        fixed4 EncodeReconstructedMotion(
+            float2 uv,
+            float4x4 previousViewProjection)
+        {
+            float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
+            float deviceDepth = rawDepth;
+            #if !defined(UNITY_REVERSED_Z)
+            deviceDepth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, rawDepth);
+            #endif
+
+            float4 currentClip = float4(uv * 2.0 - 1.0, deviceDepth, 1.0);
+            float4 world = mul(_CurrentInverseViewProjection, currentClip);
+            if (abs(world.w) < 0.000001)
+                return float4(0.5, 0.5, 0.5, 1.0);
+            world /= world.w;
+
+            float4 previousClip = mul(previousViewProjection, world);
+            if (abs(previousClip.w) < 0.000001)
+                return float4(0.5, 0.5, 0.5, 1.0);
+            float2 previousUv = previousClip.xy / previousClip.w * 0.5 + 0.5;
+            float2 motion = uv - previousUv;
+            #if UNITY_UV_STARTS_AT_TOP
+            motion.y = -motion.y;
+            #endif
+            return float4(saturate(motion * _MotionScale + 0.5), 0.5, 1.0);
+        }
+
+        fixed4 FragMotionBuiltinPreviousVP(v2f_img input) : SV_Target
+        {
+            return EncodeReconstructedMotion(
+                DiagnosticUv(input.uv),
+                unity_MatrixPreviousVP);
+        }
+
+        fixed4 FragMotionPerPassPreviousVP(v2f_img input) : SV_Target
+        {
+            return EncodeReconstructedMotion(
+                DiagnosticUv(input.uv),
+                _PrevViewProjMatrix);
+        }
+
+        fixed4 FragMotionManagedPreviousVP(v2f_img input) : SV_Target
+        {
+            return EncodeReconstructedMotion(
+                DiagnosticUv(input.uv),
+                _ManagedPreviousViewProjection);
         }
 
         fixed4 FragMotionNormalized(v2f_img input) : SV_Target
@@ -212,12 +343,19 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
 
         fixed4 FragMotionSignAgreement(v2f_img input) : SV_Target
         {
-            float2 uv = DiagnosticUv(input.uv);
-            float2 rawMotion = tex2D(_CameraMotionVectorsTexture, uv).rg;
-            float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
+            float2 motionUv = MotionUv(input.uv);
+            float2 depthUv = DepthUv(input.uv);
+            float2 rawMotion = tex2D(
+                _CameraMotionVectorsTexture,
+                motionUv
+            ).rg;
+            float rawDepth = SAMPLE_DEPTH_TEXTURE(
+                _CameraDepthTexture,
+                depthUv
+            );
             float cameraValid;
             float2 cameraMotion = CalculateCameraMotion(
-                uv,
+                motionUv,
                 rawDepth,
                 cameraValid
             );
@@ -230,7 +368,7 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
                 max(_DiagnosticPixelDimensions.xy, 1.0.xx);
             float2 expectedPixels = -cameraMotion *
                 max(_DiagnosticPixelDimensions.xy, 1.0.xx);
-            int axis = uv.x < 0.5 ? 0 : 1;
+            int axis = input.uv.x < 0.5 ? 0 : 1;
             float corrected = axis == 0 ? correctedPixels.x : correctedPixels.y;
             float expected = axis == 0 ? expectedPixels.x : expectedPixels.y;
             if (abs(corrected) < _MotionSignConfidencePixels ||
@@ -240,6 +378,76 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
             float agreement = corrected * expected > 0.0 ? 1.0 : 0.0;
             float magnitudeAgreement = min(abs(corrected), abs(expected)) /
                 max(max(abs(corrected), abs(expected)), 0.0001);
+            float3 correctColor = lerp(
+                float3(0.0, 0.25, 0.05),
+                float3(0.0, 1.0, 0.2),
+                magnitudeAgreement
+            );
+            float3 wrongColor = lerp(
+                float3(0.3, 0.0, 0.05),
+                float3(1.0, 0.0, 0.05),
+                magnitudeAgreement
+            );
+            return float4(lerp(wrongColor, correctColor, agreement), 1.0);
+        }
+
+        fixed4 FragMotionSignReferenceAudit(v2f_img input) : SV_Target
+        {
+            // Repeat the full scene in four quadrants. Left uses the screen
+            // projection; right uses the render-texture projection. Upper uses
+            // Unity's explicit top-origin Y conversion; lower deliberately omits
+            // it as a control. During a vertical pan, exactly one row should be
+            // coherently green on static, depth-covered geometry.
+            bool useRenderTextureProjection = input.uv.x >= 0.5;
+            bool convertUnityY = input.uv.y >= 0.5;
+            float2 repeatedUv = frac(input.uv * 2.0);
+            float2 motionUv = MotionUv(repeatedUv);
+            float2 depthUv = DepthUv(repeatedUv);
+            float2 rawMotion = tex2D(
+                _CameraMotionVectorsTexture,
+                motionUv
+            ).rg;
+            float rawDepth = SAMPLE_DEPTH_TEXTURE(
+                _CameraDepthTexture,
+                depthUv
+            );
+            float cameraValid;
+            float2 cameraMotion;
+            if (useRenderTextureProjection)
+            {
+                cameraMotion = CalculateCameraMotionWithMatrices(
+                    motionUv,
+                    rawDepth,
+                    _CurrentInverseViewProjectionRenderTexture,
+                    _PreviousViewProjectionRenderTexture,
+                    convertUnityY,
+                    cameraValid
+                );
+            }
+            else
+            {
+                cameraMotion = CalculateCameraMotionWithMatrices(
+                    motionUv,
+                    rawDepth,
+                    _CurrentInverseViewProjectionScreen,
+                    _PreviousViewProjectionScreen,
+                    convertUnityY,
+                    cameraValid
+                );
+            }
+            if (MotionIsInvalid(rawMotion) || cameraValid < 0.5)
+                return float4(0.02, 0.04, 0.16, 1.0);
+
+            float rawY = rawMotion.y * max(_DiagnosticPixelDimensions.y, 1.0);
+            float expectedY = cameraMotion.y *
+                max(_DiagnosticPixelDimensions.y, 1.0);
+            if (abs(rawY) < _MotionSignConfidencePixels ||
+                abs(expectedY) < _MotionSignConfidencePixels)
+                return float4(0.02, 0.08, 0.24, 1.0);
+
+            float agreement = rawY * expectedY > 0.0 ? 1.0 : 0.0;
+            float magnitudeAgreement = min(abs(rawY), abs(expectedY)) /
+                max(max(abs(rawY), abs(expectedY)), 0.0001);
             float3 correctColor = lerp(
                 float3(0.0, 0.25, 0.05),
                 float3(0.0, 1.0, 0.2),
@@ -408,6 +616,42 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
             CGPROGRAM
             #pragma vertex vert_img
             #pragma fragment FragDepthDeJittered
+            #pragma target 3.0
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment FragMotionBuiltinPreviousVP
+            #pragma target 3.0
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment FragMotionPerPassPreviousVP
+            #pragma target 3.0
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment FragMotionManagedPreviousVP
+            #pragma target 3.0
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment FragMotionSignReferenceAudit
             #pragma target 3.0
             ENDCG
         }

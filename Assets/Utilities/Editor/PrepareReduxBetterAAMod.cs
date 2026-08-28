@@ -14,6 +14,8 @@ namespace Utilities.Editor
         private const string ModAssetPath = "Assets/ReduxBetterAA/swinfo.asset";
         private const string DiagnosticShaderPath =
             "Assets/ReduxBetterAA/Shaders/Phase1BufferDebug.shader";
+        private const string MotionVectorPassProbeShaderPath =
+            "Assets/ReduxBetterAA/Shaders/Phase1MotionVectorPassProbe.shader";
         private const string CustomTaaShaderPath =
             "Assets/ReduxBetterAA/Shaders/CustomTaa.shader";
         private const string MotionVectorSanitizerShaderPath =
@@ -53,6 +55,11 @@ namespace Utilities.Editor
                 mod.allGroup,
                 DiagnosticShaderPath,
                 DiagnosticShaderPath
+            );
+            AddressablesTools.MakeAddressable(
+                mod.allGroup,
+                MotionVectorPassProbeShaderPath,
+                MotionVectorPassProbeShaderPath
             );
             AddressablesTools.MakeAddressable(
                 mod.allGroup,

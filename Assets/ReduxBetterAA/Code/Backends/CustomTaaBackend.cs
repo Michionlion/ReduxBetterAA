@@ -96,6 +96,7 @@ namespace ReduxBetterAA.Backends
         private Matrix4x4 _previousViewProjection;
         private bool _currentMatrixValid;
         private bool _matrixHistoryValid;
+        private bool _projectionJitterSupported;
         private ProjectionState _resolveProjection;
         private ProjectionState _sharedProjection;
         private bool _active;
@@ -198,6 +199,7 @@ namespace ReduxBetterAA.Backends
             _resolveLayer = cameras.ResolveLayer;
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
+            _projectionJitterSupported = cameras.ProjectionJitterSupported;
             _originalResolveDepthMode = _resolveCamera.depthTextureMode;
             if (_resolveLayer != null)
             {
@@ -413,6 +415,8 @@ namespace ReduxBetterAA.Backends
             _resolveLayer = null;
             _sharedJitterCamera = null;
             _sharedJitterLayer = null;
+            _projectionJitterSupported = false;
+            _jitterNormalized = Vector2.zero;
             _historyValid = false;
             _currentMatrixValid = false;
             _matrixHistoryValid = false;
@@ -468,13 +472,14 @@ namespace ReduxBetterAA.Backends
             {
                 return;
             }
-            if (camera == _sharedJitterCamera)
+            if (_projectionJitterSupported && camera == _sharedJitterCamera)
             {
                 ApplyJitter(camera, ref _sharedProjection);
             }
             if (camera == _resolveCamera)
             {
-                if (camera != _sharedJitterCamera)
+                if (_projectionJitterSupported &&
+                    camera != _sharedJitterCamera)
                 {
                     ApplyJitter(camera, ref _resolveProjection);
                 }
@@ -484,11 +489,13 @@ namespace ReduxBetterAA.Backends
                 int height = Math.Max(1, camera.targetTexture == null
                     ? camera.pixelHeight
                     : camera.targetTexture.height);
-                Vector2 jitterPixels = SharedJitterSequence.GetCustomOffset(
-                    _frameIndex,
-                    _config.JitterSpread,
-                    _config.SequenceLength
-                );
+                Vector2 jitterPixels = _projectionJitterSupported
+                    ? SharedJitterSequence.GetCustomOffset(
+                        _frameIndex,
+                        _config.JitterSpread,
+                        _config.SequenceLength
+                    )
+                    : Vector2.zero;
                 _jitterNormalized = new Vector2(
                     jitterPixels.x / width,
                     jitterPixels.y / height
@@ -496,8 +503,11 @@ namespace ReduxBetterAA.Backends
                 ProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
                     : _resolveProjection;
+                Matrix4x4 nonJitteredProjection = _projectionJitterSupported
+                    ? projectionState.Projection
+                    : camera.projectionMatrix;
                 _currentViewProjection = GL.GetGPUProjectionMatrix(
-                    projectionState.Projection,
+                    nonJitteredProjection,
                     camera.targetTexture != null
                 ) * camera.worldToCameraMatrix;
                 _currentInverseViewProjection = _currentViewProjection.inverse;
@@ -505,7 +515,7 @@ namespace ReduxBetterAA.Backends
                     MatrixIsFinite(_currentInverseViewProjection);
                 _motionVectorSanitizer.CaptureCamera(
                     camera,
-                    projectionState.Projection
+                    nonJitteredProjection
                 );
             }
         }

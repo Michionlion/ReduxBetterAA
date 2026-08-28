@@ -4,6 +4,7 @@ using ReduxBetterAA.Backends;
 using ReduxBetterAA.Backends.Amd;
 using ReduxBetterAA.Backends.Nvidia;
 using ReduxBetterAA.Configuration;
+using ReduxBetterAA.Diagnostics;
 using ReduxBetterAA.Patches;
 using ReduxBetterAA.Rendering;
 using UnityEditor;
@@ -426,6 +427,26 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
+        public void VegetationRepairIsDefaultAndExactSignatureIsAvailable()
+        {
+            Assert.That(VegetationMotionCompatibility.DefaultEnabled, Is.True);
+            Assert.That(MotionVectorSanitizer.DefaultEnabled, Is.False);
+
+            MethodInfo target;
+            string reason;
+            Assert.That(
+                VegetationMotionCompatibilityPatch.TryResolveTarget(
+                    out target,
+                    out reason),
+                Is.True,
+                reason
+            );
+            Assert.That(target, Is.Not.Null);
+            Assert.That(target.ReturnType, Is.EqualTo(typeof(void)));
+            Assert.That(target.GetParameters(), Has.Length.EqualTo(9));
+        }
+
+        [Test]
         public void MainMenuCameraScoringPrefersSceneCameraAndRejectsUi()
         {
             var sceneObject = new GameObject("Camera.Scaled");
@@ -494,6 +515,53 @@ namespace ReduxBetterAA.Tests
                 Object.DestroyImmediate(skyboxObject);
                 Object.DestroyImmediate(lateSkyboxObject);
             }
+        }
+
+        [TestCase((int)TemporalSceneKind.Flight, true)]
+        [TestCase((int)TemporalSceneKind.KerbalSpaceCenter, true)]
+        [TestCase((int)TemporalSceneKind.Vab, true)]
+        [TestCase((int)TemporalSceneKind.Map, false)]
+        [TestCase((int)TemporalSceneKind.MainMenu, false)]
+        [TestCase((int)TemporalSceneKind.Unsupported, false)]
+        public void ProjectionJitterPolicyMatchesObservedSceneRenderPaths(
+            int sceneKindValue,
+            bool expected)
+        {
+            var cameras = new TemporalCameraSet
+            {
+                SceneKind = (TemporalSceneKind)sceneKindValue
+            };
+
+            Assert.That(cameras.ProjectionJitterSupported, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void MapViewAaCanBeDisabledWithoutChangingTheRequestedMode()
+        {
+            Assert.That(
+                TemporalCoordinator.EffectiveBackendForScene(
+                    BackendSelection.NvidiaDlaa,
+                    TemporalSceneKind.Map,
+                    false
+                ),
+                Is.EqualTo(BackendSelection.Off)
+            );
+            Assert.That(
+                TemporalCoordinator.EffectiveBackendForScene(
+                    BackendSelection.NvidiaDlaa,
+                    TemporalSceneKind.Map,
+                    true
+                ),
+                Is.EqualTo(BackendSelection.NvidiaDlaa)
+            );
+            Assert.That(
+                TemporalCoordinator.EffectiveBackendForScene(
+                    BackendSelection.NvidiaDlaa,
+                    TemporalSceneKind.Flight,
+                    false
+                ),
+                Is.EqualTo(BackendSelection.NvidiaDlaa)
+            );
         }
 
         [Test]
@@ -639,6 +707,23 @@ namespace ReduxBetterAA.Tests
 
             Assert.That(dispatchJitter.x, Is.EqualTo(-0.375f));
             Assert.That(dispatchJitter.y, Is.EqualTo(0.625f));
+        }
+
+        [Test]
+        public void MotionSignReferenceUsesActualRenderTexturePath()
+        {
+            Assert.That(
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(false, false),
+                Is.False
+            );
+            Assert.That(
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(true, false),
+                Is.True
+            );
+            Assert.That(
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(false, true),
+                Is.True
+            );
         }
 
         [Test]
