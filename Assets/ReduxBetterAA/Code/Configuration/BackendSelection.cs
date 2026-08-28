@@ -235,7 +235,7 @@ namespace ReduxBetterAA.Configuration
             PreferPpv2Exposure = preferPpv2Exposure;
             InvertMotionX = invertMotionX;
             InvertMotionY = invertMotionY;
-            Preset = IsValidPreset(preset) ? preset : DlaaPreset.K;
+            Preset = IsValidPreset(preset) ? preset : DlaaPreset.M;
             AllowSupersampling = allowSupersampling;
         }
 
@@ -247,7 +247,7 @@ namespace ReduxBetterAA.Configuration
             true,
             true,
             true,
-            DlaaPreset.K,
+            DlaaPreset.M,
             false,
             true
         );

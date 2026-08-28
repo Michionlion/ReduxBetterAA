@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-3786231393185807104
+--- !u!114 &-7714186655297084605
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -9,17 +9,30 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f22bb7fd1d3b56a48bc52f8e407901d6, type: 3}
-  m_Name: ReduxBetterAA - Editor
-  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datum.ManifestIdentity
-  StagingPaths: []
-  Author: Michionlion
-  Name:
-  Description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
-    DLAA, and FSR2 Native AA for KSP2 Redux.
-  Version: 0.5.26
-  Dependencies: []
---- !u!114 &-2808600147781481082
+  m_Script: {fileID: 11500000, guid: a089732392b94873b7dffb12543079c3, type: 3}
+  m_Name: TextAssets
+  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.TextAssets
+  StagingPaths:
+  - Assets/Mods/__Testing/ReduxBetterAA
+  possibleFolders:
+  - Assets\ReduxBetterAA
+--- !u!114 &-3993351426474946151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7e13dda513544419a89926bd12ad8a, type: 3}
+  m_Name: AssemblyDefinitions
+  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datums.AssemblyDefinitions
+  StagingPaths:
+  - Assets/Mods/__Testing/ReduxBetterAA
+  definitions:
+  - {fileID: 5897886265953266890, guid: 0d1fdc59dfd34f3ab88291a02bcf931b, type: 3}
+--- !u!114 &-812357984374912850
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -47,29 +60,13 @@ MonoBehaviour:
   m_Name: Build for Editor Manifest
   m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Manifest
   Data:
-  - {fileID: -2808600147781481082}
-  - {fileID: 9049469728196135503}
-  - {fileID: 3095603429149066005}
-  - {fileID: 1811768411413518361}
-  identity: {fileID: -3786231393185807104}
+  - {fileID: -812357984374912850}
+  - {fileID: -7714186655297084605}
+  - {fileID: 1706040787299562235}
+  - {fileID: -3993351426474946151}
+  identity: {fileID: 3025808138734438043}
   QuickAccess: 0
---- !u!114 &1811768411413518361
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b7e13dda513544419a89926bd12ad8a, type: 3}
-  m_Name: AssemblyDefinitions
-  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datums.AssemblyDefinitions
-  StagingPaths:
-  - Assets/Mods/__Testing/ReduxBetterAA
-  definitions:
-  - {fileID: 5897886265953266890, guid: 0d1fdc59dfd34f3ab88291a02bcf931b, type: 3}
---- !u!114 &3095603429149066005
+--- !u!114 &1706040787299562235
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -85,7 +82,7 @@ MonoBehaviour:
   - Assets/Mods/__Testing/ReduxBetterAA/addressables
   mod: {fileID: 11400000, guid: 768f7fa6b76945c7bcbd2e2bd812e4a8, type: 2}
   targetFolder: Assets/Mods/__Testing/ReduxBetterAA/addressables
---- !u!114 &9049469728196135503
+--- !u!114 &3025808138734438043
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,10 +91,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a089732392b94873b7dffb12543079c3, type: 3}
-  m_Name: TextAssets
-  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.TextAssets
-  StagingPaths:
-  - Assets/Mods/__Testing/ReduxBetterAA
-  possibleFolders:
-  - Assets\ReduxBetterAA
+  m_Script: {fileID: 11500000, guid: f22bb7fd1d3b56a48bc52f8e407901d6, type: 3}
+  m_Name: ReduxBetterAA - Editor
+  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datum.ManifestIdentity
+  StagingPaths: []
+  Author: Michionlion
+  Name:
+  Description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
+    DLAA, and FSR2 Native AA for KSP2 Redux.
+  Version: 0.5.28
+  Dependencies: []

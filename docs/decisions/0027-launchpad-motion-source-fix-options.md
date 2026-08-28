@@ -2,10 +2,11 @@
 
 ## Status
 
-Accepted for the 0.5.24 Redux 2.8.5 comparison build. The maintainer selected
-choice B as the default source repair and requested independent Ctrl+F10
-toggles for choices B and E. Redux 2.9 snapshot compatibility remains
-unverified.
+Accepted for the 0.5.24 Redux 2.8.5 comparison build and refined in 0.5.28.
+The maintainer selected choice B as the default source repair and requested
+independent Ctrl+F10 toggles for choices B and E. A sparse invalid object pass
+remaining after B is now excluded with C's exact proven predicate as part of
+the B lifecycle. Redux 2.9 snapshot compatibility remains unverified.
 
 ## Scope and compatibility baseline
 
@@ -102,7 +103,9 @@ private buffer-ID fields once during initialization, patches the direct branch
 only, and fails closed to the original draw when unsupported. It reuses the
 renderer-owned buffers, materials, property block, bounds, camera, layer,
 shadow policy, and argument buffers without per-draw reflection or managed
-allocation. It is enabled by default on the validated renderer.
+allocation. It is enabled by default on the validated renderer. Decision 0032
+adds an exact object-history exclusion required by Unity's replacement pass;
+neither half runs alone in production.
 
 ### C. Exact invalid-history object-pass exclusion
 

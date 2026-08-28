@@ -283,6 +283,11 @@ namespace ReduxBetterAA.Diagnostics
             _visualizer.Dispose();
         }
 
+        internal void RestoreMotionVectorPassProbe()
+        {
+            _visualizer.RestoreMotionVectorPassProbe();
+        }
+
         private void PollStableState()
         {
             int width = Screen.width;
@@ -320,7 +325,7 @@ namespace ReduxBetterAA.Diagnostics
 
                 var report = new Phase1Report
                 {
-                    schemaVersion = 21,
+                    schemaVersion = 22,
                     capturedUtc = DateTime.UtcNow.ToString("O"),
                     captureReason = reasons.ToString(),
                     runtime = CaptureRuntime(),
@@ -330,6 +335,9 @@ namespace ReduxBetterAA.Diagnostics
                     motionCadence = CaptureMotionCadence(),
                     motionSignDiagnostic =
                         _visualizer.CaptureMotionSignDiagnostic(),
+                    cloud = CloudDiagnosticCapture.CaptureRecord(
+                        _visualizer.SelectedCameraForDiagnostics
+                    ),
                     temporal = CaptureTemporalBackend()
                 };
 
@@ -812,6 +820,7 @@ namespace ReduxBetterAA.Diagnostics
                     _screenshotSequence.ToString("D3") + "-" +
                     view + "-" + camera + ".png";
                 string path = Path.Combine(screenshotDirectory, fileName);
+                string captureBaseName = Path.GetFileNameWithoutExtension(fileName);
                 string statisticsFileName =
                     Path.GetFileNameWithoutExtension(fileName) + "-motion-stats.json";
                 string statisticsPath = Path.Combine(
@@ -833,20 +842,32 @@ namespace ReduxBetterAA.Diagnostics
 
                 _visualizer.SuspendPanelForScreenshot();
                 ScreenCapture.CaptureScreenshot(path);
+                string cloudCaptureStatus;
+                int cloudCaptureCount = CloudDiagnosticCapture.CaptureTextures(
+                    _visualizer.SelectedCameraForDiagnostics,
+                    screenshotDirectory,
+                    captureBaseName,
+                    out cloudCaptureStatus
+                );
                 _resumePanelAtFrame = Time.frameCount + 2;
+                string cloudStatusSuffix = cloudCaptureCount > 0
+                    ? "; cloud source images: " + cloudCaptureCount
+                    : "; cloud source images unavailable: " + cloudCaptureStatus;
                 _visualizer.SetScreenshotStatus(
                     statisticsArmed
-                        ? "Screenshot + motion statistics queued: " + fileName
+                        ? "Screenshot + motion statistics queued: " + fileName +
+                          cloudStatusSuffix
                         : statisticsExpected
                             ? "Screenshot queued; statistics unavailable: " +
-                              statisticsUnavailableReason
-                            : "Screenshot queued: " + fileName
+                              statisticsUnavailableReason + cloudStatusSuffix
+                            : "Screenshot queued: " + fileName + cloudStatusSuffix
                 );
                 _logger.LogInfo(
                     "[ReduxBetterAA/Capture] Screenshot queued at " + path +
                     (statisticsArmed
                         ? "; motion statistics will be written to " + statisticsPath
-                        : string.Empty)
+                        : string.Empty) +
+                    "; cloud diagnostics: " + cloudCaptureStatus
                 );
             }
             catch (Exception exception)

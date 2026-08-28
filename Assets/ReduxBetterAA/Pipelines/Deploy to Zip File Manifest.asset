@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-4138013451829316459
+--- !u!114 &-7091126589393824700
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -16,7 +16,7 @@ MonoBehaviour:
   - Deploy/ReduxBetterAA/addressables
   mod: {fileID: 11400000, guid: 768f7fa6b76945c7bcbd2e2bd812e4a8, type: 2}
   targetFolder: Deploy/ReduxBetterAA/addressables
---- !u!114 &11400000
+--- !u!114 &-2868720488462584418
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -25,17 +25,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e563561e08b6a3642a487177f5cfbb37, type: 3}
-  m_Name: Deploy to Zip File Manifest
-  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Manifest
-  Data:
-  - {fileID: 6454706643804980696}
-  - {fileID: 4232287916079736532}
-  - {fileID: -4138013451829316459}
-  - {fileID: 987089669884354443}
-  identity: {fileID: 4310790399968828917}
-  QuickAccess: 0
---- !u!114 &987089669884354443
+  m_Script: {fileID: 11500000, guid: 470dbf1cc5834ffc97c653aa1126938c, type: 3}
+  m_Name: CopyFolderDatum
+  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.CopyFolderDatum
+  StagingPaths: []
+  sourcePath: Assets\ReduxBetterAA/Copied
+  destinationPath: Deploy/ReduxBetterAA
+--- !u!114 &-1428061155080073615
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -51,7 +47,7 @@ MonoBehaviour:
   - Deploy/ReduxBetterAA
   definitions:
   - {fileID: 5897886265953266890, guid: 0d1fdc59dfd34f3ab88291a02bcf931b, type: 3}
---- !u!114 &4232287916079736532
+--- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -60,14 +56,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a089732392b94873b7dffb12543079c3, type: 3}
-  m_Name: TextAssets
-  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.TextAssets
-  StagingPaths:
-  - Deploy/ReduxBetterAA
-  possibleFolders:
-  - Assets\ReduxBetterAA
---- !u!114 &4310790399968828917
+  m_Script: {fileID: 11500000, guid: e563561e08b6a3642a487177f5cfbb37, type: 3}
+  m_Name: Deploy to Zip File Manifest
+  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Manifest
+  Data:
+  - {fileID: -2868720488462584418}
+  - {fileID: 2397236944619896927}
+  - {fileID: -7091126589393824700}
+  - {fileID: -1428061155080073615}
+  identity: {fileID: 313292685099399684}
+  QuickAccess: 0
+--- !u!114 &313292685099399684
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -84,9 +83,9 @@ MonoBehaviour:
   Name:
   Description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
     DLAA, and FSR2 Native AA for KSP2 Redux.
-  Version: 0.5.26
+  Version: 0.5.28
   Dependencies: []
---- !u!114 &6454706643804980696
+--- !u!114 &2397236944619896927
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,9 +94,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 470dbf1cc5834ffc97c653aa1126938c, type: 3}
-  m_Name: CopyFolderDatum
-  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.CopyFolderDatum
-  StagingPaths: []
-  sourcePath: Assets\ReduxBetterAA/Copied
-  destinationPath: Deploy/ReduxBetterAA
+  m_Script: {fileID: 11500000, guid: a089732392b94873b7dffb12543079c3, type: 3}
+  m_Name: TextAssets
+  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.TextAssets
+  StagingPaths:
+  - Deploy/ReduxBetterAA
+  possibleFolders:
+  - Assets\ReduxBetterAA

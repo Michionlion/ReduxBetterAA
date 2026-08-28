@@ -20,6 +20,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1a66ed5e50544f35b2bc9e8ecaa69e1f
+    m_Address: Assets/ReduxBetterAA/Shaders/VegetationMotionVectorRepair.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1a7b288b9f7516f44b53c9473547289c
     m_Address: Assets/ReduxBetterAA/Shaders/Phase1BufferDebug.shader
     m_ReadOnly: 0

@@ -11,6 +11,25 @@ The project begins with a safe, diagnostic rendering probe; progresses to a sync
 
 **Phase 2 / Phase 3 / Phase 4 plus native-resolution FSR2 comparison build — disabled by default.**
 
+Version 0.5.28 fixes the remaining diagonal dotted ray at its raw motion-vector
+source. The 0.5.24 foliage reroute removed the broad launchpad field but Unity's
+Built-in object-motion pass still gave the affected indirect poplar leaves an
+identity previous object matrix and a camera-centred current matrix. Better AA
+now pairs the reroute with an exact Unity 6000.4.1f1 motion-shader override that
+discards only that proven-invalid object pass; the valid full-screen camera
+reprojection underneath is preserved. A moving-camera control confirms this is
+not zero-motion replacement or magnitude sanitization. The source repair stays
+enabled by default and the sanitizer remains independently optional.
+
+Version 0.5.27 changes the recommended and fresh-install DLAA preset from K to
+M. Later raw-buffer captures showed that K exposed the foliage-generated dotted
+ray more strongly rather than creating it, so explicit K remains supported and
+the source defect is fixed in 0.5.28. The intermittent distant-cloud loss did
+not reproduce across fresh DLAA contexts, cloud resolution transitions, or
+repeated fixed-camera Off/K/M toggles. Schema 22 and plain-F10 cloud source
+captures remain available for a future organic reproduction; Better AA does
+not reset or modify the cloud renderer's private temporal history.
+
 Version 0.5.26 restores numeric feedback on the normal Sharpness and TAA
 stability sliders and makes the foliage motion repair a persistent user-facing
 option. A separate persistent map-view AA switch can force the map renderer to
@@ -33,7 +52,9 @@ Version 0.5.24 repairs the launchpad radial motion-vector artifact at its
 source. On the validated Redux 2.8.5 renderer, a guarded compatibility patch
 reroutes direct indirect-vegetation submissions from the legacy
 `DrawMeshInstancedIndirect` path to `RenderMeshIndirect` with camera-only
-motion. This source repair (choice B in Decision 0027) is enabled by default;
+motion. Version 0.5.28 additionally excludes the exact invalid identity-history
+object pass that Unity still emits for the affected indirect leaves. This source
+repair (choice B plus the narrow proven predicate from C in Decision 0027) is enabled by default;
 the post-process motion sanitizer and camera fallback (choice E) are disabled
 by default. Both can be changed independently in Ctrl+F10's Buffers tab for
 comparison. Disabling E still preserves the fixed Unity-to-vendor component
@@ -147,7 +168,7 @@ reprojection, while unverified motion above 256 pixels and disagreement above 96
 pixels are rejected. Custom TAA now consumes the same sanitized input as DLAA and
 FSR2 using non-jittered matrices. PPv2 remains an internal comparison path.
 
-Phase 1 selected a unified final-scene resolve before UI composition. The mod keeps the Phase 2 PPv2, Phase 3 project-owned Custom TAA, and Phase 4 managed NVIDIA DLAA backends for direct comparison, adds an opt-in Unity AMD FSR2 Native AA experiment, and exposes KSP's two stock FXAA variants plus the existing PPv2 SMAA effect. `F12` cycles the supported public modes: Off, FXAA Low, FXAA High, SMAA, TAA, then hardware-supported vendor modes with DLAA preferred before FSR2. PPv2 remains available only in Ctrl+F10. The `Ctrl+F10` panel uses one spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar: choosing an AA mode both activates it and opens its settings, while Buffers leaves the current AA mode unchanged. Its content area scrolls independently so screenshot, report, and close controls remain visible. Advanced AA quality, exposure, supersampling, stability, and diagnostic controls remain in Ctrl+F10 rather than the normal settings page. Version 0.5.11 investigates the intermittent launchpad motion failure: DLAA and FSR2 negate both components of Unity's previous-to-current motion, then a 16-anchor same-frame GPU classifier replaces the observed screen-wide radial field before vendor execution. Coherent camera motion may exceed 256 px/frame when it agrees with project reprojection; unverified motion above 256 px or disagreement above 96 px is replaced by bounded camera fallback or zero. The raw, sanitized-vendor, and sanitizer-decision views stay separate, and Ctrl+F10 can capture a fixed six-view diagnostic burst while the user pans. Matching reports record Unity's internal `_NonJitteredVP` and `_PreviousVP` beside project-tracked matrices to distinguish an engine previous-matrix fault from buffer reuse or sign configuration. Version 0.5.10 extended the temporal camera graph to KSC and the main menu and added same-scene state rediscovery. Automatic exposure prefers PPv2's asynchronously read 1x1 GPU result at a bounded 10 Hz and falls back to vendor auto exposure. DLAA defaults to preset K and may optionally run on Redux render scales above 100% before Redux downsamples the scene; FSR2 remains native-scale-only. Vendor paths provide a moving solid-depth-edge bias mask while leaving broad no-depth transparent and volumetric regions available for temporal accumulation. The exact KSP floating-origin snap is an explicit lightweight temporal reset without vendor-context recreation. Every AA page and Off baseline can run a fixed 240-frame performance profile. This workstation's test installation uses explicitly approved local copies of the signed Unity 6000.4.1f1 NVIDIA and AMD player runtimes; a future distributable must source licensed files from Redux core's matching Unity export. XeSS remains deferred. See [`docs/performance-profiling.md`](docs/performance-profiling.md), [`docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md`](docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md), and the later motion-diagnosis decision record.
+Phase 1 selected a unified final-scene resolve before UI composition. The mod keeps the Phase 2 PPv2, Phase 3 project-owned Custom TAA, and Phase 4 managed NVIDIA DLAA backends for direct comparison, adds an opt-in Unity AMD FSR2 Native AA experiment, and exposes KSP's two stock FXAA variants plus the existing PPv2 SMAA effect. `F12` cycles the supported public modes: Off, FXAA Low, FXAA High, SMAA, TAA, then hardware-supported vendor modes with DLAA preferred before FSR2. PPv2 remains available only in Ctrl+F10. The `Ctrl+F10` panel uses one spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar: choosing an AA mode both activates it and opens its settings, while Buffers leaves the current AA mode unchanged. Its content area scrolls independently so screenshot, report, and close controls remain visible. Advanced AA quality, exposure, supersampling, stability, and diagnostic controls remain in Ctrl+F10 rather than the normal settings page. Version 0.5.11 investigates the intermittent launchpad motion failure: DLAA and FSR2 negate both components of Unity's previous-to-current motion, then a 16-anchor same-frame GPU classifier replaces the observed screen-wide radial field before vendor execution. Coherent camera motion may exceed 256 px/frame when it agrees with project reprojection; unverified motion above 256 px or disagreement above 96 px is replaced by bounded camera fallback or zero. The raw, sanitized-vendor, and sanitizer-decision views stay separate, and Ctrl+F10 can capture a fixed six-view diagnostic burst while the user pans. Matching reports record Unity's internal `_NonJitteredVP` and `_PreviousVP` beside project-tracked matrices to distinguish an engine previous-matrix fault from buffer reuse or sign configuration. Version 0.5.10 extended the temporal camera graph to KSC and the main menu and added same-scene state rediscovery. Automatic exposure prefers PPv2's asynchronously read 1x1 GPU result at a bounded 10 Hz and falls back to vendor auto exposure. DLAA defaults to preset M and may optionally run on Redux render scales above 100% before Redux downsamples the scene; FSR2 remains native-scale-only. Vendor paths provide a moving solid-depth-edge bias mask while leaving broad no-depth transparent and volumetric regions available for temporal accumulation. The exact KSP floating-origin snap is an explicit lightweight temporal reset without vendor-context recreation. Every AA page and Off baseline can run a fixed 240-frame performance profile. This workstation's test installation uses explicitly approved local copies of the signed Unity 6000.4.1f1 NVIDIA and AMD player runtimes; a future distributable must source licensed files from Redux core's matching Unity export. XeSS remains deferred. See [`docs/performance-profiling.md`](docs/performance-profiling.md), [`docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md`](docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md), and the later motion-diagnosis decision record.
 
 ## Goals
 
