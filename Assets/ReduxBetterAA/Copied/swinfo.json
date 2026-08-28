@@ -5,7 +5,7 @@
   "author": "Michionlion",
   "description": "Renderer diagnostics plus stock FXAA/SMAA, experimental PPv2 and custom TAA, managed NVIDIA DLAA, and FSR2 Native AA for KSP2 Redux.",
   "source": "https://github.com/Michionlion/ReduxBetterAA",
-  "version": "0.5.26",
+  "version": "0.5.28",
   "ksp2_version": {
     "min": "0.2.8.5",
     "max": "*"

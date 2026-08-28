@@ -192,7 +192,7 @@ namespace ReduxBetterAA.Tests
             Assert.That(config.PreferPpv2Exposure, Is.True);
             Assert.That(config.InvertMotionX, Is.True);
             Assert.That(config.InvertMotionY, Is.False);
-            Assert.That(config.Preset, Is.EqualTo(DlaaPreset.K));
+            Assert.That(config.Preset, Is.EqualTo(DlaaPreset.M));
             Assert.That(config.AllowSupersampling, Is.True);
         }
 
@@ -227,7 +227,7 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void VendorDefaultsUseAutomaticExposureAndDlaaPresetK()
+        public void VendorDefaultsUseAutomaticExposureAndDlaaPresetM()
         {
             Assert.That(
                 TemporalBackendConfig.ConservativePpv2.Sharpness,
@@ -241,7 +241,7 @@ namespace ReduxBetterAA.Tests
             Assert.That(DlaaConfig.Conservative.PreferPpv2Exposure, Is.True);
             Assert.That(DlaaConfig.Conservative.InvertMotionX, Is.True);
             Assert.That(DlaaConfig.Conservative.InvertMotionY, Is.True);
-            Assert.That(DlaaConfig.Conservative.Preset, Is.EqualTo(DlaaPreset.K));
+            Assert.That(DlaaConfig.Conservative.Preset, Is.EqualTo(DlaaPreset.M));
             Assert.That(DlaaConfig.Conservative.AllowSupersampling, Is.False);
             Assert.That(Fsr2Config.Conservative.AutoExposure, Is.True);
             Assert.That(Fsr2Config.Conservative.PreferPpv2Exposure, Is.True);
@@ -276,6 +276,10 @@ namespace ReduxBetterAA.Tests
             );
             Assert.That(
                 UserSettingsPolicy.NormalizeDlaaPreset("Default"),
+                Is.EqualTo("M")
+            );
+            Assert.That(
+                UserSettingsPolicy.NormalizeDlaaPreset("K"),
                 Is.EqualTo("K")
             );
         }

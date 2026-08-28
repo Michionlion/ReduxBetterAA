@@ -154,7 +154,7 @@ namespace ReduxBetterAA.Configuration
             return value == "F" || value == "J" || value == "K" ||
                    value == "L" || value == "M"
                 ? value
-                : "K";
+                : "M";
         }
     }
 }

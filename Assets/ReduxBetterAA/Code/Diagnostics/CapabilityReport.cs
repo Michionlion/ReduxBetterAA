@@ -15,7 +15,51 @@ namespace ReduxBetterAA.Diagnostics
         public EvidenceRecord evidence;
         public MotionCadenceRecord motionCadence;
         public MotionSignDiagnosticRecord motionSignDiagnostic;
+        public CloudDiagnosticRecord cloud;
         public TemporalBackendRecord temporal;
+    }
+
+    [Serializable]
+    public sealed class CloudDiagnosticRecord
+    {
+        public string selectedCamera;
+        public bool cameraAvailable;
+        public bool rendererFound;
+        public string rendererType;
+        public bool enabled;
+        public string configuration;
+        public bool enableTaa;
+        public bool enableDynamicResolution;
+        public int dynamicResolutionLevel;
+        public bool useScaledCloudsOnly;
+        public bool readyToEnableTemporalUpscaling;
+        public bool startEnableTemporalUpscaling;
+        public bool startDisableTemporalUpscaling;
+        public bool firstFrame;
+        public bool readComplete;
+        public bool sampleCountSubmitted;
+        public bool renderTextureChanged;
+        public float resolutionScale;
+        public int renderWidth;
+        public int renderHeight;
+        public int renderWidthCurrent;
+        public int renderHeightCurrent;
+        public int originalWidth;
+        public int originalHeight;
+        public CloudTextureRecord[] textures;
+        public string status;
+    }
+
+    [Serializable]
+    public sealed class CloudTextureRecord
+    {
+        public string field;
+        public string name;
+        public int width;
+        public int height;
+        public string format;
+        public string graphicsFormat;
+        public bool created;
     }
 
     [Serializable]

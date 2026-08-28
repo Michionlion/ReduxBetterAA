@@ -168,6 +168,7 @@ namespace ReduxBetterAA.Diagnostics
         private bool _motionVectorPassProbeShaderHandleValid;
         private Shader _motionVectorPassProbeShader;
         private Shader _originalMotionVectorShader;
+        private BuiltinShaderMode _originalMotionVectorShaderMode;
         private bool _motionVectorPassProbeActive;
         private int _motionVectorPassProbeMode;
         private CommandBuffer _commandBuffer;
@@ -322,6 +323,9 @@ namespace ReduxBetterAA.Diagnostics
                 _originalMotionVectorShader = GraphicsSettings.GetCustomShader(
                     BuiltinShaderType.MotionVectors
                 );
+                _originalMotionVectorShaderMode = GraphicsSettings.GetShaderMode(
+                    BuiltinShaderType.MotionVectors
+                );
                 _motionVectorPassProbeActive = true;
             }
             _motionVectorPassProbeMode = mode;
@@ -330,6 +334,12 @@ namespace ReduxBetterAA.Diagnostics
                 BuiltinShaderType.MotionVectors,
                 _motionVectorPassProbeShader
             );
+            GraphicsSettings.SetShaderMode(
+                BuiltinShaderType.MotionVectors,
+                BuiltinShaderMode.UseCustom
+            );
+            VegetationMotionCompatibility.Current?
+                .SetDiagnosticMotionVectorOverrideActive(true);
             _logger.LogInfo(
                 "[ReduxBetterAA/Probe] Installed built-in motion-vector pass probe mode " +
                 mode + "."
@@ -347,10 +357,16 @@ namespace ReduxBetterAA.Diagnostics
                 BuiltinShaderType.MotionVectors,
                 _originalMotionVectorShader
             );
+            GraphicsSettings.SetShaderMode(
+                BuiltinShaderType.MotionVectors,
+                _originalMotionVectorShaderMode
+            );
             Shader.SetGlobalInt(MotionVectorPassProbeModeProperty, 0);
             _motionVectorPassProbeActive = false;
             _motionVectorPassProbeMode = 0;
             _originalMotionVectorShader = null;
+            VegetationMotionCompatibility.Current?
+                .SetDiagnosticMotionVectorOverrideActive(false);
             _logger.LogInfo(
                 "[ReduxBetterAA/Probe] Restored the original built-in motion-vector shader."
             );
@@ -735,6 +751,8 @@ namespace ReduxBetterAA.Diagnostics
                 return camera == null ? "NoCamera" : camera.name;
             }
         }
+
+        internal Camera SelectedCameraForDiagnostics => GetSelectedCamera();
 
         public MotionSignDiagnosticRecord CaptureMotionSignDiagnostic()
         {
@@ -1472,7 +1490,7 @@ namespace ReduxBetterAA.Diagnostics
                 case 4:
                     return DlaaPreset.M;
                 default:
-                    return DlaaPreset.K;
+                    return DlaaPreset.M;
             }
         }
 

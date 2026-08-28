@@ -88,13 +88,12 @@ namespace ReduxBetterAA
             _dlaaPresetEntry = SWConfiguration.Bind(
                 "Anti-Aliasing",
                 "DLAA preset",
-                "K",
+                "M",
                 "Select the NVIDIA DLAA model. F is a deprecated legacy model " +
                 "retained for comparison. J can reduce ghosting but may flicker " +
-                "more. K is NVIDIA's recommended DLAA default and prioritizes " +
-                "image quality. L is sharper and more stable but costs more. " +
-                "M targets similar quality improvements with performance closer " +
-                "to J and K.",
+                "more. K prioritizes image quality and fine detail. L is sharper " +
+                "and more stable but costs more. M is Redux Better AA's default " +
+                "with a balanced quality and stability profile.",
                 new ListConstraint<string>(DlaaPresetChoices)
             );
             _foliageMotionRepairEntry = SWConfiguration.Bind(
@@ -153,7 +152,10 @@ namespace ReduxBetterAA
             _temporalCoordinator.Initialize();
 
             _vegetationMotionCompatibility =
-                new VegetationMotionCompatibility(SWLogger);
+                new VegetationMotionCompatibility(
+                    SWLogger,
+                    OnMotionInputChanged
+                );
             VegetationMotionCompatibility.Current =
                 _vegetationMotionCompatibility;
             _vegetationMotionCompatibility.Initialize();
@@ -256,6 +258,10 @@ namespace ReduxBetterAA
             }
             _physicsRenderInterpolation?.Dispose();
             _physicsRenderInterpolation = null;
+
+            // Restore the diagnostic motion shader before releasing the
+            // production vegetation override it may have captured.
+            _probeService?.RestoreMotionVectorPassProbe();
 
             if (ReferenceEquals(
                     VegetationMotionCompatibility.Current,
@@ -469,7 +475,7 @@ namespace ReduxBetterAA
                     config.Sharpness,
                     config.PreExposure,
                     config.AutoExposure,
-                    DlaaPreset.K,
+                    DlaaPreset.M,
                     config.AllowSupersampling
                 );
             }
@@ -686,7 +692,7 @@ namespace ReduxBetterAA
                 case "M":
                     return DlaaPreset.M;
                 default:
-                    return DlaaPreset.K;
+                    return DlaaPreset.M;
             }
         }
 

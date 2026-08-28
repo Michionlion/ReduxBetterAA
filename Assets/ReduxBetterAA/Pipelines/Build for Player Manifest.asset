@@ -1,53 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8785221119858934538
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 470dbf1cc5834ffc97c653aa1126938c, type: 3}
-  m_Name: CopyFolderDatum
-  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.CopyFolderDatum
-  StagingPaths: []
-  sourcePath: Assets\ReduxBetterAA/Copied
-  destinationPath: G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA
---- !u!114 &-4061355938765582375
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b7e13dda513544419a89926bd12ad8a, type: 3}
-  m_Name: AssemblyDefinitions
-  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datums.AssemblyDefinitions
-  StagingPaths:
-  - G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA
-  definitions:
-  - {fileID: 5897886265953266890, guid: 0d1fdc59dfd34f3ab88291a02bcf931b, type: 3}
---- !u!114 &-4045663893667005741
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 83ea0a28af7349aa972a4bcb474b48d7, type: 3}
-  m_Name: AddressablesGroupDatum
-  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.AddressablesGroupDatum
-  StagingPaths:
-  - G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA/addressables
-  mod: {fileID: 11400000, guid: 768f7fa6b76945c7bcbd2e2bd812e4a8, type: 2}
-  targetFolder: G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA/addressables
---- !u!114 &-1596087362330936652
+--- !u!114 &-8553136802277870388
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -64,8 +17,39 @@ MonoBehaviour:
   Name:
   Description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
     DLAA, and FSR2 Native AA for KSP2 Redux.
-  Version: 0.5.26
+  Version: 0.5.28
   Dependencies: []
+--- !u!114 &-4511621227148558975
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83ea0a28af7349aa972a4bcb474b48d7, type: 3}
+  m_Name: AddressablesGroupDatum
+  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.AddressablesGroupDatum
+  StagingPaths:
+  - G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA/addressables
+  mod: {fileID: 11400000, guid: 768f7fa6b76945c7bcbd2e2bd812e4a8, type: 2}
+  targetFolder: G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA/addressables
+--- !u!114 &-3596791934981685636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 470dbf1cc5834ffc97c653aa1126938c, type: 3}
+  m_Name: CopyFolderDatum
+  m_EditorClassIdentifier: ksp2community.ksp2unitytools.editor::Ksp2UnityTools.Editor.Modding.Thunderkit.CopyFolderDatum
+  StagingPaths: []
+  sourcePath: Assets\ReduxBetterAA/Copied
+  destinationPath: G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -79,13 +63,13 @@ MonoBehaviour:
   m_Name: Build for Player Manifest
   m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Manifest
   Data:
-  - {fileID: -8785221119858934538}
-  - {fileID: 8322349053002602450}
-  - {fileID: -4045663893667005741}
-  - {fileID: -4061355938765582375}
-  identity: {fileID: -1596087362330936652}
+  - {fileID: -3596791934981685636}
+  - {fileID: 3434513962879588396}
+  - {fileID: -4511621227148558975}
+  - {fileID: 4449818137939151733}
+  identity: {fileID: -8553136802277870388}
   QuickAccess: 0
---- !u!114 &8322349053002602450
+--- !u!114 &3434513962879588396
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -101,3 +85,19 @@ MonoBehaviour:
   - G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA
   possibleFolders:
   - Assets\ReduxBetterAA
+--- !u!114 &4449818137939151733
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7e13dda513544419a89926bd12ad8a, type: 3}
+  m_Name: AssemblyDefinitions
+  m_EditorClassIdentifier: ThunderKit.Core::ThunderKit.Core.Manifests.Datums.AssemblyDefinitions
+  StagingPaths:
+  - G:/SteamLibrary/steamapps/common/Kerbal Space Program 2/mods/__Testing/ReduxBetterAA
+  definitions:
+  - {fileID: 5897886265953266890, guid: 0d1fdc59dfd34f3ab88291a02bcf931b, type: 3}
