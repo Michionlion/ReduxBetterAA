@@ -2,7 +2,9 @@
     "name": "ReduxBetterAA.Tests",
     "rootNamespace": "ReduxBetterAA.Tests",
     "references": [
-        "ReduxBetterAA"
+        "ReduxBetterAA",
+        "Unity.Postprocessing.Runtime",
+        "Unity.Addressables.Editor"
     ],
     "includePlatforms": [
         "Editor"

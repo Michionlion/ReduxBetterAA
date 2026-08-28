@@ -6,11 +6,13 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
         _MotionScale ("Raw motion display scale", Float) = 32.0
         _MotionQuietPixels ("Quiet motion threshold in pixels", Float) = 0.1
         _MotionOutlierPixels ("Outlier motion threshold in pixels", Float) = 64.0
+        _MotionSignConfidencePixels ("Sign confidence threshold in pixels", Float) = 0.75
         _DiagnosticPixelDimensions ("Diagnostic source dimensions", Vector) = (1920, 1080, 0, 0)
         _MotionComponentSign ("Motion component sign", Vector) = (-1, -1, 0, 0)
         _SanitizedMotionComponentSign ("Sanitized motion component sign", Vector) = (-1, -1, 0, 0)
         _SanitizedMotionTexture ("Sanitized vendor motion", 2D) = "black" {}
         _MotionCorruptionTexture ("Motion corruption flag", 2D) = "black" {}
+        _MotionSanitizerAvailable ("Sanitizer texture available", Float) = 0.0
     }
 
     SubShader
@@ -29,9 +31,11 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
         float _MotionScale;
         float _MotionQuietPixels;
         float _MotionOutlierPixels;
+        float _MotionSignConfidencePixels;
         float4 _DiagnosticPixelDimensions;
         float2 _MotionComponentSign;
         float2 _SanitizedMotionComponentSign;
+        float _MotionSanitizerAvailable;
         float2 _CurrentJitter;
         float4x4 _CurrentInverseViewProjection;
         float4x4 _PreviousViewProjection;
@@ -229,8 +233,8 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
             int axis = uv.x < 0.5 ? 0 : 1;
             float corrected = axis == 0 ? correctedPixels.x : correctedPixels.y;
             float expected = axis == 0 ? expectedPixels.x : expectedPixels.y;
-            if (abs(corrected) < _MotionQuietPixels ||
-                abs(expected) < _MotionQuietPixels)
+            if (abs(corrected) < _MotionSignConfidencePixels ||
+                abs(expected) < _MotionSignConfidencePixels)
                 return float4(0.02, 0.08, 0.24, 1.0);
 
             float agreement = corrected * expected > 0.0 ? 1.0 : 0.0;
@@ -251,6 +255,9 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
 
         fixed4 FragSanitizedVendorMotion(v2f_img input) : SV_Target
         {
+            if (_MotionSanitizerAvailable < 0.5)
+                return float4(0.02, 0.08, 0.24, 1.0);
+
             float2 uv = DiagnosticUv(input.uv);
             float2 motion = tex2D(_SanitizedMotionTexture, uv).rg;
             if (MotionIsInvalid(motion))
@@ -277,6 +284,9 @@ Shader "Hidden/ReduxBetterAA/Phase1BufferDebug"
 
         fixed4 FragMotionSanitizerDecision(v2f_img input) : SV_Target
         {
+            if (_MotionSanitizerAvailable < 0.5)
+                return float4(0.02, 0.08, 0.24, 1.0);
+
             float2 uv = DiagnosticUv(input.uv);
             float2 rawMotion = tex2D(_CameraMotionVectorsTexture, uv).rg *
                 _SanitizedMotionComponentSign;

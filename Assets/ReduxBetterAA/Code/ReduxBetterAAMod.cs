@@ -16,8 +16,9 @@ namespace ReduxBetterAA
     /// Phase 2 PPv2, Phase 3 custom TAA, Phase 4 managed DLAA, and experimental
     /// native-resolution FSR2 prototypes.
     ///
-    /// The temporal backend remains off by default and restores the original
-    /// renderer state whenever it is disabled or unsupported.
+    /// The AA backend remains off by default. While Off is selected, Redux
+    /// explicitly owns a zero-AA baseline; all captured renderer state is
+    /// restored when ownership moves or the mod unloads.
     /// </summary>
     public sealed class ReduxBetterAAMod : MonoBehaviourMod
     {
@@ -28,8 +29,6 @@ namespace ReduxBetterAA
         private const string ModeCustom = UserSettingsPolicy.ModeTaa;
         private const string ModeDlaa = UserSettingsPolicy.ModeDlaa;
         private const string ModeFsr2 = UserSettingsPolicy.ModeFsr2;
-        private const string LegacyModePpv2 = "PPv2 TAA";
-        private const string LegacyModeCustom = "Custom TAA";
 
         private static readonly string[] DlaaPresetChoices =
             { "F", "J", "K", "L", "M" };
@@ -41,6 +40,8 @@ namespace ReduxBetterAA
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
         private bool _syncingConfiguration;
+        private int _originalMsaaSamples;
+        private bool _ownsMsaa;
         private const bool HotkeysEnabled = true;
         private Phase1ProbeService _probeService;
         private TemporalCoordinator _temporalCoordinator;
@@ -63,15 +64,17 @@ namespace ReduxBetterAA
                 "Mode",
                 ModeOff,
                 "Select the scene anti-aliasing method. FXAA Low and FXAA High " +
-                "are KSP's stock spatial modes; SMAA is the higher-quality PPv2 " +
+                "are KSP's stock spatial modes; SMAA is the highest-quality PPv2 " +
                 "spatial option. TAA is the portable temporal option. NVIDIA DLAA " +
-                "is offered only on supported NVIDIA hardware; FSR 2 is offered " +
-                "when its Unity runtime is available.",
+                "is offered only on supported NVIDIA hardware. FSR 2 Native AA " +
+                "uses equal input and output resolution and is offered when its " +
+                "Unity runtime is available.",
                 new ListConstraint<string>(modeChoices)
             );
             _sharpnessEntry = BindFloat(
                 "Anti-Aliasing", "Sharpness", 0.15f, 0.0f, 1.0f, 100,
-                "Shared post-reconstruction sharpness for TAA, DLAA, and FSR 2. " +
+                "Shared post-reconstruction sharpness for TAA, DLAA, and FSR 2 " +
+                "Native AA. " +
                 "Zero disables sharpening."
             );
             _taaStabilityEntry = BindFloat(
@@ -109,6 +112,8 @@ namespace ReduxBetterAA
             // Redux Better AA owns scene anti-aliasing while loaded. The stock
             // graphics selector is disabled by a Harmony patch and MSAA is kept
             // off to avoid an undocumented second filter.
+            _originalMsaaSamples = QualitySettings.antiAliasing;
+            _ownsMsaa = true;
             QualitySettings.antiAliasing = 0;
 
             _probeService = new Phase1ProbeService(
@@ -176,7 +181,7 @@ namespace ReduxBetterAA
             _harmony = CreateHarmonyAndPatchAll();
 
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Backend] PPv2, custom TAA, DLAA, and FSR2 Native AA prototypes installed; requested mode is " +
+                "[ReduxBetterAA/Backend] Spatial AA, PPv2, custom TAA, DLAA, and FSR2 Native AA backends installed; requested mode is " +
                 _temporalCoordinator.RequestedBackend + "."
             );
         }
@@ -236,6 +241,11 @@ namespace ReduxBetterAA
                 _harmony.UnpatchAll(_harmony.Id);
             }
             _harmony = null;
+            if (_ownsMsaa)
+            {
+                QualitySettings.antiAliasing = _originalMsaaSamples;
+                _ownsMsaa = false;
+            }
         }
 
         private void OnMotionInputChanged()
@@ -321,7 +331,6 @@ namespace ReduxBetterAA
 
             Fsr2Config fsr2 = _temporalCoordinator.Fsr2Config;
             _temporalCoordinator.SetFsr2Config(fsr2.WithUserSettings(
-                sharpness > 0.0f,
                 sharpness,
                 fsr2.PreExposure,
                 fsr2.AutoExposure
@@ -395,7 +404,6 @@ namespace ReduxBetterAA
                 Fsr2Config fsr2 = _temporalCoordinator.Fsr2Config;
                 _temporalCoordinator.SetFsr2Config(
                     fsr2.WithUserSettings(
-                        fsr2.EnableSharpening,
                         fsr2.Sharpness,
                         config.PreExposure,
                         config.AutoExposure
@@ -423,7 +431,7 @@ namespace ReduxBetterAA
                 );
             }
             SetSharedSharpnessAndPersist(
-                config.EnableSharpening ? config.Sharpness : 0.0f
+                config.Sharpness
             );
         }
 
@@ -481,7 +489,6 @@ namespace ReduxBetterAA
 
             Fsr2Config fsr2 = _temporalCoordinator.Fsr2Config;
             _temporalCoordinator.SetFsr2Config(fsr2.WithUserSettings(
-                sharpness > 0.0f,
                 sharpness,
                 fsr2.PreExposure,
                 fsr2.AutoExposure
@@ -491,21 +498,20 @@ namespace ReduxBetterAA
         private void MigrateUserFacingSettings()
         {
             string mode = _modeEntry.Value as string;
-            if (mode == LegacyModePpv2 || mode == LegacyModeCustom)
-            {
-                Persist(_modeEntry, ModeCustom);
-            }
-            else if ((mode == ModeDlaa && !_dlaaSelectable) ||
-                     (mode == ModeFsr2 && !_fsr2Selectable))
-            {
-                Persist(_modeEntry, ModeOff);
-            }
+            Persist(
+                _modeEntry,
+                UserSettingsPolicy.NormalizeMode(
+                    mode,
+                    _dlaaSelectable,
+                    _fsr2Selectable
+                )
+            );
 
             string preset = _dlaaPresetEntry.Value as string;
-            if (!IsUserDlaaPreset(preset))
-            {
-                Persist(_dlaaPresetEntry, "K");
-            }
+            Persist(
+                _dlaaPresetEntry,
+                UserSettingsPolicy.NormalizeDlaaPreset(preset)
+            );
         }
 
         private static bool ProbeDlaaAvailability(out string reason)
@@ -550,32 +556,11 @@ namespace ReduxBetterAA
 
         private BackendSelection ParseBackend(string value)
         {
-            if (value == ModeFxaaLow)
-            {
-                return BackendSelection.FxaaLow;
-            }
-            if (value == ModeSmaa)
-            {
-                return BackendSelection.Smaa;
-            }
-            if (value == ModeFxaaHigh)
-            {
-                return BackendSelection.FxaaHigh;
-            }
-            if (value == ModeCustom || value == LegacyModeCustom ||
-                value == LegacyModePpv2)
-            {
-                return BackendSelection.CustomTaa;
-            }
-            if (value == ModeDlaa && _dlaaSelectable)
-            {
-                return BackendSelection.NvidiaDlaa;
-            }
-            if (value == ModeFsr2 && _fsr2Selectable)
-            {
-                return BackendSelection.AmdFsr2;
-            }
-            return BackendSelection.Off;
+            return UserSettingsPolicy.ParseBackend(
+                value,
+                _dlaaSelectable,
+                _fsr2Selectable
+            );
         }
 
         private bool TryGetUserBackendLabel(
@@ -630,10 +615,5 @@ namespace ReduxBetterAA
             }
         }
 
-        private static bool IsUserDlaaPreset(string value)
-        {
-            return value == "F" || value == "J" || value == "K" ||
-                   value == "L" || value == "M";
-        }
     }
 }

@@ -288,7 +288,7 @@ namespace ReduxBetterAA.Rendering
                 HistoryResetReason.FirstFrame | HistoryResetReason.BackendChanged;
             if (!Requested)
             {
-                _status = "Off (choose a mode in the Better AA settings or Ctrl+F10 panel)";
+                _status = "Off requested; discovering the final scene camera...";
             }
         }
 
@@ -301,19 +301,6 @@ namespace ReduxBetterAA.Rendering
 
             TracePreviousFrameHitch();
             PollGameState();
-
-            if (!Requested)
-            {
-                if (_activeBackend.Active)
-                {
-                    DisableActiveBackend();
-                }
-                _performanceProfiler.Tick(
-                    BackendSelection.Off,
-                    BackendSelection.Off
-                );
-                return;
-            }
 
             float now = Time.unscaledTime;
             if (_dirty && now >= _discoverAfter)
@@ -371,12 +358,12 @@ namespace ReduxBetterAA.Rendering
                     next = BackendSelection.FxaaLow;
                     break;
                 case BackendSelection.FxaaLow:
-                    next = BackendSelection.Smaa;
-                    break;
-                case BackendSelection.Smaa:
                     next = BackendSelection.FxaaHigh;
                     break;
                 case BackendSelection.FxaaHigh:
+                    next = BackendSelection.Smaa;
+                    break;
+                case BackendSelection.Smaa:
                     next = BackendSelection.Ppv2Taa;
                     break;
                 case BackendSelection.Ppv2Taa:
@@ -416,10 +403,12 @@ namespace ReduxBetterAA.Rendering
             {
                 return;
             }
+            bool resetHistory = _customConfig.RequiresHistoryReset(in config);
             _customConfig = config;
             _performanceProfiler.Invalidate(BackendSelection.CustomTaa);
             _customBackend.ApplyConfig(in _customConfig);
-            if (_activeBackend == _customBackend && _activeBackend.Active)
+            if (resetHistory &&
+                _activeBackend == _customBackend && _activeBackend.Active)
             {
                 ResetActiveHistory(HistoryResetReason.SettingsChanged);
             }
@@ -432,6 +421,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             bool recreate = _dlaaConfig.RequiresContextRecreation(in config);
+            bool resetHistory = _dlaaConfig.RequiresHistoryReset(in config);
             _dlaaConfig = config;
             _performanceProfiler.Invalidate(BackendSelection.NvidiaDlaa);
             _dlaaBackend.ApplyConfig(in _dlaaConfig);
@@ -444,7 +434,7 @@ namespace ReduxBetterAA.Rendering
                     _remainingDiscoveryRetries = MaximumDiscoveryRetries;
                     _discoverAfter = Time.unscaledTime;
                 }
-                else
+                else if (resetHistory)
                 {
                     ResetActiveHistory(HistoryResetReason.SettingsChanged);
                 }
@@ -464,6 +454,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             bool recreate = _fsr2Config.RequiresContextRecreation(in config);
+            bool resetHistory = _fsr2Config.RequiresHistoryReset(in config);
             _fsr2Config = config;
             _performanceProfiler.Invalidate(BackendSelection.AmdFsr2);
             _fsr2Backend.ApplyConfig(in _fsr2Config);
@@ -476,7 +467,7 @@ namespace ReduxBetterAA.Rendering
                     _remainingDiscoveryRetries = MaximumDiscoveryRetries;
                     _discoverAfter = Time.unscaledTime;
                 }
-                else
+                else if (resetHistory)
                 {
                     ResetActiveHistory(HistoryResetReason.SettingsChanged);
                 }
@@ -577,15 +568,6 @@ namespace ReduxBetterAA.Rendering
             {
                 _fsr2Backend.ClearRuntimeFailure();
             }
-            if (requested == BackendSelection.Off)
-            {
-                _status = "Off (F12 cycles the supported user AA modes)";
-                _logger.LogInfo(
-                    "[ReduxBetterAA/Backend] Scene AA disabled; original AA restored."
-                );
-                return;
-            }
-
             _dirty = true;
             _remainingDiscoveryRetries = MaximumDiscoveryRetries;
             _discoverAfter = Time.unscaledTime;
@@ -645,7 +627,11 @@ namespace ReduxBetterAA.Rendering
             _cameras = TemporalCameraDiscovery.Discover();
 
             ITemporalBackend requestedBackend;
-            if (_requestedBackend == BackendSelection.FxaaLow)
+            if (_requestedBackend == BackendSelection.Off)
+            {
+                requestedBackend = _disabledBackend;
+            }
+            else if (_requestedBackend == BackendSelection.FxaaLow)
             {
                 requestedBackend = _fxaaLowBackend;
             }
@@ -679,7 +665,7 @@ namespace ReduxBetterAA.Rendering
             }
             else
             {
-                return;
+                requestedBackend = _disabledBackend;
             }
 
             string failureReason;
@@ -687,12 +673,12 @@ namespace ReduxBetterAA.Rendering
             {
                 if (_requestedBackend == BackendSelection.NvidiaDlaa)
                 {
-                    ActivateDlaaFallback(failureReason);
+                    ActivateOffFallback("DLAA", failureReason);
                     return;
                 }
                 if (_requestedBackend == BackendSelection.AmdFsr2)
                 {
-                    ActivateFsr2Fallback(failureReason);
+                    ActivateOffFallback("FSR2", failureReason);
                     return;
                 }
 
@@ -704,14 +690,26 @@ namespace ReduxBetterAA.Rendering
                     _discoverAfter = now + DiscoveryRetrySeconds;
                     return;
                 }
-                if (_requestedBackend == BackendSelection.CustomTaa)
+                if (_requestedBackend != BackendSelection.Off)
                 {
-                    ActivatePpv2Fallback("Custom TAA", failureReason);
+                    ActivateOffFallback(
+                        BackendName(_requestedBackend),
+                        failureReason
+                    );
                 }
                 return;
             }
 
             _activeBackend = requestedBackend;
+            if (_requestedBackend == BackendSelection.Off)
+            {
+                _status = _cameras != null && _cameras.ResolveCamera != null
+                    ? "Off; PPv2 AA disabled on " + _cameras.ResolveCamera.name
+                    : "Off; no supported scene AA layer is active";
+                _logger.LogInfo("[ReduxBetterAA/Backend] " + _status + ".");
+                return;
+            }
+
             _pendingResetReasons |=
                 HistoryResetReason.FirstFrame | HistoryResetReason.BackendChanged;
             _status = requestedBackend.Id + " active on " +
@@ -723,63 +721,27 @@ namespace ReduxBetterAA.Rendering
             _logger.LogInfo("[ReduxBetterAA/Backend] " + _status + ".");
         }
 
-        private void ActivateDlaaFallback(string dlaaFailure)
-        {
-            _customBackend.ApplyConfig(in _customConfig);
-            string customFailure;
-            if (_customBackend.Configure(_cameras, out customFailure))
-            {
-                _activeBackend = _customBackend;
-                ActivateFallbackStatus("DLAA", dlaaFailure, "Custom TAA");
-                return;
-            }
-            ActivatePpv2Fallback(
-                "DLAA",
-                dlaaFailure + "; Custom TAA unavailable: " + customFailure
-            );
-        }
-
-        private void ActivateFsr2Fallback(string fsr2Failure)
-        {
-            _customBackend.ApplyConfig(in _customConfig);
-            string customFailure;
-            if (_customBackend.Configure(_cameras, out customFailure))
-            {
-                _activeBackend = _customBackend;
-                ActivateFallbackStatus("FSR2", fsr2Failure, "Custom TAA");
-                return;
-            }
-            ActivatePpv2Fallback(
-                "FSR2",
-                fsr2Failure + "; Custom TAA unavailable: " + customFailure
-            );
-        }
-
-        private void ActivatePpv2Fallback(string requestedName, string failure)
-        {
-            _ppv2Backend.ApplyConfig(in _ppv2Config);
-            string ppv2Failure;
-            if (_ppv2Backend.Configure(_cameras, out ppv2Failure))
-            {
-                _activeBackend = _ppv2Backend;
-                ActivateFallbackStatus(requestedName, failure, "PPv2 TAA");
-                return;
-            }
-            _status = requestedName + " unavailable (" + failure +
-                "); PPv2 fallback unavailable: " + ppv2Failure;
-            _logger.LogWarning("[ReduxBetterAA/Backend] " + _status + ".");
-        }
-
-        private void ActivateFallbackStatus(
+        private void ActivateOffFallback(
             string requestedName,
-            string failure,
-            string fallbackName)
+            string failure)
         {
-            _pendingResetReasons |=
-                HistoryResetReason.FirstFrame | HistoryResetReason.BackendChanged;
-            _status = requestedName + " unavailable (" + failure + "); " +
-                fallbackName + " fallback active on " +
-                _cameras.ResolveCamera.name;
+            DeactivateTemporalBackends();
+            _activeBackend = _disabledBackend;
+
+            string offFailure;
+            if (_disabledBackend.Configure(_cameras, out offFailure))
+            {
+                _status = requestedName + " unavailable (" + failure +
+                    "); Off fallback active" +
+                    (_cameras != null && _cameras.ResolveCamera != null
+                        ? " on " + _cameras.ResolveCamera.name
+                        : string.Empty);
+                _logger.LogWarning("[ReduxBetterAA/Backend] " + _status + ".");
+                return;
+            }
+
+            _status = requestedName + " unavailable (" + failure +
+                "); Off fallback could not claim scene AA: " + offFailure;
             _logger.LogWarning("[ReduxBetterAA/Backend] " + _status + ".");
         }
 
@@ -794,6 +756,7 @@ namespace ReduxBetterAA.Rendering
 
         private void DeactivateTemporalBackends()
         {
+            _disabledBackend.Deactivate();
             _ppv2Backend.Deactivate();
             _customBackend.Deactivate();
             _dlaaBackend.Deactivate();
@@ -899,7 +862,7 @@ namespace ReduxBetterAA.Rendering
             }
             _dlaaRuntimeFailed = true;
             _status = "DLAA runtime failure (" + reason +
-                "); switching to a temporal fallback...";
+                "); switching to the Off fallback...";
             _dirty = true;
             _remainingDiscoveryRetries = 0;
             _discoverAfter = Time.unscaledTime;
@@ -914,7 +877,7 @@ namespace ReduxBetterAA.Rendering
             }
             _fsr2RuntimeFailed = true;
             _status = "FSR2 runtime failure (" + reason +
-                "); switching to a temporal fallback...";
+                "); switching to the Off fallback...";
             _dirty = true;
             _remainingDiscoveryRetries = 0;
             _discoverAfter = Time.unscaledTime;

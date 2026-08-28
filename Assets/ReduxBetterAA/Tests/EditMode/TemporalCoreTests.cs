@@ -1,11 +1,16 @@
+using System.Reflection;
 using NUnit.Framework;
 using ReduxBetterAA.Backends;
 using ReduxBetterAA.Backends.Amd;
 using ReduxBetterAA.Backends.Nvidia;
 using ReduxBetterAA.Configuration;
+using ReduxBetterAA.Patches;
 using ReduxBetterAA.Rendering;
+using UnityEditor;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering.PostProcessing;
 
 namespace ReduxBetterAA.Tests
 {
@@ -39,14 +44,14 @@ namespace ReduxBetterAA.Tests
         public void UserModeChoicesHidePpv2AndUnsupportedVendors()
         {
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "SMAA", "FXAA High", "TAA" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA" },
                 UserSettingsPolicy.BuildModeChoices(false, false)
             );
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Off", "FXAA Low", "SMAA", "FXAA High", "TAA",
-                    "NVIDIA DLAA", "FSR 2"
+                    "Off", "FXAA Low", "FXAA High", "SMAA", "TAA",
+                    "NVIDIA DLAA", "FSR 2 Native AA"
                 },
                 UserSettingsPolicy.BuildModeChoices(true, true)
             );
@@ -69,19 +74,19 @@ namespace ReduxBetterAA.Tests
                     true,
                     true
                 ),
-                Is.EqualTo(BackendSelection.Smaa)
-            );
-            Assert.That(
-                UserSettingsPolicy.NextBackend(
-                    BackendSelection.Smaa,
-                    true,
-                    true
-                ),
                 Is.EqualTo(BackendSelection.FxaaHigh)
             );
             Assert.That(
                 UserSettingsPolicy.NextBackend(
                     BackendSelection.FxaaHigh,
+                    true,
+                    true
+                ),
+                Is.EqualTo(BackendSelection.Smaa)
+            );
+            Assert.That(
+                UserSettingsPolicy.NextBackend(
+                    BackendSelection.Smaa,
                     true,
                     true
                 ),
@@ -111,7 +116,7 @@ namespace ReduxBetterAA.Tests
             var config = new TemporalBackendConfig(-1.0f, 4.0f, -0.5f, 2.0f);
 
             Assert.That(config.JitterSpread, Is.EqualTo(0.1f));
-            Assert.That(config.Sharpness, Is.EqualTo(3.0f));
+            Assert.That(config.Sharpness, Is.EqualTo(1.0f));
             Assert.That(config.StationaryBlending, Is.EqualTo(0.0f));
             Assert.That(config.MotionBlending, Is.EqualTo(0.99f));
         }
@@ -223,6 +228,14 @@ namespace ReduxBetterAA.Tests
         [Test]
         public void VendorDefaultsUseAutomaticExposureAndDlaaPresetK()
         {
+            Assert.That(
+                TemporalBackendConfig.ConservativePpv2.Sharpness,
+                Is.EqualTo(0.15f)
+            );
+            Assert.That(
+                CustomTaaConfig.Conservative.Sharpening,
+                Is.EqualTo(0.15f)
+            );
             Assert.That(DlaaConfig.Conservative.AutoExposure, Is.True);
             Assert.That(DlaaConfig.Conservative.PreferPpv2Exposure, Is.True);
             Assert.That(DlaaConfig.Conservative.InvertMotionX, Is.True);
@@ -233,6 +246,103 @@ namespace ReduxBetterAA.Tests
             Assert.That(Fsr2Config.Conservative.PreferPpv2Exposure, Is.True);
             Assert.That(Fsr2Config.Conservative.InvertMotionX, Is.True);
             Assert.That(Fsr2Config.Conservative.InvertMotionY, Is.True);
+            Assert.That(Fsr2Config.Conservative.EnableSharpening, Is.True);
+            Assert.That(Fsr2Config.Conservative.Sharpness, Is.EqualTo(0.15f));
+        }
+
+        [Test]
+        public void UserSettingMigrationNormalizesLegacyAndUnsupportedValues()
+        {
+            Assert.That(
+                UserSettingsPolicy.NormalizeMode("PPv2 TAA", false, false),
+                Is.EqualTo(UserSettingsPolicy.ModeTaa)
+            );
+            Assert.That(
+                UserSettingsPolicy.NormalizeMode("Custom TAA", false, false),
+                Is.EqualTo(UserSettingsPolicy.ModeTaa)
+            );
+            Assert.That(
+                UserSettingsPolicy.NormalizeMode("FSR 2", false, true),
+                Is.EqualTo(UserSettingsPolicy.ModeFsr2)
+            );
+            Assert.That(
+                UserSettingsPolicy.ParseBackend(
+                    UserSettingsPolicy.ModeDlaa,
+                    false,
+                    true
+                ),
+                Is.EqualTo(BackendSelection.Off)
+            );
+            Assert.That(
+                UserSettingsPolicy.NormalizeDlaaPreset("Default"),
+                Is.EqualTo("K")
+            );
+        }
+
+        [Test]
+        public void OutputOnlySettingsDoNotDiscardTemporalHistory()
+        {
+            CustomTaaConfig custom = CustomTaaConfig.Conservative;
+            CustomTaaConfig customSharpened = custom.WithUserSettings(
+                custom.StationaryHistory,
+                0.7f
+            );
+            CustomTaaConfig customTemporal = custom.WithUserSettings(
+                custom.StationaryHistory - 0.1f,
+                custom.Sharpening
+            );
+            var customDebugView = new CustomTaaConfig(
+                custom.JitterSpread,
+                custom.SequenceLength,
+                custom.StationaryHistory,
+                custom.MovingHistory,
+                custom.MotionResponsePixels,
+                custom.MaximumMotionPixels,
+                custom.DepthThreshold,
+                custom.DepthEdgeStability,
+                custom.VarianceGamma,
+                custom.ReactiveScale,
+                custom.Sharpening,
+                custom.NoDepthHistory,
+                CustomTaaDebugView.HistoryColor
+            );
+            Assert.That(
+                custom.RequiresHistoryReset(in customSharpened),
+                Is.False
+            );
+            Assert.That(
+                custom.RequiresHistoryReset(in customTemporal),
+                Is.True
+            );
+            Assert.That(
+                custom.RequiresHistoryReset(in customDebugView),
+                Is.False
+            );
+
+            DlaaConfig dlaa = DlaaConfig.Conservative;
+            DlaaConfig dlaaSharpened = dlaa.WithUserSettings(
+                0.7f,
+                dlaa.PreExposure,
+                dlaa.AutoExposure,
+                dlaa.Preset,
+                dlaa.AllowSupersampling
+            );
+            Assert.That(
+                dlaa.RequiresHistoryReset(in dlaaSharpened),
+                Is.False
+            );
+
+            Fsr2Config fsr2 = Fsr2Config.Conservative;
+            Fsr2Config fsr2Unsharpened = fsr2.WithUserSettings(
+                0.0f,
+                fsr2.PreExposure,
+                fsr2.AutoExposure
+            );
+            Assert.That(
+                fsr2.RequiresHistoryReset(in fsr2Unsharpened),
+                Is.False
+            );
+            Assert.That(fsr2Unsharpened.EnableSharpening, Is.False);
         }
 
         [Test]
@@ -463,7 +573,6 @@ namespace ReduxBetterAA.Tests
             var config = new Fsr2Config(
                 -2.0f,
                 100,
-                true,
                 5.0f,
                 0.0f,
                 true,
@@ -489,7 +598,6 @@ namespace ReduxBetterAA.Tests
             var dynamicOnly = new Fsr2Config(
                 1.0f,
                 16,
-                true,
                 0.5f,
                 2.0f,
                 original.AutoExposure,
@@ -499,7 +607,6 @@ namespace ReduxBetterAA.Tests
             var immutableChange = new Fsr2Config(
                 original.JitterSpread,
                 original.SequenceLength,
-                original.EnableSharpening,
                 original.Sharpness,
                 original.PreExposure,
                 false,
@@ -685,6 +792,13 @@ namespace ReduxBetterAA.Tests
                 );
 
                 camera.fieldOfView += 1.0f;
+                Assert.That(
+                    tracker.Evaluate(camera, 100),
+                    Is.EqualTo(HistoryResetReason.None),
+                    "ordinary animated zoom must preserve accumulation"
+                );
+
+                camera.fieldOfView += 10.0f;
                 HistoryResetReason projectionReasons = tracker.Evaluate(camera, 100);
                 Assert.That(
                     (projectionReasons & HistoryResetReason.ProjectionChanged) != 0,
@@ -763,6 +877,169 @@ namespace ReduxBetterAA.Tests
             {
                 Object.DestroyImmediate(gameObject);
             }
+        }
+
+        [Test]
+        public void HistoryTrackerReportsOneResetForContinuousLargeTranslation()
+        {
+            var gameObject = new GameObject("HistoryTranslationTestCamera");
+            try
+            {
+                Camera camera = gameObject.AddComponent<Camera>();
+                var tracker = new HistoryResetTracker();
+                tracker.Evaluate(camera, 100);
+
+                camera.transform.position = new Vector3(1500.0f, 0.0f, 0.0f);
+                Assert.That(
+                    tracker.Evaluate(camera, 100),
+                    Is.EqualTo(HistoryResetReason.Teleport)
+                );
+
+                camera.transform.position = new Vector3(3000.0f, 0.0f, 0.0f);
+                Assert.That(
+                    tracker.Evaluate(camera, 100),
+                    Is.EqualTo(HistoryResetReason.None),
+                    "continuous orbital-camera translation must not clear every frame"
+                );
+
+                camera.transform.position = new Vector3(3010.0f, 0.0f, 0.0f);
+                Assert.That(
+                    tracker.Evaluate(camera, 100),
+                    Is.EqualTo(HistoryResetReason.None)
+                );
+
+                camera.transform.position = new Vector3(4510.0f, 0.0f, 0.0f);
+                Assert.That(
+                    tracker.Evaluate(camera, 100),
+                    Is.EqualTo(HistoryResetReason.Teleport),
+                    "a new discontinuity after stable motion must still reset"
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
+        public void Ppv2ModeOwnersRestoreTheExactPreModLayerState()
+        {
+            var resolveObject = new GameObject("AaOwnerResolveCamera");
+            var sharedObject = new GameObject("AaOwnerSharedCamera");
+            try
+            {
+                Camera resolveCamera = resolveObject.AddComponent<Camera>();
+                Camera sharedCamera = sharedObject.AddComponent<Camera>();
+                PostProcessLayer resolveLayer =
+                    resolveObject.AddComponent<PostProcessLayer>();
+                PostProcessLayer sharedLayer =
+                    sharedObject.AddComponent<PostProcessLayer>();
+                resolveLayer.antialiasingMode =
+                    PostProcessLayer.Antialiasing.FastApproximateAntialiasing;
+                sharedLayer.antialiasingMode =
+                    PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing;
+                resolveLayer.fastApproximateAntialiasing = null;
+                resolveLayer.subpixelMorphologicalAntialiasing = null;
+
+                var cameras = new TemporalCameraSet
+                {
+                    SceneKind = TemporalSceneKind.Flight,
+                    ResolveCamera = resolveCamera,
+                    ResolveLayer = resolveLayer,
+                    SharedJitterCamera = sharedCamera,
+                    SharedJitterLayer = sharedLayer,
+                    RenderScalePercent = 100
+                };
+
+                var disabled = new DisabledBackend();
+                string failure;
+                Assert.That(disabled.Configure(cameras, out failure), Is.True);
+                Assert.That(
+                    resolveLayer.antialiasingMode,
+                    Is.EqualTo(PostProcessLayer.Antialiasing.None)
+                );
+                Assert.That(
+                    sharedLayer.antialiasingMode,
+                    Is.EqualTo(PostProcessLayer.Antialiasing.None)
+                );
+                disabled.Deactivate();
+                Assert.That(
+                    resolveLayer.antialiasingMode,
+                    Is.EqualTo(
+                        PostProcessLayer.Antialiasing.FastApproximateAntialiasing
+                    )
+                );
+                Assert.That(
+                    sharedLayer.antialiasingMode,
+                    Is.EqualTo(
+                        PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing
+                    )
+                );
+
+                var spatial = new Ppv2SpatialAaBackend(
+                    "FXAA High",
+                    PostProcessLayer.Antialiasing.FastApproximateAntialiasing,
+                    false
+                );
+                Assert.That(spatial.Configure(cameras, out failure), Is.True);
+                Assert.That(resolveLayer.fastApproximateAntialiasing, Is.Not.Null);
+                Assert.That(resolveLayer.subpixelMorphologicalAntialiasing, Is.Not.Null);
+                spatial.Deactivate();
+                Assert.That(resolveLayer.fastApproximateAntialiasing, Is.Null);
+                Assert.That(resolveLayer.subpixelMorphologicalAntialiasing, Is.Null);
+                Assert.That(
+                    resolveLayer.antialiasingMode,
+                    Is.EqualTo(
+                        PostProcessLayer.Antialiasing.FastApproximateAntialiasing
+                    )
+                );
+                Assert.That(
+                    sharedLayer.antialiasingMode,
+                    Is.EqualTo(
+                        PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing
+                    )
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(resolveObject);
+                Object.DestroyImmediate(sharedObject);
+            }
+        }
+
+        [Test]
+        public void GraphicsSettingsPatchUsesHarmonyPositionalArgument()
+        {
+            MethodInfo prefix = typeof(StockGraphicsAntialiasingApplyPatch)
+                .GetMethod("Prefix", BindingFlags.NonPublic | BindingFlags.Static);
+
+            Assert.That(prefix, Is.Not.Null);
+            ParameterInfo[] parameters = prefix.GetParameters();
+            Assert.That(parameters, Has.Length.EqualTo(1));
+            Assert.That(parameters[0].Name, Is.EqualTo("__0"));
+            Assert.That(
+                parameters[0].ParameterType,
+                Is.EqualTo(typeof(int).MakeByRefType())
+            );
+        }
+
+        [Test]
+        public void BetterAaBundleIdentityIncludesEntryGuids()
+        {
+            const string SchemaPath =
+                "Assets/AddressableAssetsData/AssetGroups/Schemas/" +
+                "addressables_ReduxBetterAA_all_BundledAssetGroupSchema.asset";
+            BundledAssetGroupSchema schema =
+                AssetDatabase.LoadAssetAtPath<BundledAssetGroupSchema>(SchemaPath);
+
+            Assert.That(schema, Is.Not.Null);
+            Assert.That(
+                schema.InternalBundleIdMode,
+                Is.EqualTo(
+                    BundledAssetGroupSchema.BundleInternalIdMode
+                        .GroupGuidProjectIdEntriesHash
+                )
+            );
         }
 
     }

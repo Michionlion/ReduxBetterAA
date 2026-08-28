@@ -11,6 +11,49 @@ The project begins with a safe, diagnostic rendering probe; progresses to a sync
 
 **Phase 2 / Phase 3 / Phase 4 plus native-resolution FSR2 comparison build — disabled by default.**
 
+Version 0.5.23 restores the validated 0.5.21 launchpad classifier after the
+0.5.22 adaptive threshold proved too sensitive in player testing. Both the
+16-anchor whole-frame classifier and the local sanitizer again use the
+96-pixel camera-disagreement envelope; the 256-pixel coherent-motion policy is
+unchanged. Sanitizer buffer views now show dark blue when Off or PPv2 has no
+live sanitizer texture instead of comparing raw motion to an implicit black
+texture and misleadingly rendering the scene red. Large continuous orbital
+camera translations can trigger at most one `Teleport` reset until motion
+settles, preventing DLAA/Custom history from being cleared every frame during
+high-altitude dolly and orbit movement. Better AA continues not to reset or
+modify Better Clouds' independent temporal history.
+
+Version 0.5.22 closes the low-magnitude edge case in the launchpad motion
+classifier. The 16-point whole-frame test now uses an adaptive disagreement
+envelope: 8 pixels for slow camera motion, increasing to 10% of tracked camera
+motion during fast pans. The separate 96-pixel local envelope remains unchanged
+so independently moving objects are not broadly replaced. The raw sign-agreement
+view now suppresses ambiguous subpixel axis zero-crossings and explicitly notes
+that Unity's X/Y convention is fixed rather than view-angle dependent. The
+adaptive classifier portion was reverted in 0.5.23 after runtime validation;
+the clarified sign diagnostic remains.
+
+Version 0.5.21 isolates Better AA's Addressables bundle identity from the
+separately loaded Redux Better Clouds catalog. The two cloned projects retained
+the same project and Addressables group identifiers, so Unity treated their
+differently named shader bundles as the same internal bundle and rejected the
+one loaded second. Better AA now includes its entry GUIDs in the internal bundle
+ID. This restores the shared diagnostic, sanitizer, Custom TAA, DLAA, and FSR2
+shaders. The stock graphics-settings Harmony patch also uses a positional
+argument so KSP parameter-name changes cannot abort patch installation. Any AA
+backend that cannot initialize or fails at runtime now falls directly back to
+Off, never PPv2 TAA, Custom TAA, SMAA, or FXAA.
+
+Version 0.5.20 completes a cross-backend settings and lifecycle audit. `Off`
+now forces PPv2 AA to `None` on the discovered scene layers, so it is a truthful
+unfiltered baseline, while exact layer settings and Unity MSAA are restored when
+the mod releases ownership. Public modes are ordered `Off`, `FXAA Low`, `FXAA
+High`, `SMAA`, `TAA`, then supported vendor modes; FSR is labeled `FSR 2 Native
+AA`. All reconstructing backends share the same `0-1` sharpness default (`0.15`),
+zero disables FSR RCAS, and output-only sharpness/debug changes preserve history.
+PPv2-created settings objects and contributor-camera depth flags are now restored
+exactly, and ordinary animated zoom no longer clears history every frame.
+
 Version 0.5.19 assigns the engineering panel to `Ctrl+F10` and the combined
 same-moment report and screenshot to plain `F10`. Modifier checks are exclusive,
 so opening the panel cannot also arm a capture.
@@ -63,7 +106,7 @@ reprojection, while unverified motion above 256 pixels and disagreement above 96
 pixels are rejected. Custom TAA now consumes the same sanitized input as DLAA and
 FSR2 using non-jittered matrices. PPv2 remains an internal comparison path.
 
-Phase 1 selected a unified final-scene resolve before UI composition. The mod keeps the Phase 2 PPv2, Phase 3 project-owned Custom TAA, and Phase 4 managed NVIDIA DLAA backends for direct comparison, adds an opt-in Unity AMD FSR2 Native AA experiment, and exposes KSP's two stock FXAA variants plus the existing PPv2 SMAA effect. `F12` cycles the supported public modes: Off, FXAA Low, SMAA, FXAA High, TAA, then hardware-supported vendor modes with DLAA preferred before FSR2. PPv2 remains available only in Ctrl+F10. The `Ctrl+F10` panel uses one spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar: choosing an AA mode both activates it and opens its settings, while Buffers leaves the current AA mode unchanged. Its content area scrolls independently so screenshot, report, and close controls remain visible. Advanced AA quality, exposure, supersampling, stability, and diagnostic controls remain in Ctrl+F10 rather than the normal settings page. Version 0.5.11 investigates the intermittent launchpad motion failure: DLAA and FSR2 negate both components of Unity's previous-to-current motion, then a 16-anchor same-frame GPU classifier replaces the observed screen-wide radial field before vendor execution. A 64 px/frame hard ceiling and bounded camera reprojection remain as local safeguards. The raw, sanitized-vendor, and sanitizer-decision views stay separate, and Ctrl+F10 can capture a fixed six-view diagnostic burst while the user pans. Matching reports record Unity's internal `_NonJitteredVP` and `_PreviousVP` beside project-tracked matrices to distinguish an engine previous-matrix fault from buffer reuse or sign configuration. Version 0.5.10 extended the temporal camera graph to KSC and the main menu and added same-scene state rediscovery. Automatic exposure prefers PPv2's asynchronously read 1x1 GPU result at a bounded 10 Hz and falls back to vendor auto exposure. DLAA defaults to preset K and may optionally run on Redux render scales above 100% before Redux downsamples the scene; FSR2 remains native-scale-only. Vendor paths provide a moving solid-depth-edge bias mask while leaving broad no-depth transparent and volumetric regions available for temporal accumulation. The exact KSP floating-origin snap is an explicit lightweight temporal reset without vendor-context recreation. Every AA page and Off baseline can run a fixed 240-frame performance profile. This workstation's test installation uses explicitly approved local copies of the signed Unity 6000.4.1f1 NVIDIA and AMD player runtimes; a future distributable must source licensed files from Redux core's matching Unity export. XeSS remains deferred. See [`docs/performance-profiling.md`](docs/performance-profiling.md), [`docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md`](docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md), and the later motion-diagnosis decision record.
+Phase 1 selected a unified final-scene resolve before UI composition. The mod keeps the Phase 2 PPv2, Phase 3 project-owned Custom TAA, and Phase 4 managed NVIDIA DLAA backends for direct comparison, adds an opt-in Unity AMD FSR2 Native AA experiment, and exposes KSP's two stock FXAA variants plus the existing PPv2 SMAA effect. `F12` cycles the supported public modes: Off, FXAA Low, FXAA High, SMAA, TAA, then hardware-supported vendor modes with DLAA preferred before FSR2. PPv2 remains available only in Ctrl+F10. The `Ctrl+F10` panel uses one spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar: choosing an AA mode both activates it and opens its settings, while Buffers leaves the current AA mode unchanged. Its content area scrolls independently so screenshot, report, and close controls remain visible. Advanced AA quality, exposure, supersampling, stability, and diagnostic controls remain in Ctrl+F10 rather than the normal settings page. Version 0.5.11 investigates the intermittent launchpad motion failure: DLAA and FSR2 negate both components of Unity's previous-to-current motion, then a 16-anchor same-frame GPU classifier replaces the observed screen-wide radial field before vendor execution. Coherent camera motion may exceed 256 px/frame when it agrees with project reprojection; unverified motion above 256 px or disagreement above 96 px is replaced by bounded camera fallback or zero. The raw, sanitized-vendor, and sanitizer-decision views stay separate, and Ctrl+F10 can capture a fixed six-view diagnostic burst while the user pans. Matching reports record Unity's internal `_NonJitteredVP` and `_PreviousVP` beside project-tracked matrices to distinguish an engine previous-matrix fault from buffer reuse or sign configuration. Version 0.5.10 extended the temporal camera graph to KSC and the main menu and added same-scene state rediscovery. Automatic exposure prefers PPv2's asynchronously read 1x1 GPU result at a bounded 10 Hz and falls back to vendor auto exposure. DLAA defaults to preset K and may optionally run on Redux render scales above 100% before Redux downsamples the scene; FSR2 remains native-scale-only. Vendor paths provide a moving solid-depth-edge bias mask while leaving broad no-depth transparent and volumetric regions available for temporal accumulation. The exact KSP floating-origin snap is an explicit lightweight temporal reset without vendor-context recreation. Every AA page and Off baseline can run a fixed 240-frame performance profile. This workstation's test installation uses explicitly approved local copies of the signed Unity 6000.4.1f1 NVIDIA and AMD player runtimes; a future distributable must source licensed files from Redux core's matching Unity export. XeSS remains deferred. See [`docs/performance-profiling.md`](docs/performance-profiling.md), [`docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md`](docs/decisions/0013-state-specific-camera-discovery-and-motion-consistency.md), and the later motion-diagnosis decision record.
 
 ## Goals
 
@@ -153,7 +196,8 @@ Preferred implementation:
 - Create one persistent DLSS/DLAA context per active scene output.
 - Run with equal input and output dimensions and DLAA quality mode.
 - Supply scene color, depth, motion vectors, jitter, reset state, exposure configuration, and optional masks.
-- Fall back cleanly when the module, driver, GPU, or feature is unavailable.
+- Fall back cleanly to Off when the module, driver, GPU, or feature is
+  unavailable.
 
 Contingency implementation:
 
@@ -161,7 +205,9 @@ Contingency implementation:
 - Keep the bridge isolated behind the same backend interface.
 - Do not commit redistributables until their licensing and distribution requirements are documented.
 
-**Exit gate:** DLAA initializes and shuts down safely; survives resolution and scene transitions; produces no UI reconstruction; and automatically falls back to custom TAA or PPv2 TAA on unsupported systems.
+**Exit gate:** DLAA initializes and shuts down safely; survives resolution and
+scene transitions; produces no UI reconstruction; and automatically falls back
+to Off on unsupported systems.
 
 ### Phase 5 — DLSS Super Resolution
 
@@ -211,7 +257,9 @@ TemporalFrameInputs
 
 ### Capability-driven behavior
 
-Backends advertise support at runtime. Unsupported backends never crash the game or prevent the settings menu from loading. The fallback order is explicit and logged.
+Backends advertise support at runtime. Unsupported backends never crash the
+game or prevent the settings menu from loading. Failure always selects the
+explicit Off backend and logs the reason.
 
 ### Probe before assumption
 

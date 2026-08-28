@@ -23,6 +23,8 @@ namespace ReduxBetterAA.Backends
         private bool _originalFastMode;
         private bool _originalKeepAlpha;
         private SubpixelMorphologicalAntialiasing.Quality _originalSmaaQuality;
+        private bool _createdFxaaSettings;
+        private bool _createdSmaaSettings;
         private bool _active;
 
         public Ppv2SpatialAaBackend(
@@ -91,6 +93,7 @@ namespace ReduxBetterAA.Backends
 
             if (_resolveLayer.fastApproximateAntialiasing == null)
             {
+                _createdFxaaSettings = true;
                 _resolveLayer.fastApproximateAntialiasing =
                     new FastApproximateAntialiasing();
             }
@@ -101,6 +104,7 @@ namespace ReduxBetterAA.Backends
 
             if (_resolveLayer.subpixelMorphologicalAntialiasing == null)
             {
+                _createdSmaaSettings = true;
                 _resolveLayer.subpixelMorphologicalAntialiasing =
                     new SubpixelMorphologicalAntialiasing();
             }
@@ -111,6 +115,7 @@ namespace ReduxBetterAA.Backends
             {
                 _originalSharedMode = _sharedLayer.antialiasingMode;
                 _sharedLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
+                _sharedLayer.ResetHistory();
             }
 
             _resolveLayer.fastApproximateAntialiasing.fastMode = _fastMode;
@@ -120,6 +125,7 @@ namespace ReduxBetterAA.Backends
             _resolveLayer.subpixelMorphologicalAntialiasing.quality =
                 SubpixelMorphologicalAntialiasing.Quality.High;
             _resolveLayer.antialiasingMode = _mode;
+            _resolveLayer.ResetHistory();
             _active = true;
             return true;
         }
@@ -150,14 +156,26 @@ namespace ReduxBetterAA.Backends
                     _resolveLayer.subpixelMorphologicalAntialiasing.quality =
                         _originalSmaaQuality;
                 }
+                _resolveLayer.ResetHistory();
+                if (_createdFxaaSettings)
+                {
+                    _resolveLayer.fastApproximateAntialiasing = null;
+                }
+                if (_createdSmaaSettings)
+                {
+                    _resolveLayer.subpixelMorphologicalAntialiasing = null;
+                }
             }
             if (_sharedLayer != null && _sharedLayer != _resolveLayer)
             {
                 _sharedLayer.antialiasingMode = _originalSharedMode;
+                _sharedLayer.ResetHistory();
             }
 
             _resolveLayer = null;
             _sharedLayer = null;
+            _createdFxaaSettings = false;
+            _createdSmaaSettings = false;
             _active = false;
         }
 

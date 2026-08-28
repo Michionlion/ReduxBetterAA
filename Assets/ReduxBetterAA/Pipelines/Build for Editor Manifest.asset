@@ -67,7 +67,7 @@ MonoBehaviour:
   Name: 
   Description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
     DLAA, and FSR2 Native AA for KSP2 Redux.
-  Version: 0.5.19
+  Version: 0.5.23
   Dependencies: []
 --- !u!114 &5994632802281704190
 MonoBehaviour:

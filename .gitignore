@@ -102,3 +102,4 @@ ksp2.catalog
 /diagnostic-analysis/
 /out
 /TestResults*.xml
+/BuildArtifacts/
