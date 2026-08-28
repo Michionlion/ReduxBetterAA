@@ -3,11 +3,11 @@
 ## Scope and status
 
 Phase 4 was started by explicit maintainer request. It adds DLAA without
-replacing the Phase 2 PPv2 or Phase 3 Custom TAA comparison paths. The four
-mutually exclusive modes are:
+replacing the Phase 2 PPv2 or Phase 3 Custom TAA comparison paths. Current
+public selection is:
 
 ```text
-Off -> PPv2 TAA -> Custom TAA -> NVIDIA DLAA -> Off
+Off -> FXAA Low -> FXAA High -> SMAA -> TAA -> NVIDIA DLAA -> FSR2 Native AA -> Off
 ```
 
 The backend is experimental and disabled by default. It implements native
@@ -58,20 +58,21 @@ on, as required by Unity 6000.4.1f1's source convention.
 
 ## Ctrl+F10 controls
 
-The Ctrl+F10 panel has one Off, PPv2, Custom, DLAA, and Buffers toolbar. Choosing an
+The Ctrl+F10 panel has one Off/spatial/PPv2/Custom/DLAA/FSR2/Buffers toolbar. Choosing an
 AA mode both activates it and opens that mode's settings; choosing Buffers opens
 diagnostics without changing the active mode. The DLAA page exposes:
 
 - jitter spread and sequence length;
-- DLSS sharpening;
+- DLAA sharpness on the shared `0-1` user scale;
 - automatic exposure with PPv2 preference, vendor fallback, and manual override;
 - explicit sanitizer motion-vector X/Y inversion;
-- Default, F, J, K, L, and M DLAA preset hints;
+- F, J, K, L, and M DLAA preset hints, with K as the default;
 - conservative preset and manual history reset;
 - managed API, context, dimensions, fallback, and output-memory status.
 
-Changing exposure source or preset recreates the native context. Other parameter
-changes reset history once and apply to the next execution.
+Changing exposure source, preset, or supersampling policy recreates the native
+context. Temporal-input changes reset history once. Sharpness is output-only and
+applies without discarding accumulated history.
 
 ## Resource and fallback lifecycle
 
@@ -81,11 +82,12 @@ subscriptions. Context and output are recreated on output descriptor changes
 and released on backend switch, scene invalidation, or shutdown. Cleanup is
 idempotent.
 
-DLAA requires render scale 100%, because Phase 4 accepts equal input/output
-dimensions. An unsupported selection falls back to Custom TAA, then PPv2 TAA.
+DLAA normally requires render scale 100%. An explicit engineering toggle permits
+equal-size DLAA on Redux's supersampled scene buffer before Redux downsamples it.
+An unsupported selection falls directly back to Off.
 Any execution exception or missing/mismatched depth/motion texture passes the
 current frame through, latches the failure once, releases DLAA, and activates a
-fallback on the next coordinator tick.
+no-AA fallback on the next coordinator tick.
 
 The DLAA output is a linear random-write resource, matching Unity 6000.4.1f1's
 own DLSS integration. The execution command buffer first copies scene color to
@@ -127,20 +129,26 @@ scene, and preset for every comparison. At minimum verify:
    launchpad, low terrain flight, orbit, map, and VAB.
 3. Check thin vessel geometry, planet limbs, volumetric effects, exhaust, transparent
    effects, and stopped-camera behavior for shimmer, trails, or flashes.
-4. Open Buffers -> Motion Sign Agreement and pan one axis at a time over static
-   terrain. Require green on the matching half with both inversions enabled;
-   document any repeatable red result before changing the source-defined default.
+4. Open Buffers -> Motion: Raw Sign Agreement and pan one axis at a time over
+   static terrain. Require green on the matching half with both inversions
+   enabled. Dark blue is ambiguous near an axis zero-crossing; document only a
+   coherent red result during the deliberate pan before questioning the
+   source-defined default.
 5. Exercise flight/map/VAB transitions, quickload/revert, vessel switch,
    resolution change, backend cycling, and game shutdown.
-6. Set render scale away from 100% and confirm DLAA refuses initialization and
-   Custom TAA fallback remains visible and stable.
+6. Set render scale away from 100% and confirm DLAA refuses initialization when
+   supersampling is disabled, then verify the opt-in path uses equal input/output
+   dimensions on Redux's larger scene buffer.
 7. Remove or rename the local native runtime in a disposable test and confirm
    the mod still loads with a logged fallback.
 8. Profile GPU time, backend pass time, history recreation spikes, and managed
    allocations after warm-up.
 
-Phase 4 is not accepted until these in-player checks pass. DLAA now consumes the
-project sanitizer output: a 16-anchor GPU classifier replaces a screen-wide
-corrupt field in the same frame; unverified >256 px raw samples or >96 px
-camera disagreement use a <=256 px
-camera fallback when available and otherwise become zero before NVIDIA execution.
+Phase 4 is not accepted until these in-player checks pass. DLAA consumes the
+project sanitizer output: a 16-anchor GPU classifier uses the validated 96-pixel
+camera-disagreement envelope to replace a screen-wide corrupt field in the same
+frame. Unverified >256 px raw samples or >96 px camera disagreement use a
+<=256 px camera fallback when available and otherwise become zero before NVIDIA
+execution. Continuous high-altitude camera translation can trigger at most one
+transform-derived `Teleport` reset until movement settles; BetterAA never resets
+or mutates a cloud renderer's independent temporal history.

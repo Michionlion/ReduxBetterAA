@@ -3,17 +3,19 @@
 ## Status and comparison scope
 
 Phase 3 was started by explicit maintainer request before the Phase 2 visual
-acceptance gate was closed. It does not replace Phase 2. The runtime exposes
-four mutually exclusive modes in the `Ctrl+F10` panel and through `F12`:
+acceptance gate was closed. It does not replace Phase 2. The public `F12` cycle
+also includes spatial and supported vendor modes; PPv2 remains an engineering
+comparison available only in `Ctrl+F10`:
 
 ```text
-Off -> PPv2 TAA -> Custom TAA -> NVIDIA DLAA -> Off
+Off -> FXAA Low -> FXAA High -> SMAA -> TAA -> supported vendor modes -> Off
 ```
 
-The custom backend is experimental and disabled by default. PPv2 remains the
-comparison backend and fallback when custom support cannot be established. A
-backend switch releases the previous owner's resources, restores its camera
-state, and resets the incoming history.
+The custom backend is experimental and disabled by default. PPv2 remains an
+independently selected engineering comparison, but a Custom initialization or
+runtime failure falls directly back to Off. A backend switch releases the
+previous owner's resources, restores its camera state, and resets the incoming
+history.
 
 ## Pipeline
 
@@ -45,11 +47,11 @@ The initial pipeline is:
 10. Blend, write the next color/depth history, and optionally apply mild
    sharpening.
 
-The conservative default rejects normal history above 64 pixels per frame and
-only considers camera fallback for values above four times that limit. This is
-intended to reject the measured 1,300-2,000 pixel launchpad spikes while
-retaining ordinary object motion vectors. It is a guardrail, not proof that the
-underlying launchpad motion source is repaired.
+The current coherence-aware policy accepts camera motion above 256 pixels per
+frame only when it agrees with project-tracked reprojection. Unverified motion
+above 256 pixels and disagreement above 96 pixels use bounded camera fallback
+when available and otherwise become zero. This rejects the measured launchpad
+radial field while retaining legitimate fast pans.
 
 ## Owned resources and memory
 
@@ -77,7 +79,7 @@ in the Custom tab and serialized into capability reports.
 
 ## Ctrl+F10 controls and diagnostics
 
-The panel has four tabs:
+The panel has one mode toolbar plus Buffers:
 
 - **PPv2** retains the Phase 2 parameter controls and conservative preset.
 - **Custom** exposes jitter spread/length, stationary and moving history,
@@ -88,6 +90,9 @@ The panel has four tabs:
 - **DLAA** exposes the managed Phase 4 native-resolution backend and its
   diagnostic parameters.
 - **Buffers** retains the Phase 1 camera and scene-buffer visualizers.
+
+Sharpening and debug-view selection are presentation-only and do not clear
+Custom history. Changes to jitter, accumulation, rejection, or clipping do.
 
 Custom debug output includes current color, history, reprojected history,
 motion vectors, depth rejection, detected depth edges, reactive mask, history
@@ -143,8 +148,10 @@ a trail, and note the allocated MiB shown in the panel.
 - Camera-only motion is a narrowly gated fallback and cannot represent object
   motion or every scaled-space/origin-rebase case.
 - Origin rebases now use KSP's exact floating-origin camera-handler event.
-  Quickload/revert and vessel-change events still rely on generic scene,
-  camera, matrix, and teleport detection.
+  Generic transform-derived teleport detection resets once and then latches
+  until camera translation settles below 250 m/frame, so continuous orbital
+  dolly motion cannot clear history on every frame. Quickload/revert and
+  vessel-change events still rely on generic scene and camera lifecycle paths.
 - GPU pass time and steady-state managed allocation still require an in-player
   profiler capture.
 - Phase 3 is not accepted until the required scenes show stability equal to or

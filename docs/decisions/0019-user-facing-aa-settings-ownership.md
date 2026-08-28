@@ -67,6 +67,7 @@ and normalizes invalid DLAA presets to K. In-game verification must confirm:
 1. KSP's graphics AA selector is disabled, shows the Redux Better AA navigation
    hint, and cannot enable MSAA.
 2. The normal mod page contains only the four decided controls.
-3. This NVIDIA installation lists Off, TAA, NVIDIA DLAA, and FSR 2 in that order.
+3. This NVIDIA installation lists Off, FXAA Low, FXAA High, SMAA, TAA, NVIDIA
+   DLAA, and FSR 2 Native AA in that order.
 4. Sharpness, TAA stability, and preset changes synchronize with Ctrl+F10 and survive
    a restart, while Ctrl+F10-only expert changes remain session-only.

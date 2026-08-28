@@ -1,9 +1,10 @@
 # FSR2 Native AA prototype
 
-Version 0.5.0 adds a fifth opt-in comparison mode:
+The current public cycle exposes this opt-in comparison mode after supported
+DLAA:
 
 ```text
-Off -> PPv2 TAA -> Custom TAA -> NVIDIA DLAA -> FSR2 Native AA -> Off
+Off -> FXAA Low -> FXAA High -> SMAA -> TAA -> NVIDIA DLAA -> FSR2 Native AA -> Off
 ```
 
 ## Scope
@@ -13,8 +14,8 @@ managed AMD module. It is not FSR2 Super Resolution: render and display size
 remain equal, the Redux presenter is untouched, and render scale must be 100%.
 The resolve stays on the measured final scene camera before UI composition.
 
-The Ctrl+F10 FSR2 page exposes jitter spread and sequence length, optional RCAS
-sharpening and strength, PPv2-preferred automatic exposure with vendor fallback,
+The Ctrl+F10 FSR2 page exposes jitter spread and sequence length, one `0-1`
+RCAS sharpness value where zero disables RCAS, PPv2-preferred automatic exposure with vendor fallback,
 manual pre-exposure, and explicit sanitizer motion-vector X/Y inversion. Unity's
 built-in buffer is previous-to-current, so both components default to negated;
 the managed API then uses positive width/height pixel scales.
@@ -31,12 +32,15 @@ when applicable, reversed Z, and optional auto exposure.
 Every execution first copies current color into the output, then records the
 native FSR2 call. If the call is accepted but fails to write, the frame remains
 visible. Exceptions or invalid depth/motion dimensions latch one failure and
-switch to Custom TAA, then PPv2 if necessary.
+switch directly to Off.
 
 FSR2 receives the same moving solid-depth-edge bias mask as DLAA. The mask
 reduces stale history at moving vessel/terrain silhouettes without broadly
 marking no-depth transparent or volumetric regions, preserving useful temporal
 detail accumulation there.
+
+RCAS is output-only, so changing sharpness does not discard FSR2 history.
+Exposure-source changes recreate the context; temporal-input changes reset it.
 
 ## Workstation-local runtime
 
@@ -62,9 +66,10 @@ At 100% render scale:
    disappears.
 3. Pan across a planet limb and terrain/depth discontinuities. Check shimmer,
    disocclusion trails, and whether stationary detail settles.
-4. Use Buffers -> Motion Sign Agreement while panning one axis at a time over
-   static terrain. Green on both halves with both inversions enabled is expected;
-   record any repeatable contradiction before overriding the default.
+4. Use Buffers -> Motion: Raw Sign Agreement while panning one axis at a time
+   over static terrain. Green on both halves with both inversions enabled is
+   expected. Dark blue is ambiguous near an axis zero-crossing; record only a
+   coherent red result during the deliberate pan before overriding the default.
 5. Test flight/map transitions, VAB, quickload/revert, resolution changes, and
    repeated backend switching. Require visible scene color, crisp native UI,
    and no recurring exception.

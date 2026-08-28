@@ -31,12 +31,12 @@ resolve.
 | `Ctrl+Alt+F8` | Write a report immediately. |
 | `Ctrl+F10` | Open or close the diagnostic control panel. |
 | `F10` | Write a same-moment report, then capture the current screen or active debug view; identical to the panel capture button. |
-| `F12` | Cycle Off, FXAA Low, SMAA, FXAA High, TAA, and the vendor modes supported by the active hardware/runtime. DLAA is ordered before FSR2 when both are available. |
+| `F12` | Cycle Off, FXAA Low, FXAA High, SMAA, TAA, and the vendor modes supported by the active hardware/runtime. DLAA is ordered before FSR2 when both are available. |
 
-The panel has Off, FXAA Low, SMAA, FXAA High, PPv2, Custom, DLAA, FSR2, and Buffers tabs. The Buffers tab
+The panel has Off, FXAA Low, FXAA High, SMAA, PPv2, Custom, DLAA, FSR2 AA, and Buffers tabs. The Buffers tab
 directly selects Off, final color, raw-jittered or output-aligned linear depth,
 raw motion, normalized motion,
-motion magnitude/angle, combined motion validity/magnitude, sign agreement,
+motion magnitude/angle, combined motion validity/magnitude, raw sign agreement,
 sanitized vendor input, sanitizer decision, contribution mask, or other AA
 depth/motion diagnostics, and directly selects any enabled game camera. The AA
 tabs own their respective runtime controls. Every tab can
@@ -96,8 +96,17 @@ Managed reads of Unity's internal motion matrices returned identity in 0.5.11;
 schema 14 marks those values unavailable instead of reporting them as valid.
 The Buffers tab also has a one-click motion-diagnosis burst. It closes the panel,
 waits one second for the operator to begin a smooth horizontal then vertical
-pan, and captures raw, normalized, validity, sign-agreement, sanitized-input,
+pan, and captures raw, normalized, validity, raw-sign-agreement, sanitized-input,
 and sanitizer-decision frames with matching reports at fixed intervals.
+
+Version 0.5.22 tested separate screen-wide and local disagreement policies, but
+player validation found the adaptive 8-pixel or 10%-of-camera-motion classifier
+too sensitive. Version 0.5.23 restores the validated 96-pixel envelope for both
+the 16-anchor classifier and full-resolution local replacement. The raw sign
+view still requires 0.75 pixel on the tested component, so an axis zero-crossing
+is undecided dark blue rather than a misleading view-angle-dependent red result.
+Sanitizer views also render dark blue when the selected Off or PPv2 path has no
+live sanitizer texture; red can no longer mean an unavailable input.
 
 Version 0.5.11 retains the state-specific camera discovery and adds same-frame
 launchpad motion classification. `KerbalSpaceCenter` uses the observed

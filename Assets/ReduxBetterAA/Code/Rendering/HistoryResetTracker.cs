@@ -26,7 +26,14 @@ namespace ReduxBetterAA.Rendering
     internal sealed class HistoryResetTracker
     {
         private const float TeleportDistance = 1000.0f;
-        private const float ProjectionTolerance = 0.0001f;
+        private const float TeleportRearmDistance = 250.0f;
+        // Reset on a discontinuity, not on ordinary zoom animation. KSP can
+        // update projection parameters in small increments for many frames;
+        // clearing on every epsilon-sized change defeats temporal accumulation.
+        private const float FieldOfViewResetDegrees = 5.0f;
+        private const float OrthographicSizeResetFraction = 0.10f;
+        private const float MinimumOrthographicSizeReset = 0.01f;
+        private const float AspectResetTolerance = 0.001f;
 
         private bool _hasPrevious;
         private Camera _camera;
@@ -38,11 +45,13 @@ namespace ReduxBetterAA.Rendering
         private int _width;
         private int _height;
         private int _renderScalePercent;
+        private bool _transformDiscontinuityLatched;
 
         public void Clear()
         {
             _hasPrevious = false;
             _camera = null;
+            _transformDiscontinuityLatched = false;
         }
 
         public HistoryResetReason Evaluate(
@@ -84,10 +93,26 @@ namespace ReduxBetterAA.Rendering
                 {
                     reasons |= HistoryResetReason.RenderScaleChanged;
                 }
-                if (_orthographic != camera.orthographic ||
-                    Mathf.Abs(_fieldOfView - camera.fieldOfView) > ProjectionTolerance ||
-                    Mathf.Abs(_orthographicSize - camera.orthographicSize) > ProjectionTolerance ||
-                    Mathf.Abs(_aspect - camera.aspect) > ProjectionTolerance)
+                bool projectionChanged = _orthographic != camera.orthographic ||
+                    Mathf.Abs(_aspect - camera.aspect) > AspectResetTolerance;
+                if (!projectionChanged && camera.orthographic)
+                {
+                    float threshold = Mathf.Max(
+                        MinimumOrthographicSizeReset,
+                        Mathf.Abs(_orthographicSize) *
+                            OrthographicSizeResetFraction
+                    );
+                    projectionChanged =
+                        Mathf.Abs(_orthographicSize - camera.orthographicSize) >
+                        threshold;
+                }
+                else if (!projectionChanged)
+                {
+                    projectionChanged =
+                        Mathf.Abs(_fieldOfView - camera.fieldOfView) >
+                        FieldOfViewResetDegrees;
+                }
+                if (projectionChanged)
                 {
                     reasons |= HistoryResetReason.ProjectionChanged;
                 }
@@ -95,11 +120,21 @@ namespace ReduxBetterAA.Rendering
                 // A large rotation after a slow or stalled frame is not evidence of
                 // a cut. KSP reports real camera selection changes explicitly, so
                 // keep normal fast pans continuous instead of clearing history.
+                float translationSquared =
+                    (camera.transform.position - _position).sqrMagnitude;
                 if (!suppressTransformDiscontinuity &&
-                    (camera.transform.position - _position).sqrMagnitude >
-                    TeleportDistance * TeleportDistance)
+                    translationSquared > TeleportDistance * TeleportDistance)
                 {
-                    reasons |= HistoryResetReason.Teleport;
+                    if (!_transformDiscontinuityLatched)
+                    {
+                        reasons |= HistoryResetReason.Teleport;
+                    }
+                    _transformDiscontinuityLatched = true;
+                }
+                else if (translationSquared <=
+                         TeleportRearmDistance * TeleportRearmDistance)
+                {
+                    _transformDiscontinuityLatched = false;
                 }
             }
 

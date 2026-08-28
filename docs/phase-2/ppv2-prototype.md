@@ -3,26 +3,27 @@
 ## Status and safety
 
 The PPv2 backend is installed but disabled by default. Use the AA selector in
-the `Ctrl+F10` panel, or press `F12` to cycle Off, PPv2, Custom, and DLAA for the current
-session. Unsupported states retry camera discovery without changing scene
-output and show the reason in the panel.
+the `Ctrl+F10` engineering panel. PPv2 is deliberately absent from the normal
+settings and `F12` public cycle, where the portable temporal mode is Custom TAA.
+Unsupported states retry camera discovery without changing scene output and
+show the reason in the panel.
 
-The `Ctrl+F10` panel has **PPv2**, **Custom**, and **Buffers** tabs. The PPv2 tab exposes
-live, session-only sliders for all four PPv2 parameters, a conservative-preset
-button, and a manual history-reset button. Every value update is clamped to the
-PPv2-supported range, applied immediately, recorded in subsequent JSON reports,
-and resets history so old samples are not mixed with new tuning.
+The `Ctrl+F10` panel has one toolbar for every AA mode plus **Buffers**. The PPv2
+page exposes all four PPv2 parameters, a conservative-preset button, and a
+manual history-reset button. Values are clamped, applied immediately, and
+recorded in subsequent JSON reports. Shared sharpness is persisted; other PPv2
+engineering values are session-only.
 
 The initial fixed preset is deliberately conservative:
 
 | PPv2 setting | Value | Reason |
 | --- | ---: | --- |
 | Jitter spread | 0.75 | PPv2's normal eight-sample coverage |
-| Sharpness | 0.25 | PPv2 default; avoids aggressive ringing |
+| Sharpness | 0.15 | Shared cross-backend default; avoids aggressive ringing |
 | Stationary history | 0.92 | Useful stability with slightly faster recovery |
 | Moving history | 0.05 | Limits contamination from near-pad motion spikes |
 
-Slider ranges are jitter spread `0.1-1.0`, sharpness `0-3`, stationary history
+Slider ranges are jitter spread `0.1-1.0`, sharpness `0-1`, stationary history
 `0-0.99`, and moving history `0-0.99`. Treat high moving-history values as
 unsafe around the launchpad until the motion-vector defect has a real fix.
 
@@ -41,7 +42,8 @@ motion defect is fixed.
   projection or output changes, explicit floating-origin snaps, and teleports.
   Fast continuous rotation is not treated as a camera cut. Reset reasons are
   logged only when they occur.
-- Disable and shutdown restore AA modes, PPv2 tuning, depth flags, jitter
+- Disable and shutdown restore AA modes, any PPv2 settings object created by
+  the mod, tuning, contributor-camera depth flags, jitter
   callbacks, projection state, and event subscriptions idempotently.
 - The Phase 1 global camera-count polling trigger was removed because Redux
   transient cameras made it write reports repeatedly while otherwise idle.
@@ -63,8 +65,9 @@ Keep every diagnostic buffer view Off while judging image quality.
 4. In orbit, repeat on the planet limb and thin vessel geometry.
 5. Toggle map view and return to flight; then visit VAB. Confirm the panel names
    the expected final camera and the log contains a reset for each transition.
-6. Select Off in the panel (or cycle to Off with `F12`) and confirm the original
-   AA behavior returns immediately.
+6. Select Off in the panel (or cycle to Off with `F12`) and confirm both known
+   scene PPv2 layers report `None`; switching modes or unloading must restore
+   their exact pre-mod state.
 
 For the first pass, report whether each scene is better, worse, or unchanged;
 whether artifacts persist after motion stops; and any repeated
@@ -74,7 +77,6 @@ fallback or construction of a corrected motion field—not DLAA.
 
 ## DLAA gate
 
-No DLAA code is active in Phase 2. The tested player reports that the managed
-NVIDIA API exists but its native plugin cannot load and the DLSS feature is
-unavailable. Phase 4 also requires the launchpad motion input to be repaired or
-rejected safely. No proprietary binary or native bridge is included.
+This file describes the retained Phase 2 comparison backend. Current builds also
+contain later-phase Custom TAA, managed DLAA, and FSR2 Native AA paths, but PPv2
+remains isolated and does not depend on either vendor module.

@@ -236,3 +236,78 @@ same-moment report and screenshot to plain `F10`. The normal
 The workstation-only
 `Deploy/ReduxBetterAA-0.5.19-local-vendor-runtimes.zip` SHA-256 is
 `5CA57020FFFEFC2E7D5D3938BE5F703EE4ED9F6B9538CDACA3CA29576DDFBBC0`.
+
+Version 0.5.20 completes the AA settings and lifecycle audit documented in
+Decision 0021. The Unity 6000.4.1f1 EditMode suite passes all 35 tests, the
+prepare method succeeds, and ThunderKit records the deploy pipeline as finished
+with successful addressable and assembly builds. ThunderKit 9.3.1 deliberately
+calls `EditorApplication.Exit(1)` after its batch task, so its process exit code
+is not used as the success signal; the pipeline log and inspected archive are.
+The normal seven-file `Deploy/ReduxBetterAA.zip` SHA-256 is
+`AB97CF69D45B6749C3934AF38DCE83394D14202D2B4C785A74D637575A1B9AE2`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.20-local-vendor-runtimes.zip` SHA-256 is
+`B87F6B8E710D3D20FF58E09645415A752E18D56FC0B9531FCF82680BA49C007A`.
+The installed 0.5.20 assembly hash is
+`02DF42FADAF63648B4ADA299C03B1F817893D0D59679D1664CD570A2ED9A20A6`;
+the existing user configuration and diagnostic capture hashes were unchanged
+during installation.
+
+Version 0.5.21 fixes the cross-mod Addressables identity collision and the
+stock-AA Harmony signature, and changes every backend failure target to Off as
+documented in Decision 0022. The Unity 6000.4.1f1 EditMode suite passes all 37
+tests. The editor isolation check successfully loads the installed Better
+Clouds bundle first and the rebuilt Better AA bundle second in one process.
+ThunderKit records `Finished execution`; the inspected package contains the
+DLL, manifest, catalog, settings, link metadata, and one Windows bundle. The
+normal `Deploy/ReduxBetterAA.zip` SHA-256 is
+`2C87CCF0EED6F9C3750B7C206A5146D81991D40A3F95FEE1E5752A389BBB48B8`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.21-local-vendor-runtimes.zip` SHA-256 is
+`98EC02BE3658FB799687064A0D6BBDD42411D0C2F36521CC1F9333AD2E35C519`.
+The installed assembly SHA-256 is
+`79F52A465246CFEC1A5D50338F1F1223D7A48D8E0C32A28A4D5F6FFCED1F15E9`;
+its file version and manifest version are `0.5.21.0` and `0.5.21`. The existing
+user configuration and all 125 diagnostic files were preserved. A main-menu
+runtime smoke with Better Clouds loaded first records successful loading of all
+five Better AA shaders and no AssetBundle or Harmony exception.
+
+Version 0.5.22 adds the adaptive whole-frame launchpad classifier and the
+zero-crossing-safe raw sign diagnostic documented in Decision 0023. The Unity
+6000.4.1f1 EditMode suite passes all 38 tests. ThunderKit records `Finished
+execution`; the inspected normal archive contains the DLL, manifest, catalog,
+settings, link metadata, and one Windows bundle. The editor isolation check
+loads the installed Better Clouds bundle before the rebuilt Better AA bundle.
+The normal `Deploy/ReduxBetterAA.zip` SHA-256 is
+`F13FEF075CBFA5460298957C108B37AFDC993BDE860F12EB84804B60C6129DA1`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.22-local-vendor-runtimes.zip` SHA-256 is
+`B1743DC8D0E79032E6EC12974BD23879D949C251A8E7E7AF8EA38E357201E08F`.
+The installed assembly SHA-256 is
+`C92F863306BDEA66569928E1D74CF33476B63B174DD1547AE3CBE148BF1F3931`;
+its file version and manifest version are `0.5.22.0` and `0.5.22`. The existing
+user configuration and all 127 diagnostic files were preserved. A main-menu
+runtime smoke selects DLAA on `Camera.Scaled`, creates the 2560x1440 DLAA
+context and sanitizer, and loads every Better AA shader without a bundle,
+Harmony, or shader exception. Launchpad visual acceptance remains manual.
+
+Version 0.5.23 reverts the adaptive production classifier, makes unavailable
+sanitizer views explicit, and latches continuous transform-derived teleport
+resets as documented in Decisions 0024 and 0025. The Unity 6000.4.1f1 EditMode
+suite passes all 38 tests. ThunderKit log 54 records `Finished execution`; the
+normal archive contains the DLL, manifest, catalog, settings, link metadata,
+and one Windows bundle. The editor isolation check loads the installed Better
+Clouds bundle before the rebuilt Better AA bundle. The normal
+`Deploy/ReduxBetterAA.zip` SHA-256 is
+`3A15AC15152ADEE86A66B154167A9257F1B9773F552BCC8E12F3020C9E20A65D`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.23-local-vendor-runtimes.zip` SHA-256 is
+`5D7F5BC5749BAEC0452CA26F00DAC390523E9F7EBA0BF1D93369808158666DB2`.
+The installed assembly SHA-256 is
+`563E5DCB12F958F4EB573EF235A224F6DC09E27A873B350EB2525DCA41474B5F`;
+its file version and manifest version are `0.5.23.0` and `0.5.23`. All 143
+installed diagnostic files were preserved, and the complete 0.5.22 install was
+backed up before replacing its one stale bundle. A harness-launched main-menu
+smoke reports Redux Better AA 0.5.23 and Redux Better Clouds 0.2.0 active, loads
+all Better AA shaders, and records no BetterAA bundle, Harmony, shader, or
+runtime error. Launchpad and 100–150 km visual acceptance remain manual.

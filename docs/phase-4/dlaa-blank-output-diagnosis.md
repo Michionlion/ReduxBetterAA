@@ -28,7 +28,7 @@ producing the blank scene while UI rendered normally afterward.
 - Prefill the output from current scene color in the same command buffer before
   recording `ExecuteDLSS`. A silently rejected vendor command now degrades to
   an unfiltered current frame instead of a black scene.
-- Keep the existing runtime exception fallback to Custom TAA and then PPv2.
+- Keep runtime execution fail-open for the current frame, then switch to Off.
 
 ## Verification gate
 

@@ -222,6 +222,7 @@ namespace ReduxBetterAA.Backends
             {
                 _originalResolveMode = _resolveLayer.antialiasingMode;
                 _resolveLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
+                _resolveLayer.ResetHistory();
             }
             _resolveCamera.depthTextureMode |=
                 DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
@@ -230,6 +231,7 @@ namespace ReduxBetterAA.Backends
             {
                 _originalSharedMode = _sharedJitterLayer.antialiasingMode;
                 _sharedJitterLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
+                _sharedJitterLayer.ResetHistory();
             }
             if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
             {
@@ -414,6 +416,7 @@ namespace ReduxBetterAA.Backends
             if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
             {
                 _sharedJitterLayer.antialiasingMode = _originalSharedMode;
+                _sharedJitterLayer.ResetHistory();
             }
             if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
             {

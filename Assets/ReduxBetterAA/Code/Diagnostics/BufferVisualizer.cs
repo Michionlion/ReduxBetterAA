@@ -39,6 +39,7 @@ namespace ReduxBetterAA.Diagnostics
         private const int MaximumStatisticsDimension = 320;
         private const float MotionQuietPixels = 0.1f;
         private const float MotionOutlierPixels = 64.0f;
+        private const float MotionSignConfidencePixels = 0.75f;
         private const int WindowId = 0x52424131;
         private static readonly Rect OverlayRect = new Rect(12f, 12f, 720f, 32f);
         private static readonly string[] ViewLabels =
@@ -51,7 +52,7 @@ namespace ReduxBetterAA.Diagnostics
             "Motion Vectors: Magnitude / Angle",
             "Camera Contribution Mask",
             "Motion Validity / Magnitude",
-            "Motion Sign Agreement",
+            "Motion: Raw Sign Agreement",
             "Motion: Sanitized Vendor Input",
             "Motion: Sanitizer Decision",
             "Linear Depth (jitter-compensated sample)"
@@ -60,12 +61,12 @@ namespace ReduxBetterAA.Diagnostics
             {
                 "Off",
                 "FXAA Low",
-                "SMAA",
                 "FXAA High",
+                "SMAA",
                 "PPv2",
                 "Custom",
                 "DLAA",
-                "FSR2",
+                "FSR2 AA",
                 "Buffers"
             };
         private static readonly string[] DlaaPresetLabels =
@@ -100,6 +101,8 @@ namespace ReduxBetterAA.Diagnostics
             Shader.PropertyToID("_MotionQuietPixels");
         private static readonly int MotionOutlierPixelsProperty =
             Shader.PropertyToID("_MotionOutlierPixels");
+        private static readonly int MotionSignConfidencePixelsProperty =
+            Shader.PropertyToID("_MotionSignConfidencePixels");
         private static readonly int MotionComponentSignProperty =
             Shader.PropertyToID("_MotionComponentSign");
         private static readonly int SanitizedMotionComponentSignProperty =
@@ -114,6 +117,8 @@ namespace ReduxBetterAA.Diagnostics
             Shader.PropertyToID("_SanitizedMotionTexture");
         private static readonly int MotionCorruptionTextureProperty =
             Shader.PropertyToID("_MotionCorruptionTexture");
+        private static readonly int MotionSanitizerAvailableProperty =
+            Shader.PropertyToID("_MotionSanitizerAvailable");
         private static readonly int CurrentJitterProperty =
             Shader.PropertyToID("_CurrentJitter");
 
@@ -771,11 +776,11 @@ namespace ReduxBetterAA.Diagnostics
             }
             else if (_panelTab == 2)
             {
-                DrawSpatialAaTab(BackendSelection.Smaa);
+                DrawSpatialAaTab(BackendSelection.FxaaHigh);
             }
             else if (_panelTab == 3)
             {
-                DrawSpatialAaTab(BackendSelection.FxaaHigh);
+                DrawSpatialAaTab(BackendSelection.Smaa);
             }
             else if (_panelTab == 4)
             {
@@ -810,10 +815,11 @@ namespace ReduxBetterAA.Diagnostics
         private static void DrawOffTab()
         {
             GUILayout.Label(
-                "Temporal anti-aliasing is disabled. The original renderer AA " +
-                "state is restored. Choose FXAA Low, SMAA, FXAA High, PPv2, " +
-                "Custom, DLAA, or FSR2 above to enable that mode and open its " +
-                "settings."
+                "Redux forces PPv2 anti-aliasing off while this mode is selected, " +
+                "providing a true unfiltered baseline. The renderer's prior AA " +
+                "state is restored when Redux releases the scene. Choose FXAA " +
+                "Low, FXAA High, SMAA, PPv2, Custom, DLAA, or FSR2 AA above to " +
+                "enable that mode and open its settings."
             );
         }
 
@@ -867,7 +873,7 @@ namespace ReduxBetterAA.Diagnostics
                 "Sharpness",
                 config.Sharpness,
                 0.0f,
-                3.0f
+                1.0f
             );
             float stationaryBlending = DrawParameter(
                 "Stationary history",
@@ -895,9 +901,9 @@ namespace ReduxBetterAA.Diagnostics
 
             GUILayout.Space(10f);
             GUILayout.Label(
-                "Changes apply immediately. User-facing quality fields are saved; " +
-                "advanced diagnostic fields remain session-only. Each change " +
-                "resets temporal history once."
+                "Changes apply immediately. Shared sharpness is saved; the other " +
+                "engineering parameters remain session-only. Each temporal " +
+                "parameter change resets history once."
             );
             GUILayout.Label(
                 "Launchpad warning: high Moving history values can amplify the " +
@@ -1061,7 +1067,7 @@ namespace ReduxBetterAA.Diagnostics
                 "Jitter sequence", config.SequenceLength, 4.0f, 32.0f
             ));
             float sharpness = DrawParameter(
-                "DLSS sharpening", config.Sharpness, 0.0f, 1.0f
+                "DLAA sharpness", config.Sharpness, 0.0f, 1.0f
             );
             float preExposure = DrawParameter(
                 "Pre-exposure", config.PreExposure, 0.01f, 16.0f
@@ -1126,8 +1132,8 @@ namespace ReduxBetterAA.Diagnostics
                 "These are shader transforms; NVIDIA's similarly named fields only " +
                 "orient its optional status indicator. A same-frame detector " +
                 "replaces screen-wide corruption. Coherent camera pans may exceed " +
-                "256 px; invalid, unverified >256 px, or >96 px disagreement uses " +
-                "a <=256 px camera fallback. The " +
+                "256 px; invalid, unverified >256 px, or >96 px disagreement uses a " +
+                "<=256 px camera fallback. The " +
                 "supersampling option runs equal-size DLAA on Redux's larger " +
                 "scene buffer before Redux downsamples it."
             );
@@ -1209,10 +1215,6 @@ namespace ReduxBetterAA.Diagnostics
             int sequenceLength = Mathf.RoundToInt(DrawParameter(
                 "Jitter sequence", config.SequenceLength, 4.0f, 32.0f
             ));
-            bool sharpening = GUILayout.Toggle(
-                config.EnableSharpening,
-                " Enable RCAS sharpening"
-            );
             float sharpness = DrawParameter(
                 "Sharpness", config.Sharpness, 0.0f, 1.0f
             );
@@ -1239,7 +1241,6 @@ namespace ReduxBetterAA.Diagnostics
             var updated = new Fsr2Config(
                 jitterSpread,
                 sequenceLength,
-                sharpening,
                 sharpness,
                 preExposure,
                 autoExposure,
@@ -1266,7 +1267,8 @@ namespace ReduxBetterAA.Diagnostics
                 "when Unity's AMD runtime loads. Screen-wide corruption is " +
                 "replaced in the same frame. Coherent camera pans may exceed " +
                 "256 px; invalid, unverified >256 px, or >96 px disagreement uses " +
-                "a <=256 px camera fallback. " +
+                "a <=256 px " +
+                "camera fallback. " +
                 "Unity-to-vendor X and Y inversion should both remain enabled."
             );
             GUILayout.BeginHorizontal();
@@ -1336,11 +1338,14 @@ namespace ReduxBetterAA.Diagnostics
             {
                 GUILayout.Label(
                     "Pan horizontally and vertically over static, depth-covered " +
-                    "geometry. Left half scores X; right half scores Y. Green " +
-                    "agrees with camera reprojection, red is reversed, dark blue " +
-                    "has too little motion. Far-plane reprojection now also " +
-                    "scores sky/no-depth camera rotation. For Unity's built-in buffer, both " +
-                    "sanitizer inversion toggles should be enabled."
+                    "geometry. This scores the raw source before sanitization: " +
+                    "left half is X and right half is Y. Green agrees with camera " +
+                    "reprojection, red is a confident local reversal, and dark blue " +
+                    "is too small or too close to an axis zero-crossing to decide. " +
+                    "A red patch at one view angle does not mean the global sign " +
+                    "changed; only coherent red during a deliberate single-axis pan " +
+                    "would contradict Unity's fixed convention. Both vendor inversion " +
+                    "toggles should remain enabled."
                 );
             }
             else if (_view == BufferDebugView.SanitizedVendorMotion)
@@ -1348,7 +1353,9 @@ namespace ReduxBetterAA.Diagnostics
                 GUILayout.Label(
                     "This is the sanitized motion texture actually sent to " +
                     "Custom, DLAA, or FSR2. DLAA/FSR2 apply their configured " +
-                    "component signs; Custom retains Unity's raw convention."
+                    "component signs; Custom retains Unity's raw convention. " +
+                    "Dark blue means the selected AA mode does not currently own " +
+                    "a live sanitizer texture."
                 );
             }
             else if (_view == BufferDebugView.MotionSanitizerDecision)
@@ -1356,7 +1363,9 @@ namespace ReduxBetterAA.Diagnostics
                 GUILayout.Label(
                     "Green keeps raw motion; yellow uses camera reprojection; " +
                     "red rejects to zero. Orange means the same-frame detector " +
-                    "classified the screen-wide field as corrupt."
+                    "classified the screen-wide field as corrupt. Dark blue means " +
+                    "the selected AA mode does not currently own a live sanitizer " +
+                    "texture; Off and PPv2 cannot produce this diagnostic."
                 );
             }
             else if (_view == BufferDebugView.LinearDepth)
@@ -1708,6 +1717,10 @@ namespace ReduxBetterAA.Diagnostics
             );
             _material.SetFloat(MotionQuietPixelsProperty, MotionQuietPixels);
             _material.SetFloat(MotionOutlierPixelsProperty, MotionOutlierPixels);
+            _material.SetFloat(
+                MotionSignConfidencePixelsProperty,
+                MotionSignConfidencePixels
+            );
             UpdateMotionSignMaterial();
             UpdateMotionSanitizerMaterial();
             UpdateDepthDiagnosticMaterial();
@@ -1912,6 +1925,7 @@ namespace ReduxBetterAA.Diagnostics
             Texture corruption = _motionCorruptionTexture == null
                 ? null
                 : _motionCorruptionTexture();
+            bool available = sanitized != null && corruption != null;
             _material.SetTexture(
                 SanitizedMotionTextureProperty,
                 sanitized == null ? Texture2D.blackTexture : sanitized
@@ -1919,6 +1933,10 @@ namespace ReduxBetterAA.Diagnostics
             _material.SetTexture(
                 MotionCorruptionTextureProperty,
                 corruption == null ? Texture2D.blackTexture : corruption
+            );
+            _material.SetFloat(
+                MotionSanitizerAvailableProperty,
+                available ? 1.0f : 0.0f
             );
         }
 

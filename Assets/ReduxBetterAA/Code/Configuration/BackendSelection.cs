@@ -10,8 +10,8 @@ namespace ReduxBetterAA.Configuration
         // selection enum lets the normal settings page, Ctrl+F10 panel, hotkey,
         // and performance profiler all use the same source of truth.
         FxaaLow = 1,
-        Smaa = 2,
-        FxaaHigh = 3,
+        FxaaHigh = 2,
+        Smaa = 3,
         Ppv2Taa = 4,
         CustomTaa = 5,
         NvidiaDlaa = 6,
@@ -32,7 +32,10 @@ namespace ReduxBetterAA.Configuration
             float motionBlending)
         {
             JitterSpread = Mathf.Clamp(jitterSpread, 0.1f, 1.0f);
-            Sharpness = Mathf.Clamp(sharpness, 0.0f, 3.0f);
+            // Sharpness is one shared user setting across every reconstructing
+            // backend. Keep PPv2 on that same 0-1 contract so the engineering
+            // panel cannot advertise values that persistence silently truncates.
+            Sharpness = Mathf.Clamp01(sharpness);
             StationaryBlending = Mathf.Clamp(stationaryBlending, 0.0f, 0.99f);
             MotionBlending = Mathf.Clamp(motionBlending, 0.0f, 0.99f);
         }
@@ -40,7 +43,7 @@ namespace ReduxBetterAA.Configuration
         public static TemporalBackendConfig ConservativePpv2 =>
             new TemporalBackendConfig(
                 0.75f,
-                0.25f,
+                0.15f,
                 0.92f,
                 0.05f
             );
@@ -170,6 +173,23 @@ namespace ReduxBetterAA.Configuration
                 DebugView
             );
         }
+
+        public bool RequiresHistoryReset(in CustomTaaConfig other)
+        {
+            // Sharpening is applied after the unsharpened resolve has already
+            // been written to history, and debug views only select presentation.
+            return JitterSpread != other.JitterSpread ||
+                   SequenceLength != other.SequenceLength ||
+                   StationaryHistory != other.StationaryHistory ||
+                   MovingHistory != other.MovingHistory ||
+                   MotionResponsePixels != other.MotionResponsePixels ||
+                   MaximumMotionPixels != other.MaximumMotionPixels ||
+                   DepthThreshold != other.DepthThreshold ||
+                   DepthEdgeStability != other.DepthEdgeStability ||
+                   VarianceGamma != other.VarianceGamma ||
+                   ReactiveScale != other.ReactiveScale ||
+                   NoDepthHistory != other.NoDepthHistory;
+        }
     }
 
     internal enum DlaaPreset
@@ -222,7 +242,7 @@ namespace ReduxBetterAA.Configuration
         public static DlaaConfig Conservative => new DlaaConfig(
             0.75f,
             8,
-            0.0f,
+            0.15f,
             1.0f,
             true,
             true,
@@ -252,6 +272,17 @@ namespace ReduxBetterAA.Configuration
                    PreferPpv2Exposure != other.PreferPpv2Exposure ||
                    Preset != other.Preset ||
                    AllowSupersampling != other.AllowSupersampling;
+        }
+
+        public bool RequiresHistoryReset(in DlaaConfig other)
+        {
+            // DLAA sharpening is an output treatment. Preset/exposure-mode and
+            // supersampling changes are handled by context recreation instead.
+            return JitterSpread != other.JitterSpread ||
+                   SequenceLength != other.SequenceLength ||
+                   PreExposure != other.PreExposure ||
+                   InvertMotionX != other.InvertMotionX ||
+                   InvertMotionY != other.InvertMotionY;
         }
 
         public DlaaConfig WithUserSettings(
@@ -316,7 +347,6 @@ namespace ReduxBetterAA.Configuration
         public Fsr2Config(
             float jitterSpread,
             int sequenceLength,
-            bool enableSharpening,
             float sharpness,
             float preExposure,
             bool autoExposure,
@@ -326,8 +356,8 @@ namespace ReduxBetterAA.Configuration
         {
             JitterSpread = Mathf.Clamp(jitterSpread, 0.1f, 1.5f);
             SequenceLength = Mathf.Clamp(sequenceLength, 4, 32);
-            EnableSharpening = enableSharpening;
             Sharpness = Mathf.Clamp01(sharpness);
+            EnableSharpening = Sharpness > 0.0f;
             PreExposure = Mathf.Clamp(preExposure, 0.01f, 16.0f);
             AutoExposure = autoExposure;
             PreferPpv2Exposure = preferPpv2Exposure;
@@ -338,8 +368,7 @@ namespace ReduxBetterAA.Configuration
         public static Fsr2Config Conservative => new Fsr2Config(
             0.75f,
             8,
-            false,
-            0.2f,
+            0.15f,
             1.0f,
             true,
             true,
@@ -366,8 +395,18 @@ namespace ReduxBetterAA.Configuration
                    PreferPpv2Exposure != other.PreferPpv2Exposure;
         }
 
+        public bool RequiresHistoryReset(in Fsr2Config other)
+        {
+            // RCAS is an output-only pass. Exposure-mode changes recreate the
+            // context; these remaining temporal-input changes invalidate it.
+            return JitterSpread != other.JitterSpread ||
+                   SequenceLength != other.SequenceLength ||
+                   PreExposure != other.PreExposure ||
+                   InvertMotionX != other.InvertMotionX ||
+                   InvertMotionY != other.InvertMotionY;
+        }
+
         public Fsr2Config WithUserSettings(
-            bool enableSharpening,
             float sharpness,
             float preExposure,
             bool autoExposure)
@@ -375,7 +414,6 @@ namespace ReduxBetterAA.Configuration
             return new Fsr2Config(
                 JitterSpread,
                 SequenceLength,
-                enableSharpening,
                 sharpness,
                 preExposure,
                 autoExposure,
@@ -390,7 +428,6 @@ namespace ReduxBetterAA.Configuration
             return new Fsr2Config(
                 JitterSpread,
                 SequenceLength,
-                EnableSharpening,
                 Sharpness,
                 PreExposure,
                 AutoExposure,

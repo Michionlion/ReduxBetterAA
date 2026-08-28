@@ -1,7 +1,7 @@
 # In-game performance profiling
 
-Version 0.5.1 adds a fixed-window profiler to the Off, PPv2, Custom, DLAA, and
-FSR2 pages in the Ctrl+F10 panel. Each run uses 30 warm-up frames followed by 240
+The fixed-window profiler is available on Off, FXAA Low, FXAA High, SMAA, PPv2,
+Custom, DLAA, and FSR2 pages in the Ctrl+F10 panel. Each run uses 30 warm-up frames followed by 240
 measured frames. Starting a run closes the panel so IMGUI rendering is not part
 of the sample; reopen it with Ctrl+F10 after the run to view the result.
 
@@ -14,8 +14,9 @@ The profiler records:
 - CPU submission time around the project-owned Custom, DLAA, and FSR2 resolve
   hooks.
 
-PPv2 is executed internally by Unity's Post Processing Stack, so its isolated
-pass timing is not exposed here. Compare PPv2 using whole-frame results. Resolve
+PPv2 and the spatial modes are executed internally by Unity's Post Processing
+Stack, so their isolated pass timing is not exposed here. Compare them using
+whole-frame results. Resolve
 CPU submission is also not GPU pass duration: it measures the main-thread time
 spent submitting or synchronously executing the mod-owned resolve.
 

@@ -4,6 +4,7 @@ using Ksp2UnityTools.Editor.Modding.Thunderkit;
 using ThunderKit.Core.Pipelines;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 using UnityEngine;
 
 namespace Utilities.Editor
@@ -36,6 +37,18 @@ namespace Utilities.Editor
             }
 
             mod.CreateAddressablesGroups();
+            BundledAssetGroupSchema bundleSchema =
+                mod.allGroup.GetSchema<BundledAssetGroupSchema>();
+            if (bundleSchema == null)
+            {
+                throw new System.InvalidOperationException(
+                    "Redux Better AA's Addressables group has no bundle schema."
+                );
+            }
+            bundleSchema.InternalBundleIdMode =
+                BundledAssetGroupSchema.BundleInternalIdMode
+                    .GroupGuidProjectIdEntriesHash;
+            EditorUtility.SetDirty(bundleSchema);
             AddressablesTools.MakeAddressable(
                 mod.allGroup,
                 DiagnosticShaderPath,

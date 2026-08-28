@@ -111,9 +111,9 @@ namespace ReduxBetterAA.Patches
     [HarmonyPatch(typeof(GraphicsSettings), "SetAntiAliasing")]
     internal static class StockGraphicsAntialiasingApplyPatch
     {
-        private static void Prefix(ref int level)
+        private static void Prefix(ref int __0)
         {
-            level = 0;
+            __0 = 0;
             QualitySettings.antiAliasing = 0;
         }
     }
