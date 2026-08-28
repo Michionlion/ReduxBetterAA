@@ -51,6 +51,7 @@ namespace ReduxBetterAA.Backends
         private GraphicsFormat _resourceGraphicsFormat;
         private bool _resourceSrgb;
         private bool _historyResetPending;
+        private bool _projectionJitterSupported;
         private bool _active;
         private bool _disposed;
         private bool _runtimeFailureLatched;
@@ -206,6 +207,7 @@ namespace ReduxBetterAA.Backends
             _resolveLayer = cameras.ResolveLayer;
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
+            _projectionJitterSupported = cameras.ProjectionJitterSupported;
             _originalResolveDepthMode = _resolveCamera.depthTextureMode;
             if (_resolveLayer != null)
             {
@@ -424,6 +426,8 @@ namespace ReduxBetterAA.Backends
             _resolveLayer = null;
             _sharedJitterCamera = null;
             _sharedJitterLayer = null;
+            _projectionJitterSupported = false;
+            _jitterPixels = Vector2.zero;
             _historyResetPending = false;
             _motionVectorSanitizer.ResetCameraHistory();
             _exposureReader.Deactivate();
@@ -567,27 +571,32 @@ namespace ReduxBetterAA.Backends
             {
                 return;
             }
-            if (camera == _sharedJitterCamera)
+            if (_projectionJitterSupported && camera == _sharedJitterCamera)
             {
                 ApplyJitter(camera, ref _sharedProjection);
             }
             if (camera == _resolveCamera)
             {
-                if (camera != _sharedJitterCamera)
+                if (_projectionJitterSupported &&
+                    camera != _sharedJitterCamera)
                 {
                     ApplyJitter(camera, ref _resolveProjection);
                 }
-                _jitterPixels = SharedJitterSequence.GetCustomOffset(
-                    _frameIndex,
-                    _config.JitterSpread,
-                    _config.SequenceLength
-                );
+                _jitterPixels = _projectionJitterSupported
+                    ? SharedJitterSequence.GetCustomOffset(
+                        _frameIndex,
+                        _config.JitterSpread,
+                        _config.SequenceLength
+                    )
+                    : Vector2.zero;
                 ProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
                     : _resolveProjection;
                 _motionVectorSanitizer.CaptureCamera(
                     camera,
-                    projectionState.Projection
+                    _projectionJitterSupported
+                        ? projectionState.Projection
+                        : camera.projectionMatrix
                 );
             }
         }

@@ -46,6 +46,12 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = "the final scene camera or PostProcessLayer is unavailable";
                 return false;
             }
+            if (!cameras.ProjectionJitterSupported)
+            {
+                unsupportedReason =
+                    "the active scene output does not render coherently with PPv2 projection jitter";
+                return false;
+            }
             if (!cameras.ResolveCamera.isActiveAndEnabled || !cameras.ResolveLayer.enabled)
             {
                 unsupportedReason = "the final scene camera or PostProcessLayer is disabled";

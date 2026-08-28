@@ -31,6 +31,7 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float4x4 _PreviousViewProjection;
             float _MatrixHistoryValid;
             float _CorruptionMinimumSamples;
+            float _SanitizationEnabled;
 
             float2 SourceUv(float2 uv)
             {
@@ -86,6 +87,13 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             {
                 float2 uv = SourceUv(input.uv);
                 float2 motion = tex2D(_MainTex, uv).rg;
+                if (_SanitizationEnabled < 0.5)
+                {
+                    // Keep the texture conversion required by DLAA/FSR while
+                    // bypassing all rejection and camera-motion substitution.
+                    motion *= _MotionComponentSign;
+                    return float4(motion, 0.0, 1.0);
+                }
                 float2 pixelMotion = motion * max(_SourceDimensions.xy, 1.0.xx);
                 bool invalid = MotionIsInvalid(motion);
                 bool overLimit =

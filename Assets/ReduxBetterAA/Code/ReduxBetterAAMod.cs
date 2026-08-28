@@ -37,6 +37,8 @@ namespace ReduxBetterAA
         private IConfigEntry _sharpnessEntry;
         private IConfigEntry _taaStabilityEntry;
         private IConfigEntry _dlaaPresetEntry;
+        private IConfigEntry _foliageMotionRepairEntry;
+        private IConfigEntry _mapViewAaEntry;
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
         private bool _syncingConfiguration;
@@ -45,6 +47,7 @@ namespace ReduxBetterAA
         private const bool HotkeysEnabled = true;
         private Phase1ProbeService _probeService;
         private TemporalCoordinator _temporalCoordinator;
+        private VegetationMotionCompatibility _vegetationMotionCompatibility;
         private KspPhysicsRenderInterpolation _physicsRenderInterpolation;
         private Harmony _harmony;
 
@@ -94,13 +97,29 @@ namespace ReduxBetterAA
                 "to J and K.",
                 new ListConstraint<string>(DlaaPresetChoices)
             );
+            _foliageMotionRepairEntry = SWConfiguration.Bind(
+                "Anti-Aliasing",
+                "Foliage motion repair",
+                true,
+                "Repairs invalid foliage motion that can destabilize temporal " +
+                "anti-aliasing near the KSC. Enabling it may also improve " +
+                "foliage rendering performance on compatible Redux builds."
+            );
+            _mapViewAaEntry = SWConfiguration.Bind(
+                "Anti-Aliasing",
+                "Enable AA in map view",
+                true,
+                "Apply the selected anti-aliasing mode in map view. Disable " +
+                "this independently when map-view AA is unnecessary or looks " +
+                "worse, without changing the normal flight AA selection."
+            );
 
             MigrateUserFacingSettings();
 
             RegisterSettingsCallbacks();
 
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Config] Four user-facing anti-aliasing settings " +
+                "[ReduxBetterAA/Config] Six user-facing anti-aliasing settings " +
                 "loaded; DLAA selectable=" + _dlaaSelectable + " (" +
                 dlaaReason + "); FSR2 selectable=" + _fsr2Selectable + " (" +
                 fsr2Reason + ")."
@@ -132,6 +151,12 @@ namespace ReduxBetterAA
             );
             TemporalCoordinator.Current = _temporalCoordinator;
             _temporalCoordinator.Initialize();
+
+            _vegetationMotionCompatibility =
+                new VegetationMotionCompatibility(SWLogger);
+            VegetationMotionCompatibility.Current =
+                _vegetationMotionCompatibility;
+            _vegetationMotionCompatibility.Initialize();
 
             ApplyPersistentSettings();
 
@@ -165,7 +190,9 @@ namespace ReduxBetterAA
                 _temporalCoordinator.GetPerformanceProfile,
                 _temporalCoordinator.StartPerformanceProfile,
                 _temporalCoordinator.CancelPerformanceProfile,
-                _temporalCoordinator.RequestHistoryReset
+                _temporalCoordinator.RequestHistoryReset,
+                () => _temporalCoordinator.MapViewAaEnabled,
+                SetMapViewAaEnabled
             );
             _probeService.SetMotionCadenceControls(
                 () => _physicsRenderInterpolation.Enabled,
@@ -177,6 +204,15 @@ namespace ReduxBetterAA
                 () => _temporalCoordinator.MotionVectorSanitizedTexture,
                 () => _temporalCoordinator.MotionVectorCorruptionTexture,
                 () => _temporalCoordinator.CurrentJitterNormalized
+            );
+            _probeService.SetMotionInputControls(
+                () => _vegetationMotionCompatibility.Enabled,
+                SetVegetationMotionRepairEnabled,
+                () => _vegetationMotionCompatibility.Status,
+                () => _vegetationMotionCompatibility.ReroutedCalls,
+                () => _temporalCoordinator.MotionVectorSanitizerEnabled,
+                SetMotionSanitizerEnabled,
+                () => _temporalCoordinator.MotionVectorSanitizerStatus
             );
             _harmony = CreateHarmonyAndPatchAll();
 
@@ -221,6 +257,15 @@ namespace ReduxBetterAA
             _physicsRenderInterpolation?.Dispose();
             _physicsRenderInterpolation = null;
 
+            if (ReferenceEquals(
+                    VegetationMotionCompatibility.Current,
+                    _vegetationMotionCompatibility))
+            {
+                VegetationMotionCompatibility.Current = null;
+            }
+            _vegetationMotionCompatibility?.Dispose();
+            _vegetationMotionCompatibility = null;
+
             if (ReferenceEquals(TemporalCoordinator.Current, _temporalCoordinator))
             {
                 TemporalCoordinator.Current = null;
@@ -264,6 +309,28 @@ namespace ReduxBetterAA
             _physicsRenderInterpolation?.SetEnabled(enabled);
         }
 
+        private void SetVegetationMotionRepairEnabled(bool enabled)
+        {
+            bool changed = _vegetationMotionCompatibility != null &&
+                _vegetationMotionCompatibility.SetEnabled(enabled);
+            Persist(_foliageMotionRepairEntry, enabled);
+            if (changed)
+            {
+                OnMotionInputChanged();
+            }
+        }
+
+        private void SetMapViewAaEnabled(bool enabled)
+        {
+            _temporalCoordinator?.SetMapViewAaEnabled(enabled);
+            Persist(_mapViewAaEntry, enabled);
+        }
+
+        private void SetMotionSanitizerEnabled(bool enabled)
+        {
+            _temporalCoordinator?.SetMotionVectorSanitizerEnabled(enabled);
+        }
+
         private IConfigEntry BindFloat(
             string section,
             string key,
@@ -278,7 +345,7 @@ namespace ReduxBetterAA
                 key,
                 defaultValue,
                 description,
-                new RangeConstraint<float>(minimum, maximum, steps, string.Empty)
+                new RangeConstraint<float>(minimum, maximum, steps, "{0:F2}")
             );
         }
 
@@ -288,6 +355,8 @@ namespace ReduxBetterAA
             _sharpnessEntry.RegisterCallback(OnPersistentSettingChanged);
             _taaStabilityEntry.RegisterCallback(OnPersistentSettingChanged);
             _dlaaPresetEntry.RegisterCallback(OnPersistentSettingChanged);
+            _foliageMotionRepairEntry.RegisterCallback(OnPersistentSettingChanged);
+            _mapViewAaEntry.RegisterCallback(OnPersistentSettingChanged);
         }
 
         private void OnPersistentSettingChanged(object previous, object current)
@@ -335,6 +404,12 @@ namespace ReduxBetterAA
                 fsr2.PreExposure,
                 fsr2.AutoExposure
             ));
+            SetVegetationMotionRepairEnabled(
+                (bool)_foliageMotionRepairEntry.Value
+            );
+            _temporalCoordinator.SetMapViewAaEnabled(
+                (bool)_mapViewAaEntry.Value
+            );
             _temporalCoordinator.SetRequestedBackend(
                 ParseBackend((string)_modeEntry.Value)
             );

@@ -26,6 +26,13 @@ namespace ReduxBetterAA.Rendering
         public PostProcessLayer ResolveLayer;
         public Camera SharedJitterCamera;
         public PostProcessLayer SharedJitterLayer;
+        // Map scaled-body shaders and the split main-menu background do not
+        // follow Camera.projectionMatrix subpixel offsets. Advertising those
+        // offsets to a temporal resolve corrupts history in mesh-sized patches.
+        public bool ProjectionJitterSupported =>
+            SceneKind == TemporalSceneKind.Flight ||
+            SceneKind == TemporalSceneKind.KerbalSpaceCenter ||
+            SceneKind == TemporalSceneKind.Vab;
         public int RenderScalePercent;
     }
 

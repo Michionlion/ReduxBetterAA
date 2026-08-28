@@ -11,6 +11,47 @@ The project begins with a safe, diagnostic rendering probe; progresses to a sync
 
 **Phase 2 / Phase 3 / Phase 4 plus native-resolution FSR2 comparison build — disabled by default.**
 
+Version 0.5.26 restores numeric feedback on the normal Sharpness and TAA
+stability sliders and makes the foliage motion repair a persistent user-facing
+option. A separate persistent map-view AA switch can force the map renderer to
+Off without changing the AA mode used in flight, KSC, VAB, or the main menu.
+Both toggles stay synchronized with Ctrl+F10, and schema 21 reports the map
+policy and whether its Off override is active.
+
+Version 0.5.25 fixes the rectangular planetary-history flicker in map view and
+the main menu at its input contract. TestHarness isolation showed that the
+correct resolve cameras and raw depth were already selected, but those scaled
+render paths do not follow `Camera.projectionMatrix` subpixel offsets
+coherently. Map and main-menu temporal backends therefore use zero projection
+and dispatch jitter, while Flight, KSC, and VAB retain the full shared Halton
+sequence. Custom TAA, DLAA, and FSR2 remain available in both scenes; PPv2 TAA
+falls back to Off there because PPv2 owns a non-disableable jitter pattern.
+Schema 20 exposes the scene capability and effective jitter. See
+[Decision 0029](docs/decisions/0029-map-menu-projection-jitter-compatibility.md).
+
+Version 0.5.24 repairs the launchpad radial motion-vector artifact at its
+source. On the validated Redux 2.8.5 renderer, a guarded compatibility patch
+reroutes direct indirect-vegetation submissions from the legacy
+`DrawMeshInstancedIndirect` path to `RenderMeshIndirect` with camera-only
+motion. This source repair (choice B in Decision 0027) is enabled by default;
+the post-process motion sanitizer and camera fallback (choice E) are disabled
+by default. Both can be changed independently in Ctrl+F10's Buffers tab for
+comparison. Disabling E still preserves the fixed Unity-to-vendor component
+sign conversion required by DLAA and FSR2. Unsupported renderer signatures or
+runtime failures leave the original vegetation draw active and report the
+compatibility status instead of disabling scene rendering.
+
+The 0.5.24 diagnostic update also corrects the raw sign-agreement reference.
+Depth, motion, and color no longer share `_MainTex` as an orientation proxy;
+the diagnostic samples each camera texture using its own texel-size convention,
+uses the render-texture GPU projection when either a camera target or
+`forceIntoRenderTexture` requires it, and mirrors Unity's built-in top-origin
+motion-vector Y conversion. A separate four-quadrant reference-orientation
+audit must validate the camera-only reference before Raw Sign Agreement is used
+to judge the explicit DLAA/FSR2 component flips. Schema 19 records the selected
+camera's render-target flags, graphics UV origin, projection Y scales, active
+backend, and configured X/Y inversions.
+
 Version 0.5.23 restores the validated 0.5.21 launchpad classifier after the
 0.5.22 adaptive threshold proved too sensitive in player testing. Both the
 16-anchor whole-frame classifier and the local sanitizer again use the

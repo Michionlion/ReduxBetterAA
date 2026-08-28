@@ -37,7 +37,8 @@ The panel has Off, FXAA Low, FXAA High, SMAA, PPv2, Custom, DLAA, FSR2 AA, and B
 directly selects Off, final color, raw-jittered or output-aligned linear depth,
 raw motion, normalized motion,
 motion magnitude/angle, combined motion validity/magnitude, raw sign agreement,
-sanitized vendor input, sanitizer decision, contribution mask, or other AA
+camera-reference orientation audit, sanitized vendor input, sanitizer decision,
+contribution mask, or other AA
 depth/motion diagnostics, and directly selects any enabled game camera. The AA
 tabs own their respective runtime controls. Every tab can
 write reports and capture screenshots.
@@ -108,6 +109,27 @@ is undecided dark blue rather than a misleading view-angle-dependent red result.
 Sanitizer views also render dark blue when the selected Off or PPv2 path has no
 live sanitizer texture; red can no longer mean an unavailable input.
 
+Version 0.5.24 makes sign diagnosis a two-step check. `Motion: Sign Reference
+Orientation Audit` repeats the scene in four quadrants during a vertical pan:
+left/right compare screen and render-texture GPU projections, while upper/lower
+compare Unity's explicit top-origin Y conversion with a no-conversion control.
+The quadrant matching schema 19's
+`automaticReferenceUsesRenderTextureProjection` must be coherently green in the
+upper row over static, depth-covered terrain. Its lower control in the same
+projection column should be red. The diagonally opposite quadrant may be green
+because changing projection orientation and omitting the explicit Y conversion
+can cancel. Only after the automatic reference passes should `Motion: Raw Sign
+Agreement` be used to judge the configured vendor component flips. The latter
+remains split X on the left and Y on the right.
+
+The sign views sample `_CameraMotionVectorsTexture` and `_CameraDepthTexture`
+using their own texel-size orientation instead of `_MainTex_TexelSize`. Their
+camera reference chooses a render-texture GPU projection when the selected
+camera has a target or `forceIntoRenderTexture` is true, reconstructs in
+projection UV, and mirrors the top-origin Y conversion in Unity's built-in
+motion-vector shader. Schema 19 records those inputs alongside the configured
+backend and explicit X/Y texture flips.
+
 Version 0.5.11 retains the state-specific camera discovery and adds same-frame
 launchpad motion classification. `KerbalSpaceCenter` uses the observed
 scaled/physics flight camera graph; the main menu explicitly selects
@@ -144,6 +166,14 @@ depth flags.
   resolve-camera projection and transform state.
 
 Reports contain no save contents and do not serialize filesystem paths.
+
+Schema 20 also records whether the discovered scene graph supports coherent
+projection jitter. `Map3DView` resolves on `MapCamera` and the main menu resolves
+on `Camera.Scaled` after its shared `Skybox` predecessor, but both report
+`projectionJitterSupported=false` and effective zero projection/dispatch
+jitter. Flight, KSC, and VAB report the capability as supported and retain the
+shared temporal jitter sequence. Decision 0029 records the isolation evidence
+for this scene-level contract.
 
 ## Build and load verification
 

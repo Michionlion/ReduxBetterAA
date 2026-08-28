@@ -58,6 +58,7 @@ namespace ReduxBetterAA.Rendering
         private bool _disposed;
         private bool _dlaaRuntimeFailed;
         private bool _fsr2RuntimeFailed;
+        private bool _mapViewAaEnabled = true;
         private bool _originRebasedPending;
         private float _discoverAfter;
         private float _nextHitchLogTime;
@@ -124,6 +125,13 @@ namespace ReduxBetterAA.Rendering
             _cameras == null || _cameras.SharedJitterCamera == null
                 ? string.Empty
                 : _cameras.SharedJitterCamera.name;
+        public bool ProjectionJitterSupported =>
+            _cameras != null && _cameras.ProjectionJitterSupported;
+        public bool MapViewAaEnabled => _mapViewAaEnabled;
+        public bool MapViewAaOverrideActive => !_mapViewAaEnabled &&
+            _requestedBackend != BackendSelection.Off &&
+            _cameras != null &&
+            _cameras.SceneKind == TemporalSceneKind.Map;
         public HistoryResetReason LastResetReason => _lastResetReason;
         public TemporalBackendConfig Ppv2Config => _ppv2Config;
         public CustomTaaConfig CustomConfig => _customConfig;
@@ -169,6 +177,8 @@ namespace ReduxBetterAA.Rendering
         public Vector2 Fsr2DispatchJitterPixels =>
             _fsr2Backend.DispatchJitterPixels;
         public string MotionVectorSanitizerStatus => _motionVectorSanitizer.Status;
+        public bool MotionVectorSanitizerEnabled =>
+            _motionVectorSanitizer.Enabled;
         public long MotionVectorSanitizerEstimatedMemoryBytes =>
             _motionVectorSanitizer.EstimatedMemoryBytes;
         public Texture MotionVectorSanitizedTexture =>
@@ -525,6 +535,39 @@ namespace ReduxBetterAA.Rendering
             }
         }
 
+        public void SetMotionVectorSanitizerEnabled(bool enabled)
+        {
+            if (!_motionVectorSanitizer.SetEnabled(enabled))
+            {
+                return;
+            }
+            NotifyMotionInputChanged();
+        }
+
+        public void SetMapViewAaEnabled(bool enabled)
+        {
+            if (_disposed || _mapViewAaEnabled == enabled)
+            {
+                return;
+            }
+            _mapViewAaEnabled = enabled;
+            _performanceProfiler.InvalidateAll();
+            if (_cameras == null ||
+                _cameras.SceneKind != TemporalSceneKind.Map)
+            {
+                return;
+            }
+
+            DisableActiveBackend();
+            _pendingResetReasons |= HistoryResetReason.SettingsChanged;
+            _dirty = true;
+            _remainingDiscoveryRetries = MaximumDiscoveryRetries;
+            _discoverAfter = Time.unscaledTime;
+            _status = enabled
+                ? "Map-view AA enabled; restoring the selected mode..."
+                : "Map-view AA disabled; switching map view to Off...";
+        }
+
         public void NotifyOriginRebased()
         {
             if (_disposed || !_activeBackend.Active)
@@ -625,40 +668,47 @@ namespace ReduxBetterAA.Rendering
             _activeBackend = _disabledBackend;
             _resetTracker.Clear();
             _cameras = TemporalCameraDiscovery.Discover();
+            BackendSelection effectiveRequest = EffectiveBackendForScene(
+                _requestedBackend,
+                _cameras == null
+                    ? TemporalSceneKind.Unsupported
+                    : _cameras.SceneKind,
+                _mapViewAaEnabled
+            );
 
             ITemporalBackend requestedBackend;
-            if (_requestedBackend == BackendSelection.Off)
+            if (effectiveRequest == BackendSelection.Off)
             {
                 requestedBackend = _disabledBackend;
             }
-            else if (_requestedBackend == BackendSelection.FxaaLow)
+            else if (effectiveRequest == BackendSelection.FxaaLow)
             {
                 requestedBackend = _fxaaLowBackend;
             }
-            else if (_requestedBackend == BackendSelection.Smaa)
+            else if (effectiveRequest == BackendSelection.Smaa)
             {
                 requestedBackend = _smaaBackend;
             }
-            else if (_requestedBackend == BackendSelection.FxaaHigh)
+            else if (effectiveRequest == BackendSelection.FxaaHigh)
             {
                 requestedBackend = _fxaaHighBackend;
             }
-            else if (_requestedBackend == BackendSelection.Ppv2Taa)
+            else if (effectiveRequest == BackendSelection.Ppv2Taa)
             {
                 _ppv2Backend.ApplyConfig(in _ppv2Config);
                 requestedBackend = _ppv2Backend;
             }
-            else if (_requestedBackend == BackendSelection.CustomTaa)
+            else if (effectiveRequest == BackendSelection.CustomTaa)
             {
                 _customBackend.ApplyConfig(in _customConfig);
                 requestedBackend = _customBackend;
             }
-            else if (_requestedBackend == BackendSelection.NvidiaDlaa)
+            else if (effectiveRequest == BackendSelection.NvidiaDlaa)
             {
                 _dlaaBackend.ApplyConfig(in _dlaaConfig);
                 requestedBackend = _dlaaBackend;
             }
-            else if (_requestedBackend == BackendSelection.AmdFsr2)
+            else if (effectiveRequest == BackendSelection.AmdFsr2)
             {
                 _fsr2Backend.ApplyConfig(in _fsr2Config);
                 requestedBackend = _fsr2Backend;
@@ -671,12 +721,12 @@ namespace ReduxBetterAA.Rendering
             string failureReason;
             if (!requestedBackend.Configure(_cameras, out failureReason))
             {
-                if (_requestedBackend == BackendSelection.NvidiaDlaa)
+                if (effectiveRequest == BackendSelection.NvidiaDlaa)
                 {
                     ActivateOffFallback("DLAA", failureReason);
                     return;
                 }
-                if (_requestedBackend == BackendSelection.AmdFsr2)
+                if (effectiveRequest == BackendSelection.AmdFsr2)
                 {
                     ActivateOffFallback("FSR2", failureReason);
                     return;
@@ -690,10 +740,10 @@ namespace ReduxBetterAA.Rendering
                     _discoverAfter = now + DiscoveryRetrySeconds;
                     return;
                 }
-                if (_requestedBackend != BackendSelection.Off)
+                if (effectiveRequest != BackendSelection.Off)
                 {
                     ActivateOffFallback(
-                        BackendName(_requestedBackend),
+                        BackendName(effectiveRequest),
                         failureReason
                     );
                 }
@@ -701,11 +751,23 @@ namespace ReduxBetterAA.Rendering
             }
 
             _activeBackend = requestedBackend;
-            if (_requestedBackend == BackendSelection.Off)
+            if (effectiveRequest == BackendSelection.Off)
             {
-                _status = _cameras != null && _cameras.ResolveCamera != null
-                    ? "Off; PPv2 AA disabled on " + _cameras.ResolveCamera.name
-                    : "Off; no supported scene AA layer is active";
+                bool mapOverride = _requestedBackend != BackendSelection.Off &&
+                    _cameras != null &&
+                    _cameras.SceneKind == TemporalSceneKind.Map &&
+                    !_mapViewAaEnabled;
+                _status = mapOverride
+                    ? "Map-view AA disabled; Off active on " +
+                      (_cameras.ResolveCamera == null
+                          ? "the map renderer"
+                          : _cameras.ResolveCamera.name) +
+                      "; selected flight mode remains " +
+                      BackendName(_requestedBackend)
+                    : _cameras != null && _cameras.ResolveCamera != null
+                        ? "Off; PPv2 AA disabled on " +
+                          _cameras.ResolveCamera.name
+                        : "Off; no supported scene AA layer is active";
                 _logger.LogInfo("[ReduxBetterAA/Backend] " + _status + ".");
                 return;
             }
@@ -719,6 +781,16 @@ namespace ReduxBetterAA.Rendering
                     ? " with synchronized " + _cameras.SharedJitterCamera.name
                     : string.Empty);
             _logger.LogInfo("[ReduxBetterAA/Backend] " + _status + ".");
+        }
+
+        internal static BackendSelection EffectiveBackendForScene(
+            BackendSelection requested,
+            TemporalSceneKind sceneKind,
+            bool mapViewAaEnabled)
+        {
+            return sceneKind == TemporalSceneKind.Map && !mapViewAaEnabled
+                ? BackendSelection.Off
+                : requested;
         }
 
         private void ActivateOffFallback(

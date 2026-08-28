@@ -7,6 +7,9 @@ hardware-filtered mode list still require in-game UI verification.
 
 The spatial mode portion is extended by Decision 0020: the normal list now also
 contains the stock FXAA Low/High variants and the separate PPv2 SMAA option.
+Decision 0030 supersedes the four-control limit by adding persistent foliage
+repair and map-view AA toggles; the original four AA-quality controls remain
+unchanged.
 
 ## Context
 

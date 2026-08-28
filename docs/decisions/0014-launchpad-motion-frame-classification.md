@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted for the 0.5.11 diagnostic build. The root-cause classification and
-visual acceptance require a new in-player capture burst.
+Accepted for the 0.5.11 diagnostic build. Decision 0026 later confirms the raw
+producer as one camera-centred indirect vegetation leaf draw; it rules out the
+camera-history categories that remained open in this record.
 
 ## Context
 

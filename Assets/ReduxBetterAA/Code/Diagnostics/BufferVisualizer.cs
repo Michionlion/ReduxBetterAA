@@ -26,7 +26,11 @@ namespace ReduxBetterAA.Diagnostics
         MotionSignAgreement = 7,
         SanitizedVendorMotion = 8,
         MotionSanitizerDecision = 9,
-        DeJitteredLinearDepth = 10
+        DeJitteredLinearDepth = 10,
+        MotionVectorsBuiltinPreviousVP = 11,
+        MotionVectorsPerPassPreviousVP = 12,
+        MotionVectorsManagedPreviousVP = 13,
+        MotionSignReferenceAudit = 14
     }
 
     internal sealed class BufferVisualizer : IDisposable
@@ -35,6 +39,8 @@ namespace ReduxBetterAA.Diagnostics
             "Assets/ReduxBetterAA/Shaders/Phase1BufferDebug.shader";
         private const string StatisticsShaderAddress =
             "Assets/ReduxBetterAA/Shaders/Phase1MotionStatistics.shader";
+        private const string MotionVectorPassProbeShaderAddress =
+            "Assets/ReduxBetterAA/Shaders/Phase1MotionVectorPassProbe.shader";
         private const string CommandBufferName = "Redux Better AA Phase 1 Debug View";
         private const int MaximumStatisticsDimension = 320;
         private const float MotionQuietPixels = 0.1f;
@@ -55,7 +61,11 @@ namespace ReduxBetterAA.Diagnostics
             "Motion: Raw Sign Agreement",
             "Motion: Sanitized Vendor Input",
             "Motion: Sanitizer Decision",
-            "Linear Depth (jitter-compensated sample)"
+            "Linear Depth (jitter-compensated sample)",
+            "Motion: unity_MatrixPreviousVP reconstruction",
+            "Motion: _PrevViewProjMatrix reconstruction",
+            "Motion: Camera.previousViewProjectionMatrix reconstruction",
+            "Motion: Sign Reference Orientation Audit"
         };
         private static readonly string[] PanelTabs =
             {
@@ -111,6 +121,19 @@ namespace ReduxBetterAA.Diagnostics
             Shader.PropertyToID("_CurrentInverseViewProjection");
         private static readonly int PreviousViewProjectionProperty =
             Shader.PropertyToID("_PreviousViewProjection");
+        private static readonly int ManagedPreviousViewProjectionProperty =
+            Shader.PropertyToID("_ManagedPreviousViewProjection");
+        private static readonly int CurrentInverseViewProjectionScreenProperty =
+            Shader.PropertyToID("_CurrentInverseViewProjectionScreen");
+        private static readonly int PreviousViewProjectionScreenProperty =
+            Shader.PropertyToID("_PreviousViewProjectionScreen");
+        private static readonly int
+            CurrentInverseViewProjectionRenderTextureProperty =
+                Shader.PropertyToID(
+                    "_CurrentInverseViewProjectionRenderTexture"
+                );
+        private static readonly int PreviousViewProjectionRenderTextureProperty =
+            Shader.PropertyToID("_PreviousViewProjectionRenderTexture");
         private static readonly int MatrixHistoryValidProperty =
             Shader.PropertyToID("_MatrixHistoryValid");
         private static readonly int SanitizedMotionTextureProperty =
@@ -121,6 +144,16 @@ namespace ReduxBetterAA.Diagnostics
             Shader.PropertyToID("_MotionSanitizerAvailable");
         private static readonly int CurrentJitterProperty =
             Shader.PropertyToID("_CurrentJitter");
+        private static readonly int MainTextureTexelSizeProperty =
+            Shader.PropertyToID("_MainTex_TexelSize");
+        private static readonly int MotionTextureTexelSizeProperty =
+            Shader.PropertyToID("_CameraMotionVectorsTexture_TexelSize");
+        private static readonly int DepthTextureTexelSizeProperty =
+            Shader.PropertyToID("_CameraDepthTexture_TexelSize");
+        private static readonly int MotionVectorPassProbeModeProperty =
+            Shader.PropertyToID("_ReduxBetterAAMotionProbeMode");
+        private static readonly int MotionVectorPassManagedPreviousProperty =
+            Shader.PropertyToID("_ReduxBetterAAManagedPreviousVP");
 
         private readonly ReduxLogger _logger;
         private AsyncOperationHandle<Shader> _shaderHandle;
@@ -131,7 +164,14 @@ namespace ReduxBetterAA.Diagnostics
         private bool _statisticsShaderHandleValid;
         private Shader _statisticsShader;
         private Material _statisticsMaterial;
+        private AsyncOperationHandle<Shader> _motionVectorPassProbeShaderHandle;
+        private bool _motionVectorPassProbeShaderHandleValid;
+        private Shader _motionVectorPassProbeShader;
+        private Shader _originalMotionVectorShader;
+        private bool _motionVectorPassProbeActive;
+        private int _motionVectorPassProbeMode;
         private CommandBuffer _commandBuffer;
+        private CameraEvent _attachedCameraEvent = CameraEvent.AfterEverything;
         private RenderTexture _statisticsTarget;
         private RenderTexture _statisticsReadbackTarget;
         private Camera[] _candidates = Array.Empty<Camera>();
@@ -199,9 +239,18 @@ namespace ReduxBetterAA.Diagnostics
         private Action<BackendSelection> _startPerformanceProfile;
         private Action _cancelPerformanceProfile;
         private Action _resetTemporalHistory;
+        private Func<bool> _mapViewAaEnabled;
+        private Action<bool> _setMapViewAaEnabled;
         private Func<Texture> _sanitizedMotionTexture;
         private Func<Texture> _motionCorruptionTexture;
         private Func<Vector2> _currentJitterNormalized;
+        private Func<bool> _vegetationMotionRepairEnabled;
+        private Action<bool> _setVegetationMotionRepairEnabled;
+        private Func<string> _vegetationMotionRepairStatus;
+        private Func<long> _vegetationMotionRepairReroutedCalls;
+        private Func<bool> _motionSanitizerEnabled;
+        private Action<bool> _setMotionSanitizerEnabled;
+        private Func<string> _motionSanitizerStatus;
         private Func<bool> _physicsInterpolationEnabled;
         private Action<bool> _setPhysicsInterpolationEnabled;
         private Func<string> _physicsInterpolationStatus;
@@ -211,6 +260,12 @@ namespace ReduxBetterAA.Diagnostics
         private Matrix4x4 _currentViewProjection;
         private Matrix4x4 _currentInverseViewProjection;
         private Matrix4x4 _previousViewProjection;
+        private Matrix4x4 _currentViewProjectionScreen;
+        private Matrix4x4 _currentInverseViewProjectionScreen;
+        private Matrix4x4 _previousViewProjectionScreen;
+        private Matrix4x4 _currentViewProjectionRenderTexture;
+        private Matrix4x4 _currentInverseViewProjectionRenderTexture;
+        private Matrix4x4 _previousViewProjectionRenderTexture;
         private bool _currentMatrixValid;
         private bool _matrixHistoryValid;
 
@@ -234,6 +289,71 @@ namespace ReduxBetterAA.Diagnostics
             );
             _statisticsShaderHandleValid = true;
             _statisticsShaderHandle.Completed += OnStatisticsShaderLoaded;
+            _motionVectorPassProbeShaderHandle =
+                Addressables.LoadAssetAsync<Shader>(
+                    MotionVectorPassProbeShaderAddress
+                );
+            _motionVectorPassProbeShaderHandleValid = true;
+            _motionVectorPassProbeShaderHandle.Completed +=
+                OnMotionVectorPassProbeShaderLoaded;
+        }
+
+        /// <summary>
+        /// Installs the diagnostic copy of Unity's built-in motion-vector shader.
+        /// TestHarness is the only caller; production backends never use it.
+        /// </summary>
+        public bool TrySetMotionVectorPassProbe(int mode, out string reason)
+        {
+            reason = string.Empty;
+            if (_motionVectorPassProbeShader == null ||
+                !_motionVectorPassProbeShader.isSupported)
+            {
+                reason = "the motion-vector pass probe shader is not loaded";
+                return false;
+            }
+            if (mode < 0 || mode > 18)
+            {
+                reason = "the motion-vector pass probe mode must be 0 through 18";
+                return false;
+            }
+
+            if (!_motionVectorPassProbeActive)
+            {
+                _originalMotionVectorShader = GraphicsSettings.GetCustomShader(
+                    BuiltinShaderType.MotionVectors
+                );
+                _motionVectorPassProbeActive = true;
+            }
+            _motionVectorPassProbeMode = mode;
+            UpdateMotionVectorPassProbeGlobals(GetSelectedCamera());
+            GraphicsSettings.SetCustomShader(
+                BuiltinShaderType.MotionVectors,
+                _motionVectorPassProbeShader
+            );
+            _logger.LogInfo(
+                "[ReduxBetterAA/Probe] Installed built-in motion-vector pass probe mode " +
+                mode + "."
+            );
+            return true;
+        }
+
+        public void RestoreMotionVectorPassProbe()
+        {
+            if (!_motionVectorPassProbeActive)
+            {
+                return;
+            }
+            GraphicsSettings.SetCustomShader(
+                BuiltinShaderType.MotionVectors,
+                _originalMotionVectorShader
+            );
+            Shader.SetGlobalInt(MotionVectorPassProbeModeProperty, 0);
+            _motionVectorPassProbeActive = false;
+            _motionVectorPassProbeMode = 0;
+            _originalMotionVectorShader = null;
+            _logger.LogInfo(
+                "[ReduxBetterAA/Probe] Restored the original built-in motion-vector shader."
+            );
         }
 
         public void SetTemporalControls(
@@ -260,7 +380,9 @@ namespace ReduxBetterAA.Diagnostics
             Func<BackendSelection, PerformanceProfileSnapshot> performanceProfile,
             Action<BackendSelection> startPerformanceProfile,
             Action cancelPerformanceProfile,
-            Action resetHistory)
+            Action resetHistory,
+            Func<bool> mapViewAaEnabled,
+            Action<bool> setMapViewAaEnabled)
         {
             _temporalStatus = status;
             _requestedBackend = requestedBackend;
@@ -286,6 +408,8 @@ namespace ReduxBetterAA.Diagnostics
             _startPerformanceProfile = startPerformanceProfile;
             _cancelPerformanceProfile = cancelPerformanceProfile;
             _resetTemporalHistory = resetHistory;
+            _mapViewAaEnabled = mapViewAaEnabled;
+            _setMapViewAaEnabled = setMapViewAaEnabled;
         }
 
         public void SetMotionCadenceControls(
@@ -310,6 +434,25 @@ namespace ReduxBetterAA.Diagnostics
             _currentJitterNormalized = currentJitterNormalized;
             UpdateMotionSanitizerMaterial();
             UpdateDepthDiagnosticMaterial();
+        }
+
+        public void SetMotionInputControls(
+            Func<bool> vegetationRepairEnabled,
+            Action<bool> setVegetationRepairEnabled,
+            Func<string> vegetationRepairStatus,
+            Func<long> vegetationRepairReroutedCalls,
+            Func<bool> sanitizerEnabled,
+            Action<bool> setSanitizerEnabled,
+            Func<string> sanitizerStatus)
+        {
+            _vegetationMotionRepairEnabled = vegetationRepairEnabled;
+            _setVegetationMotionRepairEnabled = setVegetationRepairEnabled;
+            _vegetationMotionRepairStatus = vegetationRepairStatus;
+            _vegetationMotionRepairReroutedCalls =
+                vegetationRepairReroutedCalls;
+            _motionSanitizerEnabled = sanitizerEnabled;
+            _setMotionSanitizerEnabled = setSanitizerEnabled;
+            _motionSanitizerStatus = sanitizerStatus;
         }
 
         public void SetCandidates(Camera[] candidates)
@@ -593,6 +736,103 @@ namespace ReduxBetterAA.Diagnostics
             }
         }
 
+        public MotionSignDiagnosticRecord CaptureMotionSignDiagnostic()
+        {
+            Camera camera = GetSelectedCamera();
+            bool invertX;
+            bool invertY;
+            BackendSelection backend;
+            GetConfiguredMotionInversion(out invertX, out invertY, out backend);
+            Vector4 motionTexelSize = Shader.GetGlobalVector(
+                MotionTextureTexelSizeProperty
+            );
+            Vector4 depthTexelSize = Shader.GetGlobalVector(
+                DepthTextureTexelSizeProperty
+            );
+            Vector4 mainTexelSize = _material == null
+                ? Vector4.zero
+                : _material.GetVector(MainTextureTexelSizeProperty);
+            if (camera == null)
+            {
+                return new MotionSignDiagnosticRecord
+                {
+                    view = CurrentViewName,
+                    selectedCamera = "NoCamera",
+                    cameraAvailable = false,
+                    configuredInvertX = invertX,
+                    configuredInvertY = invertY,
+                    configuredBackend = backend.ToString(),
+                    graphicsUvStartsAtTop = SystemInfo.graphicsUVStartsAtTop,
+                    motionTextureTexelSize = VectorValues(motionTexelSize),
+                    depthTextureTexelSize = VectorValues(depthTexelSize),
+                    materialMainTextureTexelSize = VectorValues(mainTexelSize),
+                    unityMotionConvention =
+                        "current-minus-previous in Unity motion-texture UV axes",
+                    vendorMotionConvention =
+                        "current pixel to previous pixel; negate Unity motion",
+                    referencePolicy =
+                        "No selected camera; reference projection unavailable.",
+                    texelSizeTelemetryNote =
+                        "Motion/depth values are Unity global companion vectors. " +
+                        "MainTex is material state only; the command-buffer blit " +
+                        "may override it at execution time."
+                };
+            }
+
+            Matrix4x4 projection = camera.nonJitteredProjectionMatrix;
+            Matrix4x4 screenProjection = GL.GetGPUProjectionMatrix(
+                projection,
+                false
+            );
+            Matrix4x4 renderTextureProjection = GL.GetGPUProjectionMatrix(
+                projection,
+                true
+            );
+            bool usesRenderTextureProjection =
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(
+                    camera.targetTexture != null,
+                    camera.forceIntoRenderTexture
+                );
+            return new MotionSignDiagnosticRecord
+            {
+                view = CurrentViewName,
+                selectedCamera = camera.name,
+                cameraAvailable = true,
+                targetTexturePresent = camera.targetTexture != null,
+                forceIntoRenderTexture = camera.forceIntoRenderTexture,
+                automaticReferenceUsesRenderTextureProjection =
+                    usesRenderTextureProjection,
+                graphicsUvStartsAtTop = SystemInfo.graphicsUVStartsAtTop,
+                cameraProjectionYScale = projection.m11,
+                screenGpuProjectionYScale = screenProjection.m11,
+                renderTextureGpuProjectionYScale = renderTextureProjection.m11,
+                motionTextureTexelSize = VectorValues(motionTexelSize),
+                depthTextureTexelSize = VectorValues(depthTexelSize),
+                materialMainTextureTexelSize = VectorValues(mainTexelSize),
+                configuredInvertX = invertX,
+                configuredInvertY = invertY,
+                configuredBackend = backend.ToString(),
+                unityMotionConvention =
+                    "current-minus-previous in Unity motion-texture UV axes",
+                vendorMotionConvention =
+                    "current pixel to previous pixel; negate Unity motion",
+                referencePolicy =
+                    "Use render-texture GPU projection when targetTexture is set " +
+                    "or forceIntoRenderTexture is true; independently orient " +
+                    "motion and depth samples from their own texel sizes; mirror " +
+                    "Unity's explicit top-origin Y conversion.",
+                texelSizeTelemetryNote =
+                    "Motion/depth values are Unity global companion vectors. " +
+                    "MainTex is material state only; the command-buffer blit " +
+                    "may override it at execution time."
+            };
+        }
+
+        private static float[] VectorValues(Vector4 value)
+        {
+            return new[] { value.x, value.y, value.z, value.w };
+        }
+
         public void DrawGui()
         {
             if (_panelOpen)
@@ -645,6 +885,7 @@ namespace ReduxBetterAA.Diagnostics
             _panelOpen = false;
             _panelSuspendedForScreenshot = false;
             RestorePanelInputState();
+            RestoreMotionVectorPassProbe();
             Detach();
             if (_material != null)
             {
@@ -668,8 +909,16 @@ namespace ReduxBetterAA.Diagnostics
                 Addressables.Release(_statisticsShaderHandle);
                 _statisticsShaderHandleValid = false;
             }
+            if (_motionVectorPassProbeShaderHandleValid)
+            {
+                _motionVectorPassProbeShaderHandle.Completed -=
+                    OnMotionVectorPassProbeShaderLoaded;
+                Addressables.Release(_motionVectorPassProbeShaderHandle);
+                _motionVectorPassProbeShaderHandleValid = false;
+            }
             _shader = null;
             _statisticsShader = null;
+            _motionVectorPassProbeShader = null;
             _candidates = Array.Empty<Camera>();
             _candidateLabels = Array.Empty<string>();
             _temporalStatus = null;
@@ -696,11 +945,22 @@ namespace ReduxBetterAA.Diagnostics
             _startPerformanceProfile = null;
             _cancelPerformanceProfile = null;
             _resetTemporalHistory = null;
+            _mapViewAaEnabled = null;
+            _setMapViewAaEnabled = null;
             _physicsInterpolationEnabled = null;
             _setPhysicsInterpolationEnabled = null;
             _physicsInterpolationStatus = null;
             _refreshPhysicsInterpolation = null;
+            _sanitizedMotionTexture = null;
+            _motionCorruptionTexture = null;
             _currentJitterNormalized = null;
+            _vegetationMotionRepairEnabled = null;
+            _setVegetationMotionRepairEnabled = null;
+            _vegetationMotionRepairStatus = null;
+            _vegetationMotionRepairReroutedCalls = null;
+            _motionSanitizerEnabled = null;
+            _setMotionSanitizerEnabled = null;
+            _motionSanitizerStatus = null;
         }
 
         private void SetView(BufferDebugView view)
@@ -765,6 +1025,7 @@ namespace ReduxBetterAA.Diagnostics
                     ? "Unavailable"
                     : _temporalStatus()
             );
+            DrawMapViewAaControl();
             GUILayout.Space(8f);
             if (_panelTab == 0)
             {
@@ -810,6 +1071,31 @@ namespace ReduxBetterAA.Diagnostics
             GUILayout.EndScrollView();
             DrawCommonControls();
             GUI.DragWindow(new Rect(0f, 0f, _windowRect.width, 24f));
+        }
+
+        private void DrawMapViewAaControl()
+        {
+            bool enabled = _mapViewAaEnabled == null || _mapViewAaEnabled();
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = _setMapViewAaEnabled != null;
+            Color previousColor = GUI.backgroundColor;
+            if (enabled)
+            {
+                GUI.backgroundColor = Color.cyan;
+            }
+            if (GUILayout.Button(
+                    enabled
+                        ? "Map-view AA: ON"
+                        : "Map-view AA: OFF (flight setting preserved)",
+                    GUILayout.Height(28f)))
+            {
+                _setMapViewAaEnabled(!enabled);
+            }
+            GUI.backgroundColor = previousColor;
+            GUI.enabled = previousEnabled;
+            GUILayout.Label(
+                "This independently forces AA Off only while map view is active."
+            );
         }
 
         private static void DrawOffTab()
@@ -1292,6 +1578,8 @@ namespace ReduxBetterAA.Diagnostics
                 _bufferScroll,
                 GUILayout.Height(500f)
             );
+            DrawMotionInputControls();
+            GUILayout.Space(10f);
             bool previousBurstEnabled = GUI.enabled;
             GUI.enabled = !_motionDiagnosticBurstActive &&
                 GetSelectedCamera() != null;
@@ -1342,10 +1630,27 @@ namespace ReduxBetterAA.Diagnostics
                     "left half is X and right half is Y. Green agrees with camera " +
                     "reprojection, red is a confident local reversal, and dark blue " +
                     "is too small or too close to an axis zero-crossing to decide. " +
+                    "The camera reference mirrors Unity's built-in top-origin Y " +
+                    "conversion and uses the camera's actual screen/render-texture " +
+                    "projection policy. " +
                     "A red patch at one view angle does not mean the global sign " +
                     "changed; only coherent red during a deliberate single-axis pan " +
                     "would contradict Unity's fixed convention. Both vendor inversion " +
                     "toggles should remain enabled."
+                );
+            }
+            else if (_view == BufferDebugView.MotionSignReferenceAudit)
+            {
+                GUILayout.Label(
+                    "Pan vertically over static, depth-covered terrain. The full " +
+                    "scene repeats four times: left=screen GPU projection, " +
+                    "right=render-texture GPU projection; upper=Unity's explicit " +
+                    "top-origin Y conversion, lower=no Y conversion control. Green " +
+                    "means raw Unity Y agrees with that camera-only reference, red " +
+                    "means reversal, and dark blue is undecidable. The quadrant " +
+                    "matching the report's automatic projection should be green in " +
+                    "the upper row before using Raw Sign Agreement to judge the " +
+                    "vendor Invert X/Y settings."
                 );
             }
             else if (_view == BufferDebugView.SanitizedVendorMotion)
@@ -1467,6 +1772,77 @@ namespace ReduxBetterAA.Diagnostics
                 "Unity interpolation may add about one fixed step of visual latency."
             );
             GUILayout.EndScrollView();
+        }
+
+        private void DrawMotionInputControls()
+        {
+            GUILayout.Label("Motion-input compatibility");
+            GUILayout.Label(
+                "These test the source repair and the fallback independently. " +
+                "Changing either option resets the active temporal history."
+            );
+
+            bool vegetationEnabled = _vegetationMotionRepairEnabled != null &&
+                _vegetationMotionRepairEnabled();
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = _setVegetationMotionRepairEnabled != null;
+            Color previousColor = GUI.backgroundColor;
+            if (vegetationEnabled)
+            {
+                GUI.backgroundColor = Color.cyan;
+            }
+            if (GUILayout.Button(
+                    vegetationEnabled
+                        ? "Indirect vegetation motion repair: ON (default)"
+                        : "Indirect vegetation motion repair: OFF",
+                    GUILayout.Height(28f)))
+            {
+                _setVegetationMotionRepairEnabled(!vegetationEnabled);
+            }
+            GUI.backgroundColor = previousColor;
+            GUI.enabled = previousEnabled;
+            GUILayout.Label(
+                _vegetationMotionRepairStatus == null
+                    ? "Vegetation repair controls are unavailable."
+                    : _vegetationMotionRepairStatus()
+            );
+            if (_vegetationMotionRepairReroutedCalls != null)
+            {
+                GUILayout.Label(
+                    "Rerouted direct vegetation calls since load: " +
+                    _vegetationMotionRepairReroutedCalls().ToString()
+                );
+            }
+
+            GUILayout.Space(6f);
+            bool sanitizerEnabled = _motionSanitizerEnabled != null &&
+                _motionSanitizerEnabled();
+            previousEnabled = GUI.enabled;
+            GUI.enabled = _setMotionSanitizerEnabled != null;
+            previousColor = GUI.backgroundColor;
+            if (sanitizerEnabled)
+            {
+                GUI.backgroundColor = Color.cyan;
+            }
+            if (GUILayout.Button(
+                    sanitizerEnabled
+                        ? "Motion sanitizer + camera fallback: ON"
+                        : "Motion sanitizer + camera fallback: OFF (default)",
+                    GUILayout.Height(28f)))
+            {
+                _setMotionSanitizerEnabled(!sanitizerEnabled);
+            }
+            GUI.backgroundColor = previousColor;
+            GUI.enabled = previousEnabled;
+            GUILayout.Label(
+                _motionSanitizerStatus == null
+                    ? "Sanitizer controls are unavailable."
+                    : _motionSanitizerStatus()
+            );
+            GUILayout.Label(
+                "When OFF, rejection and camera substitution are bypassed. " +
+                "Required Unity-to-vendor component signs remain active."
+            );
         }
 
         private void DrawPerformanceProfile(BackendSelection mode)
@@ -1697,7 +2073,11 @@ namespace ReduxBetterAA.Diagnostics
                       _view == BufferDebugView.MotionVectorsMagnitudeAngle ||
                       _view == BufferDebugView.MotionVectorsValidity ||
                       _view == BufferDebugView.MotionSignAgreement ||
-                      _view == BufferDebugView.SanitizedVendorMotion ||
+                       _view == BufferDebugView.MotionVectorsBuiltinPreviousVP ||
+                       _view == BufferDebugView.MotionVectorsPerPassPreviousVP ||
+                       _view == BufferDebugView.MotionVectorsManagedPreviousVP ||
+                       _view == BufferDebugView.MotionSignReferenceAudit ||
+                       _view == BufferDebugView.SanitizedVendorMotion ||
                       _view == BufferDebugView.MotionSanitizerDecision)
             {
                 camera.depthTextureMode |= DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
@@ -1752,7 +2132,13 @@ namespace ReduxBetterAA.Diagnostics
                 );
             }
             _commandBuffer.ReleaseTemporaryRT(TemporaryTarget);
-            camera.AddCommandBuffer(CameraEvent.AfterEverything, _commandBuffer);
+            _attachedCameraEvent =
+                _view == BufferDebugView.MotionVectorsBuiltinPreviousVP ||
+                _view == BufferDebugView.MotionVectorsPerPassPreviousVP ||
+                _view == BufferDebugView.MotionVectorsManagedPreviousVP
+                    ? CameraEvent.BeforeImageEffects
+                    : CameraEvent.AfterEverything;
+            camera.AddCommandBuffer(_attachedCameraEvent, _commandBuffer);
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
         }
@@ -1771,7 +2157,10 @@ namespace ReduxBetterAA.Diagnostics
             {
                 if (_commandBuffer != null)
                 {
-                    _attachedCamera.RemoveCommandBuffer(CameraEvent.AfterEverything, _commandBuffer);
+                    _attachedCamera.RemoveCommandBuffer(
+                        _attachedCameraEvent,
+                        _commandBuffer
+                    );
                 }
                 _attachedCamera.depthTextureMode = _originalDepthTextureMode;
             }
@@ -1779,6 +2168,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 _commandBuffer.Release();
                 _commandBuffer = null;
+                _attachedCameraEvent = CameraEvent.AfterEverything;
             }
             _attachedCamera = null;
             _currentMatrixValid = false;
@@ -1868,6 +2258,10 @@ namespace ReduxBetterAA.Diagnostics
             {
                 return;
             }
+            if (_motionVectorPassProbeActive)
+            {
+                UpdateMotionVectorPassProbeGlobals(camera);
+            }
             if (_view == BufferDebugView.SanitizedVendorMotion ||
                 _view == BufferDebugView.MotionSanitizerDecision)
             {
@@ -1882,19 +2276,45 @@ namespace ReduxBetterAA.Diagnostics
                 UpdateDepthDiagnosticMaterial();
                 return;
             }
-            if (_view != BufferDebugView.MotionSignAgreement)
+            if (_view != BufferDebugView.MotionSignAgreement &&
+                _view != BufferDebugView.MotionSignReferenceAudit &&
+                _view != BufferDebugView.MotionVectorsBuiltinPreviousVP &&
+                _view != BufferDebugView.MotionVectorsPerPassPreviousVP &&
+                _view != BufferDebugView.MotionVectorsManagedPreviousVP)
             {
                 return;
             }
 
             UpdateDepthDiagnosticMaterial();
             Matrix4x4 projection = camera.nonJitteredProjectionMatrix;
-            _currentViewProjection = GL.GetGPUProjectionMatrix(
+            Matrix4x4 view = camera.worldToCameraMatrix;
+            _currentViewProjectionScreen = GL.GetGPUProjectionMatrix(
                 projection,
-                camera.targetTexture != null
-            ) * camera.worldToCameraMatrix;
+                false
+            ) * view;
+            _currentInverseViewProjectionScreen =
+                _currentViewProjectionScreen.inverse;
+            _currentViewProjectionRenderTexture = GL.GetGPUProjectionMatrix(
+                projection,
+                true
+            ) * view;
+            _currentInverseViewProjectionRenderTexture =
+                _currentViewProjectionRenderTexture.inverse;
+            bool useRenderTextureProjection =
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(
+                    camera.targetTexture != null,
+                    camera.forceIntoRenderTexture
+                );
+            _currentViewProjection = useRenderTextureProjection
+                ? _currentViewProjectionRenderTexture
+                : _currentViewProjectionScreen;
             _currentInverseViewProjection = _currentViewProjection.inverse;
-            _currentMatrixValid = MatrixIsFinite(_currentViewProjection) &&
+            _currentMatrixValid =
+                MatrixIsFinite(_currentViewProjectionScreen) &&
+                MatrixIsFinite(_currentInverseViewProjectionScreen) &&
+                MatrixIsFinite(_currentViewProjectionRenderTexture) &&
+                MatrixIsFinite(_currentInverseViewProjectionRenderTexture) &&
+                MatrixIsFinite(_currentViewProjection) &&
                 MatrixIsFinite(_currentInverseViewProjection);
 
             _material.SetMatrix(
@@ -1904,6 +2324,26 @@ namespace ReduxBetterAA.Diagnostics
             _material.SetMatrix(
                 PreviousViewProjectionProperty,
                 _previousViewProjection
+            );
+            _material.SetMatrix(
+                ManagedPreviousViewProjectionProperty,
+                camera.previousViewProjectionMatrix
+            );
+            _material.SetMatrix(
+                CurrentInverseViewProjectionScreenProperty,
+                _currentInverseViewProjectionScreen
+            );
+            _material.SetMatrix(
+                PreviousViewProjectionScreenProperty,
+                _previousViewProjectionScreen
+            );
+            _material.SetMatrix(
+                CurrentInverseViewProjectionRenderTextureProperty,
+                _currentInverseViewProjectionRenderTexture
+            );
+            _material.SetMatrix(
+                PreviousViewProjectionRenderTextureProperty,
+                _previousViewProjectionRenderTexture
             );
             _material.SetFloat(
                 MatrixHistoryValidProperty,
@@ -1959,10 +2399,14 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             }
 
-            if (_view == BufferDebugView.MotionSignAgreement &&
+            if ((_view == BufferDebugView.MotionSignAgreement ||
+                 _view == BufferDebugView.MotionSignReferenceAudit) &&
                 _currentMatrixValid)
             {
                 _previousViewProjection = _currentViewProjection;
+                _previousViewProjectionScreen = _currentViewProjectionScreen;
+                _previousViewProjectionRenderTexture =
+                    _currentViewProjectionRenderTexture;
                 _matrixHistoryValid = true;
             }
             if (!_statisticsCaptureArmed)
@@ -2006,26 +2450,19 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             }
 
-            bool invertX = true;
-            bool invertY = true;
+            bool invertX;
+            bool invertY;
+            BackendSelection backend;
+            GetConfiguredMotionInversion(out invertX, out invertY, out backend);
             bool sanitizedInvertX = true;
             bool sanitizedInvertY = true;
-            BackendSelection backend = _requestedBackend == null
-                ? BackendSelection.Off
-                : _requestedBackend();
             if (backend == BackendSelection.NvidiaDlaa && _dlaaConfig != null)
             {
-                DlaaConfig config = _dlaaConfig();
-                invertX = config.InvertMotionX;
-                invertY = config.InvertMotionY;
                 sanitizedInvertX = invertX;
                 sanitizedInvertY = invertY;
             }
             else if (backend == BackendSelection.AmdFsr2 && _fsr2Config != null)
             {
-                Fsr2Config config = _fsr2Config();
-                invertX = config.InvertMotionX;
-                invertY = config.InvertMotionY;
                 sanitizedInvertX = invertX;
                 sanitizedInvertY = invertY;
             }
@@ -2053,6 +2490,30 @@ namespace ReduxBetterAA.Diagnostics
                     0.0f
                 )
             );
+        }
+
+        private void GetConfiguredMotionInversion(
+            out bool invertX,
+            out bool invertY,
+            out BackendSelection backend)
+        {
+            invertX = true;
+            invertY = true;
+            backend = _requestedBackend == null
+                ? BackendSelection.Off
+                : _requestedBackend();
+            if (backend == BackendSelection.NvidiaDlaa && _dlaaConfig != null)
+            {
+                DlaaConfig config = _dlaaConfig();
+                invertX = config.InvertMotionX;
+                invertY = config.InvertMotionY;
+            }
+            else if (backend == BackendSelection.AmdFsr2 && _fsr2Config != null)
+            {
+                Fsr2Config config = _fsr2Config();
+                invertX = config.InvertMotionX;
+                invertY = config.InvertMotionY;
+            }
         }
 
         private static bool MatrixIsFinite(Matrix4x4 matrix)
@@ -2550,6 +3011,44 @@ namespace ReduxBetterAA.Diagnostics
             }
         }
 
+        private void OnMotionVectorPassProbeShaderLoaded(
+            AsyncOperationHandle<Shader> operation)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            if (operation.Status == AsyncOperationStatus.Succeeded &&
+                operation.Result != null && operation.Result.isSupported)
+            {
+                _motionVectorPassProbeShader = operation.Result;
+                _logger.LogInfo(
+                    "[ReduxBetterAA/Probe] Built-in motion-vector pass probe loaded."
+                );
+            }
+            else
+            {
+                _logger.LogError(
+                    "[ReduxBetterAA/Probe] Built-in motion-vector pass probe failed to load."
+                );
+            }
+        }
+
+        private void UpdateMotionVectorPassProbeGlobals(Camera camera)
+        {
+            Shader.SetGlobalInt(
+                MotionVectorPassProbeModeProperty,
+                _motionVectorPassProbeMode
+            );
+            if (camera != null)
+            {
+                Shader.SetGlobalMatrix(
+                    MotionVectorPassManagedPreviousProperty,
+                    camera.previousViewProjectionMatrix
+                );
+            }
+        }
+
         private void UpdateOverlayText()
         {
             Camera camera = GetSelectedCamera();
@@ -2567,6 +3066,16 @@ namespace ReduxBetterAA.Diagnostics
                     ? "[ReduxBetterAA/Visualizer] " + _view + "; no active camera selected."
                     : "[ReduxBetterAA/Visualizer] " + _view + " on camera " + camera.name + "."
             );
+        }
+    }
+
+    internal static class MotionSignDiagnosticPolicy
+    {
+        public static bool UseRenderTextureProjection(
+            bool targetTexturePresent,
+            bool forceIntoRenderTexture)
+        {
+            return targetTexturePresent || forceIntoRenderTexture;
         }
     }
 

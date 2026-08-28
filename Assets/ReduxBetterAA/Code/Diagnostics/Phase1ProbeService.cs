@@ -190,7 +190,9 @@ namespace ReduxBetterAA.Diagnostics
             Func<BackendSelection, PerformanceProfileSnapshot> performanceProfile,
             Action<BackendSelection> startPerformanceProfile,
             Action cancelPerformanceProfile,
-            Action resetHistory)
+            Action resetHistory,
+            Func<bool> mapViewAaEnabled,
+            Action<bool> setMapViewAaEnabled)
         {
             _visualizer.SetTemporalControls(
                 status,
@@ -216,7 +218,9 @@ namespace ReduxBetterAA.Diagnostics
                 performanceProfile,
                 startPerformanceProfile,
                 cancelPerformanceProfile,
-                resetHistory
+                resetHistory,
+                mapViewAaEnabled,
+                setMapViewAaEnabled
             );
         }
 
@@ -243,6 +247,26 @@ namespace ReduxBetterAA.Diagnostics
                 sanitizedMotion,
                 corruptionFlag,
                 currentJitterNormalized
+            );
+        }
+
+        public void SetMotionInputControls(
+            Func<bool> vegetationRepairEnabled,
+            Action<bool> setVegetationRepairEnabled,
+            Func<string> vegetationRepairStatus,
+            Func<long> vegetationRepairReroutedCalls,
+            Func<bool> sanitizerEnabled,
+            Action<bool> setSanitizerEnabled,
+            Func<string> sanitizerStatus)
+        {
+            _visualizer.SetMotionInputControls(
+                vegetationRepairEnabled,
+                setVegetationRepairEnabled,
+                vegetationRepairStatus,
+                vegetationRepairReroutedCalls,
+                sanitizerEnabled,
+                setSanitizerEnabled,
+                sanitizerStatus
             );
         }
 
@@ -296,7 +320,7 @@ namespace ReduxBetterAA.Diagnostics
 
                 var report = new Phase1Report
                 {
-                    schemaVersion = 18,
+                    schemaVersion = 21,
                     capturedUtc = DateTime.UtcNow.ToString("O"),
                     captureReason = reasons.ToString(),
                     runtime = CaptureRuntime(),
@@ -304,6 +328,8 @@ namespace ReduxBetterAA.Diagnostics
                     cameraGraph = discovery.Graph,
                     evidence = BuildEvidence(discovery.Graph),
                     motionCadence = CaptureMotionCadence(),
+                    motionSignDiagnostic =
+                        _visualizer.CaptureMotionSignDiagnostic(),
                     temporal = CaptureTemporalBackend()
                 };
 
@@ -385,6 +411,8 @@ namespace ReduxBetterAA.Diagnostics
             Fsr2Config fsr2 = coordinator.Fsr2Config;
             MotionVectorMatrixSnapshot matrix =
                 coordinator.MotionVectorMatrixSnapshot;
+            VegetationMotionCompatibility vegetationRepair =
+                VegetationMotionCompatibility.Current;
             return new TemporalBackendRecord
             {
                 requestedBackend = coordinator.RequestedBackend.ToString(),
@@ -392,8 +420,14 @@ namespace ReduxBetterAA.Diagnostics
                 active = coordinator.Active,
                 resolveCamera = coordinator.ResolveCameraName,
                 sharedJitterCamera = coordinator.SharedJitterCameraName,
+                projectionJitterSupported =
+                    coordinator.ProjectionJitterSupported,
+                mapViewAaEnabled = coordinator.MapViewAaEnabled,
+                mapViewAaOverrideActive =
+                    coordinator.MapViewAaOverrideActive,
                 status = coordinator.Status,
-                fallbackReason = coordinator.Requested && !coordinator.Active
+                fallbackReason = coordinator.Requested && !coordinator.Active &&
+                    !coordinator.MapViewAaOverrideActive
                     ? coordinator.Status
                     : string.Empty,
                 lastResetReason = coordinator.LastResetReason.ToString(),
@@ -406,6 +440,18 @@ namespace ReduxBetterAA.Diagnostics
                     coordinator.DepthDisocclusionMaskEstimatedMemoryBytes,
                 vendorMotionRejectionPixels =
                     MotionVectorSanitizer.MaximumMotionPixels,
+                vegetationMotionRepairEnabled = vegetationRepair != null &&
+                    vegetationRepair.Enabled,
+                vegetationMotionRepairAvailable = vegetationRepair != null &&
+                    vegetationRepair.Available,
+                vegetationMotionReroutedCalls = vegetationRepair == null
+                    ? 0L
+                    : vegetationRepair.ReroutedCalls,
+                vegetationMotionRepairStatus = vegetationRepair == null
+                    ? "Vegetation motion repair unavailable"
+                    : vegetationRepair.Status,
+                motionVectorSanitizerEnabled =
+                    coordinator.MotionVectorSanitizerEnabled,
                 motionVectorSanitizerStatus =
                     coordinator.MotionVectorSanitizerStatus,
                 motionMatrix = CaptureMotionMatrix(in matrix),

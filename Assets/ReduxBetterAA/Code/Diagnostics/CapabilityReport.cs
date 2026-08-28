@@ -14,6 +14,7 @@ namespace ReduxBetterAA.Diagnostics
         public CameraGraph cameraGraph;
         public EvidenceRecord evidence;
         public MotionCadenceRecord motionCadence;
+        public MotionSignDiagnosticRecord motionSignDiagnostic;
         public TemporalBackendRecord temporal;
     }
 
@@ -88,6 +89,31 @@ namespace ReduxBetterAA.Diagnostics
     }
 
     [Serializable]
+    public sealed class MotionSignDiagnosticRecord
+    {
+        public string view;
+        public string selectedCamera;
+        public bool cameraAvailable;
+        public bool targetTexturePresent;
+        public bool forceIntoRenderTexture;
+        public bool automaticReferenceUsesRenderTextureProjection;
+        public bool graphicsUvStartsAtTop;
+        public float cameraProjectionYScale;
+        public float screenGpuProjectionYScale;
+        public float renderTextureGpuProjectionYScale;
+        public float[] motionTextureTexelSize;
+        public float[] depthTextureTexelSize;
+        public float[] materialMainTextureTexelSize;
+        public bool configuredInvertX;
+        public bool configuredInvertY;
+        public string configuredBackend;
+        public string unityMotionConvention;
+        public string vendorMotionConvention;
+        public string referencePolicy;
+        public string texelSizeTelemetryNote;
+    }
+
+    [Serializable]
     public sealed class TemporalBackendRecord
     {
         public string requestedBackend;
@@ -95,6 +121,9 @@ namespace ReduxBetterAA.Diagnostics
         public bool active;
         public string resolveCamera;
         public string sharedJitterCamera;
+        public bool projectionJitterSupported;
+        public bool mapViewAaEnabled;
+        public bool mapViewAaOverrideActive;
         public string status;
         public string fallbackReason;
         public string lastResetReason;
@@ -104,6 +133,11 @@ namespace ReduxBetterAA.Diagnostics
         public long motionVectorSanitizerEstimatedMemoryBytes;
         public long depthDisocclusionMaskEstimatedMemoryBytes;
         public float vendorMotionRejectionPixels;
+        public bool vegetationMotionRepairEnabled;
+        public bool vegetationMotionRepairAvailable;
+        public long vegetationMotionReroutedCalls;
+        public string vegetationMotionRepairStatus;
+        public bool motionVectorSanitizerEnabled;
         public string motionVectorSanitizerStatus;
         public MotionMatrixRecord motionMatrix;
         public string depthDisocclusionMaskStatus;

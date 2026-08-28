@@ -179,6 +179,7 @@ namespace ReduxBetterAA.Rendering
                 allowHdr = camera.allowHDR,
                 allowMsaa = camera.allowMSAA,
                 allowDynamicResolution = camera.allowDynamicResolution,
+                forceIntoRenderTexture = camera.forceIntoRenderTexture,
                 useOcclusionCulling = camera.useOcclusionCulling,
                 pixelRect = FormatRect(camera.pixelRect),
                 pixelWidth = camera.pixelWidth,

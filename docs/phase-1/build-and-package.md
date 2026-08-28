@@ -311,3 +311,63 @@ backed up before replacing its one stale bundle. A harness-launched main-menu
 smoke reports Redux Better AA 0.5.23 and Redux Better Clouds 0.2.0 active, loads
 all Better AA shaders, and records no BetterAA bundle, Harmony, shader, or
 runtime error. Launchpad and 100–150 km visual acceptance remain manual.
+
+Version 0.5.24 selects Decision 0027 choice B on Redux 2.8.5: direct indirect
+vegetation draws use `RenderMeshIndirect` with camera-only motion by default.
+Choice E's motion rejection and camera fallback are off by default, and both
+options are independently switchable in Ctrl+F10's Buffers tab. The Unity
+6000.4.1f1 EditMode suite passes all 39 tests. TestHarness static, compilation,
+and CLI-mock checks pass. ThunderKit log 61 records `Finished execution`; the
+normal seven-file `Deploy/ReduxBetterAA.zip` SHA-256 is
+`AC4133B440B20C1756CA1A26AD69BB811CA1E56339A8B1C6BAC2E886D082BD27`.
+The installed assembly SHA-256 is
+`6E7CFFB16013D82DBFFF45937D9B50421D09A52AF3EEEAF21F76FE6BAA43441E`;
+its assembly and manifest versions are `0.5.24.0` and `0.5.24`. The existing
+configuration and all 173 diagnostic files were preserved during installation.
+Production comparison run `1c774870b64e` passes 8/8 assertions, captures the
+clean B-on/E-off raw input and the restored B-off radial control, records 4,419
+rerouted draws, and reports no test warnings or errors. One incomplete
+vegetation draw during scene startup is safely delegated to the original path
+and logged once; stable flight draws continue through the repair.
+
+Version 0.5.25 makes projection jitter an observed scene capability as
+documented in Decision 0029. Map view and the main menu keep their correct
+`MapCamera` and `Camera.Scaled` resolve points but use zero projection and
+dispatch jitter; Flight, KSC, and VAB retain the shared Halton sequence. The
+Unity 6000.4.1f1 EditMode suite passes all 46 tests. ThunderKit log 66 records
+`Finished execution`; the inspected normal archive contains seven files and
+reports version 0.5.25. The normal `Deploy/ReduxBetterAA.zip` SHA-256 is
+`3D42C4837982AF9C630F53D344A4AF6AAC6D47A715B895CF71D083E53DB4C346`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.25-local-vendor-runtimes.zip` SHA-256 is
+`964E040794D34A20EDDF6318138933CB59AEBAFD4851817EDECCEB06916C88EF`.
+The complete 0.5.24 install was backed up before installing 0.5.25, and the
+existing configuration and diagnostics were preserved. The installed assembly
+SHA-256 is
+`2B3AADD57559DC903913319153ABD11DB634438FC49B4188F678F226419942D2`;
+its file and manifest versions are `0.5.25.0` and `0.5.25`. The user
+configuration and 267 accumulated diagnostic files remain present. An installed-game
+TestHarness run captures 120 consecutive menu/map frames across Custom TAA,
+DLAA, and FSR2 with no test errors or warnings; full-sequence temporal
+difference analysis confirms the rectangular planet corruption is absent.
+
+Version 0.5.26 restores numeric feedback on the normal Sharpness and TAA
+stability sliders, persists the foliage motion source repair, and adds an
+independent map-view AA policy. Disabling map AA activates Off only in
+`Map3DView` and preserves the selected flight mode. The Unity 6000.4.1f1
+EditMode suite passes all 47 tests. ThunderKit log 67 records `Finished
+execution`; the normal seven-file archive reports version 0.5.26 and has
+SHA-256
+`DEC09093A54E8247C55C5170869F4026B41B7A319A0EA38500BBAD135E0CA0E0`.
+The workstation-only
+`Deploy/ReduxBetterAA-0.5.26-local-vendor-runtimes.zip` SHA-256 is
+`7122CB8545DADDF0ED0AE4DC240BD53D9BB87EBBF55394C325BC7C3F0782DDFF`.
+The previous complete install was backed up before overwriting the seven mod
+payload files and three already-approved local vendor runtimes. The existing
+configuration hash and all 277 diagnostic files were preserved. The installed
+assembly SHA-256 is
+`B55605EFE51D7116F8E2D122622FDC325AED891E4EF19A0FDCA9DC12E9E79EC2`;
+its file and manifest versions are `0.5.26.0` and `0.5.26`.
+Installed-game TestHarness run `7ee7aa9c8245` passes 2/2 assertions with 120
+main-menu/map screenshots, no test warnings or errors, reports the installed
+mod as 0.5.26, and logs all six user-facing settings during pre-initialization.

@@ -78,6 +78,7 @@ namespace ReduxBetterAA.Rendering
     /// </summary>
     internal sealed class MotionVectorSanitizer : IDisposable
     {
+        internal const bool DefaultEnabled = false;
         internal const float MaximumMotionPixels = 256.0f;
         internal const float MaximumFallbackMotionPixels = 256.0f;
         internal const float MaximumCameraDisagreementPixels = 96.0f;
@@ -111,6 +112,8 @@ namespace ReduxBetterAA.Rendering
             Shader.PropertyToID("_FrameCorruptionTexture");
         private static readonly int CorruptionMinimumSamplesProperty =
             Shader.PropertyToID("_CorruptionMinimumSamples");
+        private static readonly int SanitizationEnabledProperty =
+            Shader.PropertyToID("_SanitizationEnabled");
         private static readonly int UnityNonJitteredViewProjection =
             Shader.PropertyToID("_NonJitteredVP");
         private static readonly int UnityPreviousViewProjection =
@@ -128,6 +131,7 @@ namespace ReduxBetterAA.Rendering
         private int _resourceWidth;
         private int _resourceHeight;
         private int _resourceBytesPerPixel;
+        private bool _enabled = DefaultEnabled;
         private bool _disposed;
         private Matrix4x4 _currentViewProjection;
         private Matrix4x4 _currentInverseViewProjection;
@@ -154,7 +158,11 @@ namespace ReduxBetterAA.Rendering
         }
 
         public bool Ready => _shader != null && _shader.isSupported;
-        public string Status => _status;
+        public bool Enabled => _enabled;
+        public string Status => _enabled
+            ? _status
+            : "Bypassed: raw motion is passed through with only the configured " +
+              "component-sign conversion.";
         public Texture SanitizedTexture => _sanitizedMotion;
         public Texture CorruptionTexture => _frameCorruption;
         public MotionVectorMatrixSnapshot MatrixSnapshot => _matrixSnapshot;
@@ -172,6 +180,21 @@ namespace ReduxBetterAA.Rendering
             _shaderHandle = Addressables.LoadAssetAsync<Shader>(ShaderAddress);
             _shaderHandleValid = true;
             _shaderHandle.Completed += OnShaderLoaded;
+        }
+
+        public bool SetEnabled(bool enabled)
+        {
+            if (_disposed || _enabled == enabled)
+            {
+                return false;
+            }
+            _enabled = enabled;
+            ResetCameraHistory();
+            _logger.LogInfo(
+                "[ReduxBetterAA/Motion] Motion rejection and camera fallback " +
+                (enabled ? "enabled." : "bypassed; component signs remain active.")
+            );
+            return true;
         }
 
         public void CaptureCamera(
@@ -265,8 +288,19 @@ namespace ReduxBetterAA.Rendering
                 CorruptionMinimumSamplesProperty,
                 CorruptionMinimumSamples
             );
+            _material.SetFloat(
+                SanitizationEnabledProperty,
+                _enabled ? 1.0f : 0.0f
+            );
             CaptureMatrixSnapshot();
-            Graphics.Blit(source, _frameCorruption, _material, 1);
+            if (_enabled)
+            {
+                Graphics.Blit(source, _frameCorruption, _material, 1);
+            }
+            else
+            {
+                Graphics.Blit(Texture2D.blackTexture, _frameCorruption);
+            }
             _material.SetTexture(FrameCorruptionTexture, _frameCorruption);
             Graphics.Blit(source, _sanitizedMotion, _material, 0);
             if (_currentMatrixValid)
