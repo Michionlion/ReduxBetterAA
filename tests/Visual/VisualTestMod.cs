@@ -25,21 +25,15 @@ namespace ReduxBetterAAVisualTests
         private UitkSettingsMenuManager _settingsMenu;
         private object _settingsInfo;
         private SampledVideo _video;
-        private Harmony _captureHarmony;
-        private static bool _suppressCloudGuard;
         private static readonly string[] SettingFields =
         {
-            "_modeEntry", "_sharpnessEntry", "_taaStabilityEntry", "_dlaaPresetEntry",
+            "_modeEntry", "_supersamplingEntry", "_sharpnessEntry", "_taaStabilityEntry", "_dlaaPresetEntry",
             "_foliageMotionRepairEntry", "_mapViewAaEntry", "_cycleKeyEntry", "_hotkeysEntry"
         };
 
         public override void OnInitialized()
         {
             _mod = UnityEngine.Object.FindAnyObjectByType<ReduxBetterAAMod>();
-            _captureHarmony = new Harmony("ReduxBetterAA.VisualTests.CloudIsolation");
-            Type dlaaType = typeof(TemporalCoordinator).Assembly.GetType("ReduxBetterAA.Backends.NvidiaDlaaBackend", true);
-            _captureHarmony.Patch(dlaaType.GetMethod("NotifyCloudRenderResolution", BindingFlags.Instance | BindingFlags.NonPublic),
-                prefix: new HarmonyMethod(typeof(VisualTestMod).GetMethod(nameof(AllowCloudObservation), BindingFlags.Static | BindingFlags.NonPublic)));
             _registration = TestApiRegistry.Register("ReduxBetterAA.Beta", (script, api) =>
             {
                 Bind(api, "modes", (context, args) =>
@@ -57,6 +51,20 @@ namespace ReduxBetterAAVisualTests
                     foreach (string field in SettingFields)
                         values.Set(field, DynValue.FromObject(script, Entry(field).Value));
                     return DynValue.NewTable(values);
+                });
+                Bind(api, "stock_controls", (context, args) =>
+                {
+                    var result = new Table(script);
+                    var claims = (IEnumerable)typeof(ReduxBetterAA.Patches.StockAntialiasingControlPatch)
+                        .GetField("Claims", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+                    foreach (object claim in claims)
+                    {
+                        var component = (BaseSettingsMenuComponent)claim.GetType()
+                            .GetField("Component", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(claim);
+                        string label = (string)claim.GetType().GetField("AppliedLabel", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(claim);
+                        result.Set(label.StartsWith("Supersampling") ? "supersampling_disabled" : "aa_disabled", DynValue.NewBoolean(!component.enabledSelf));
+                    }
+                    return DynValue.NewTable(result);
                 });
                 Bind(api, "set_settings", (context, args) =>
                 {
@@ -77,13 +85,20 @@ namespace ReduxBetterAAVisualTests
                     result.Set("selected", DynValue.NewString(coordinator.SelectedBackend));
                     result.Set("active", DynValue.NewBoolean(coordinator.Active));
                     result.Set("status", DynValue.NewString(coordinator.Status));
+                    result.Set("render_scale", DynValue.NewNumber(coordinator.AppliedRenderScalePercent));
+                    result.Set("stock_scale", DynValue.NewNumber(KSP.Game.PersistentProfileManager.RenderScalePercent));
+                    result.Set("msaa", DynValue.NewNumber(QualitySettings.antiAliasing));
+                    result.Set("foliage_enabled", DynValue.NewBoolean(VegetationMotionCompatibility.Current.Enabled));
+                    Camera resolve = coordinator.ResolveCamera;
+                    result.Set("screen_width", DynValue.NewNumber(Screen.width));
+                    result.Set("scene_width", DynValue.NewNumber(resolve == null ? 0 : resolve.targetTexture != null ? resolve.targetTexture.width : resolve.pixelWidth));
+                    result.Set("temporal_hooks", DynValue.NewNumber(resolve == null ? 0 : resolve.GetComponents<TemporalRenderHook>().Length));
                     result.Set("report_busy", DynValue.NewBoolean(Phase1ProbeService.Current.IssueReportBusy));
                     result.Set("report_zip", DynValue.NewString(Phase1ProbeService.Current.LastIssueReport ?? ""));
                     result.Set("sharpness", DynValue.NewNumber(coordinator.CustomConfig.Sharpening));
                     result.Set("stability", DynValue.NewNumber(coordinator.CustomConfig.StationaryHistory));
                     result.Set("map_override", DynValue.NewBoolean(coordinator.MapViewAaOverrideActive));
                     result.Set("temporal_input_captures", DynValue.NewNumber(Phase1ProbeService.Current.TemporalInputCaptureCount));
-                    result.Set("test_cloud_guard_suppressed", DynValue.NewBoolean(_suppressCloudGuard));
                     int targets = 0, lost = 0;
                     foreach (object owner in coordinator.CaptureBufferOwners())
                         foreach (FieldInfo field in owner.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
@@ -140,7 +155,9 @@ namespace ReduxBetterAAVisualTests
                     foreach (object item in menus)
                     {
                         var menu = (UitkSettingsSubMenu)item.GetType().GetField("Item1").GetValue(item);
-                        if (menu.TitleLocalizationKey != "Redux Better AA") continue;
+                        bool graphics = args.Count > 1 && args[1].String == "graphics";
+                        if (graphics ? !(menu is Redux.UI.Settings.Submenus.UitkGraphicsSettingsManager) :
+                            menu.TitleLocalizationKey != "Redux Better AA") continue;
                         _settingsInfo = item.GetType().GetField("Item2").GetValue(item);
                         _settingsMenu.ShowSubMenu(menu);
                         return DynValue.NewBoolean(_settingsMenu.IsVisible);
@@ -185,13 +202,6 @@ namespace ReduxBetterAAVisualTests
                     _video?.Dispose(); _video = null;
                     return DynValue.Nil;
                 });
-                Bind(api, "set_cloud_guard_suppressed", (context, args) =>
-                {
-                    if (TemporalCoordinator.Current.SelectedBackend != "Off")
-                        throw new InvalidOperationException("Select Off before changing the test-only guard override.");
-                    _suppressCloudGuard = args[0].CastToBool();
-                    return DynValue.Nil;
-                });
             });
         }
 
@@ -218,14 +228,11 @@ namespace ReduxBetterAAVisualTests
             table.Set(name, TestApiRegistry.Callback("BetterAA.Beta." + name, call));
         }
 
-        private static bool AllowCloudObservation() => !_suppressCloudGuard;
 
         private void OnDestroy()
         {
             _video?.Dispose();
             _registration?.Dispose();
-            _captureHarmony?.UnpatchAll("ReduxBetterAA.VisualTests.CloudIsolation");
-            _suppressCloudGuard = false;
         }
     }
 }

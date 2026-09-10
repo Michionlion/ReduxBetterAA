@@ -7,9 +7,6 @@ Redux 2.9 compatibility at the maintainer's request.
 - One `CameraProjectionState` implementation owns projection restoration for
   Custom TAA, DLAA and FSR2. The existing sample sequence and transparent-jitter
   policy are retained.
-- `CloudTemporalGuard` isolates Decision 0033's 120-observation state machine
-  from NVIDIA execution and has exact entry/exit/reset tests. Schema 23 reports
-  bypass state, remaining frames, resize count and dimensions.
 - `BackendSettingsPanel` owns AA controls and their named bindings.
   `CapabilityReportBuilder` constructs snapshots. Neither installs render hooks.
 - `IssueReportCapture` owns temporary before/after-AA hooks (orders 9999/10001),
@@ -28,8 +25,7 @@ Redux 2.9 compatibility at the maintainer's request.
   already did. Vendor duplicate coordinator flags are removed. Explicit game
   load/revert/vessel messages invalidate same-scene history and camera discovery.
 - The exact Unity foliage shader is restricted to verified engine versions (see
-  Decision 0035). The optional
-  stock-cloud observer checks its private-field contract before patching.
+  Decision 0035).
 
 The capture suite is an optional test-only plugin plus Lua scripts in this repo.
 It drives the normal configuration callbacks, restores its original settings,

@@ -45,6 +45,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7fbf37cbd679b9945b22c4024e9f1642
+    m_Address: Assets/ReduxBetterAA/Shaders/AaComparison.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9d0cb3e864e349aab8357ea189e35a31
     m_Address: Assets/ReduxBetterAA/Shaders/Phase1MotionStatistics.shader
     m_ReadOnly: 0

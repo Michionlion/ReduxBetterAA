@@ -372,27 +372,6 @@ Installed-game TestHarness run `7ee7aa9c8245` passes 2/2 assertions with 120
 main-menu/map screenshots, no test warnings or errors, reports the installed
 mod as 0.5.26, and logs all six user-facing settings during pre-initialization.
 
-Version 0.5.27 changes the conservative DLAA preset to M and adds one-shot
-cloud-source capture as documented in Decision 0031. The Unity 6000.4.1f1
-EditMode suite passes all 47 tests. ThunderKit log 86 records `Finished
-execution`; the inspected normal archive contains seven files and reports
-version 0.5.27. The normal `Deploy/ReduxBetterAA.zip` SHA-256 is
-`8AB1A0209F37B4D0C477C769D1DF0857DA81B3C6D4CA36EF59B6AEDF6D35C67F`.
-The workstation-only
-`Deploy/ReduxBetterAA-0.5.27-local-vendor-runtimes.zip` SHA-256 is
-`A016DC621836207B05F00BFAD35A9C3CF2497C7F8E7116E9B03D99499B85DD45`.
-The complete 0.5.26 installation was backed up before replacing the mod payload;
-the six user setting values and accumulated diagnostics were retained. Five
-unreferenced experimental Addressables bundles were moved into the recoverable
-backup, leaving only the bundle named by the installed catalog. The installed
-assembly SHA-256 is
-`2F044B65B7EC860F5627FB163C4500875BC3E53A8C98020FEB5C1BB670E099C0`;
-its file and manifest versions are `0.5.27.0` and `0.5.27`.
-Installed-game TestHarness run `291ee074078a` passes with no new log errors,
-records schema 22 and 22 live cloud render-target descriptors, and writes the
-presented screenshot plus all five cloud-source images. The automated launch
-closed cleanly after the test.
-
 Version 0.5.28 pairs the selected indirect-vegetation reroute with the exact
 invalid object-history exclusion documented in Decision 0032. The Unity
 6000.4.1f1 EditMode suite passes all 47 tests. ThunderKit log 91 records
@@ -414,14 +393,6 @@ The capability report records B active and available, sanitizer E disabled,
 and 3,407 rerouted draws; no diagnostic motion-pass override was used. Cloud
 behavior remains shelved, while schema-22 and five-image F10 capture diagnostics
 stay installed for a future reproduction.
-
-The post-0.5.28 Phase 4 cloud-transition fix is documented in Decision 0033.
-The exact reporter camera sequence first reproduced the stock-cloud loss with
-DLAA in all three baseline cycles (`333987932708498aab5ddc3b65997347`). The
-stock `_finalSceneColor` retained RGB and alpha coverage while the DLAA-presented
-frame developed rectangular holes. Projection/history, depth, motion, and
-color-bias experiments each failed three-cycle isolation runs; skipping only
-the NVIDIA resolve remained clean.
 
 The final working-tree artifact observes the stock `VolumeCloudRenderer`
 transition without modifying its state, suspends DLAA while `EnableTUS` is

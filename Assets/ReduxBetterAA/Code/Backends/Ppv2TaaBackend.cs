@@ -12,10 +12,6 @@ namespace ReduxBetterAA.Backends
         private Camera _sharedJitterCamera;
         private PostProcessLayer _sharedJitterLayer;
 
-        private PostProcessLayer.Antialiasing _originalResolveMode;
-        private PostProcessLayer.Antialiasing _originalSharedMode;
-        private DepthTextureMode _originalResolveDepthMode;
-        private DepthTextureMode _originalSharedDepthMode;
         private float _originalJitterSpread;
         private float _originalSharpness;
         private float _originalStationaryBlending;
@@ -25,14 +21,13 @@ namespace ReduxBetterAA.Backends
 
         private bool _active;
         private TemporalBackendConfig _config = TemporalBackendConfig.ConservativePpv2;
-        private bool _sharedProjectionApplied;
-        private int _sharedProjectionAppliedFrame = -1;
-        private Matrix4x4 _sharedProjection;
-        private Matrix4x4 _sharedNonJitteredProjection;
-        private bool _sharedTransparentJitter;
+        private CameraProjectionState _sharedProjectionState;
+        private TemporalAntialiasing _ownedTaa;
+        private SceneCameraState _resolveState, _sharedState;
 
         public string Id => "PPv2 TAA";
-        public bool Active => _active;
+        internal bool RenderEnabled = true;
+        public bool Active => _active && RenderEnabled;
 
         public bool ProbeSupport(TemporalCameraSet cameras, out string unsupportedReason)
         {
@@ -94,35 +89,17 @@ namespace ReduxBetterAA.Backends
                 _resolveLayer.temporalAntialiasing = taa;
             }
 
-            _originalResolveMode = _resolveLayer.antialiasingMode;
-            _originalResolveDepthMode = _resolveCamera.depthTextureMode;
+            _ownedTaa = taa;
             _originalJitterSpread = taa.jitterSpread;
             _originalSharpness = taa.sharpness;
             _originalStationaryBlending = taa.stationaryBlending;
             _originalMotionBlending = taa.motionBlending;
             _originalJitterFunction = taa.jitteredMatrixFunc;
-
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _originalSharedMode = _sharedJitterLayer.antialiasingMode;
-                _sharedJitterLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _sharedJitterLayer.ResetHistory();
-            }
+            _resolveState.Capture(_resolveCamera, _resolveLayer, PostProcessLayer.Antialiasing.TemporalAntialiasing);
+            if (_sharedJitterCamera != _resolveCamera)
+                _sharedState.Capture(_sharedJitterCamera, _sharedJitterLayer);
 
             ApplyConfig(in _config);
-            _resolveCamera.depthTextureMode |=
-                DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-            if (_sharedJitterCamera != null &&
-                _sharedJitterCamera != _resolveCamera)
-            {
-                _originalSharedDepthMode = _sharedJitterCamera.depthTextureMode;
-                _sharedJitterCamera.depthTextureMode |=
-                    DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-            }
-            _resolveLayer.antialiasingMode =
-                PostProcessLayer.Antialiasing.TemporalAntialiasing;
-            _resolveLayer.ResetHistory();
-
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
             _active = true;
@@ -160,40 +137,27 @@ namespace ReduxBetterAA.Backends
         {
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
-            RestoreSharedProjection();
-
-            if (_resolveLayer != null)
+            _sharedProjectionState.Restore();
+            if (_resolveLayer != null && ReferenceEquals(_resolveLayer.temporalAntialiasing, _ownedTaa) && _ownedTaa != null)
             {
-                TemporalAntialiasing taa = _resolveLayer.temporalAntialiasing;
-                if (taa != null)
+                var taa = _ownedTaa;
+                bool untouched = taa.jitterSpread == _config.JitterSpread && taa.sharpness == _config.Sharpness &&
+                    taa.stationaryBlending == _config.StationaryBlending && taa.motionBlending == _config.MotionBlending &&
+                    taa.jitteredMatrixFunc == _originalJitterFunction;
+                if (taa.jitterSpread == _config.JitterSpread) taa.jitterSpread = _originalJitterSpread;
+                if (taa.sharpness == _config.Sharpness) taa.sharpness = _originalSharpness;
+                if (taa.stationaryBlending == _config.StationaryBlending) taa.stationaryBlending = _originalStationaryBlending;
+                if (taa.motionBlending == _config.MotionBlending) taa.motionBlending = _originalMotionBlending;
+                if (_createdTemporalAntialiasing && untouched)
                 {
-                    taa.jitterSpread = _originalJitterSpread;
-                    taa.sharpness = _originalSharpness;
-                    taa.stationaryBlending = _originalStationaryBlending;
-                    taa.motionBlending = _originalMotionBlending;
-                    taa.jitteredMatrixFunc = _originalJitterFunction;
-                }
-                _resolveLayer.antialiasingMode = _originalResolveMode;
-                _resolveLayer.ResetHistory();
-                if (_createdTemporalAntialiasing)
-                {
+                    typeof(TemporalAntialiasing).GetMethod("Release", System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.NonPublic)?.Invoke(taa, null);
                     _resolveLayer.temporalAntialiasing = null;
                 }
             }
-            if (_resolveCamera != null)
-            {
-                _resolveCamera.depthTextureMode = _originalResolveDepthMode;
-            }
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _sharedJitterLayer.antialiasingMode = _originalSharedMode;
-                _sharedJitterLayer.ResetHistory();
-            }
-            if (_sharedJitterCamera != null &&
-                _sharedJitterCamera != _resolveCamera)
-            {
-                _sharedJitterCamera.depthTextureMode = _originalSharedDepthMode;
-            }
+            _sharedState.Restore();
+            _resolveState.Restore();
+            _ownedTaa = null;
 
             _resolveCamera = null;
             _resolveLayer = null;
@@ -210,69 +174,23 @@ namespace ReduxBetterAA.Backends
 
         private void OnCameraPreCull(Camera camera)
         {
-            if (!_active || camera == null || camera != _sharedJitterCamera ||
+            if (!Active || camera == null || camera != _sharedJitterCamera ||
                 _resolveLayer == null || _resolveLayer.temporalAntialiasing == null)
             {
                 return;
             }
-            if (_sharedProjectionApplied)
-            {
-                if (_sharedProjectionAppliedFrame == Time.frameCount)
-                {
-                    return;
-                }
-
-                // Keep a skipped onPostRender callback from freezing the prior
-                // PPv2 jittered projection into a later frame.
-                RestoreSharedProjection();
-            }
-
             TemporalAntialiasing taa = _resolveLayer.temporalAntialiasing;
             Vector2 jitter = SharedJitterSequence.GetPpv2Offset(
                 taa.sampleIndex,
                 taa.jitterSpread
             );
 
-            _sharedProjection = camera.projectionMatrix;
-            _sharedNonJitteredProjection = camera.nonJitteredProjectionMatrix;
-            _sharedTransparentJitter =
-                camera.useJitteredProjectionMatrixForTransparentRendering;
-            camera.nonJitteredProjectionMatrix = _sharedProjection;
-            camera.projectionMatrix = taa.jitteredMatrixFunc != null
-                ? taa.jitteredMatrixFunc(camera, jitter)
-                : camera.orthographic
-                    ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
-                    : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
-            camera.useJitteredProjectionMatrixForTransparentRendering = false;
-            _sharedProjectionApplied = true;
-            _sharedProjectionAppliedFrame = Time.frameCount;
+            _sharedProjectionState.Apply(camera, jitter, taa.jitteredMatrixFunc);
         }
 
         private void OnCameraPostRender(Camera camera)
         {
-            if (camera == _sharedJitterCamera)
-            {
-                RestoreSharedProjection();
-            }
+            if (camera == _sharedJitterCamera) _sharedProjectionState.Restore();
         }
-
-        private void RestoreSharedProjection()
-        {
-            if (!_sharedProjectionApplied)
-            {
-                return;
-            }
-            if (_sharedJitterCamera != null)
-            {
-                _sharedJitterCamera.projectionMatrix = _sharedProjection;
-                _sharedJitterCamera.nonJitteredProjectionMatrix =
-                    _sharedNonJitteredProjection;
-                _sharedJitterCamera.useJitteredProjectionMatrixForTransparentRendering =
-                    _sharedTransparentJitter;
-            }
-            _sharedProjectionApplied = false;
-            _sharedProjectionAppliedFrame = -1;
-        }
-
     }
 }

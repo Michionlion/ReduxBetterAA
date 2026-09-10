@@ -367,7 +367,9 @@ Before merging any render-hook change, verify:
 - The output is not accidentally filtered again by the presentation path.
 - History resets on all tested discontinuities.
 - Resources are recreated on dimension/format changes.
-- Disabled mode restores the original renderer state.
+- Off releases temporal and foliage resources and selects native, unfiltered
+  scene rendering. Unload restores captured state only while it remains owned.
+  Preserve distinguishable external ownership changes instead of fighting them.
 
 ## Testing requirements
 

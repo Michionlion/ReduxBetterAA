@@ -46,7 +46,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 if (_material == null)
                     throw new InvalidOperationException("Capture shader unavailable");
-                // Process one buffer at a time; do not retain a full GPU snapshot of all cloud targets.
+                // Process one buffer at a time; do not retain a full GPU snapshot.
                 copy = RenderTexture.GetTemporary(source.width, source.height, 0,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
                 copy.filterMode = FilterMode.Point;

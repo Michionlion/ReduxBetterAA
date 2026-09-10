@@ -77,7 +77,6 @@ namespace ReduxBetterAA.Backends
         private RenderTexture _historyColorB;
         private RenderTexture _historyDepthA;
         private RenderTexture _historyDepthB;
-        private RenderTexture _resolveTarget;
         private bool _historyReadA = true;
         private bool _historyValid;
         private int _resourceWidth;
@@ -116,7 +115,8 @@ namespace ReduxBetterAA.Backends
         }
 
         public string Id => "Custom TAA";
-        public bool Active => _active;
+        internal bool RenderEnabled = true;
+        public bool Active => _active && RenderEnabled;
         public bool ShaderReady => _shader != null && _shader.isSupported;
         public long EstimatedMemoryBytes => _estimatedMemoryBytes;
         public Vector2 CurrentJitterNormalized => _jitterNormalized;
@@ -263,7 +263,7 @@ namespace ReduxBetterAA.Backends
             }
 
             EnsureResources(source);
-            if (_resolveTarget == null)
+            if (_historyColorA == null)
             {
                 Graphics.Blit(source, destination);
                 FailRuntime("Custom TAA render targets could not be created");
@@ -323,8 +323,9 @@ namespace ReduxBetterAA.Backends
                 _currentMatrixValid && _matrixHistoryValid ? 1.0f : 0.0f
             );
 
-            Graphics.Blit(source, _resolveTarget, _material, ResolvePass);
-            Graphics.Blit(_resolveTarget, historyWrite);
+            // Read and write histories are distinct. Resolve directly to the next
+            // history, then sharpen only the presented output, never the history.
+            Graphics.Blit(source, historyWrite, _material, ResolvePass);
             Graphics.Blit(source, depthWrite, _material, CopyDepthPass);
 
             if (_config.DebugView != CustomTaaDebugView.FinalResolve)
@@ -334,11 +335,11 @@ namespace ReduxBetterAA.Backends
             }
             else if (_config.Sharpening > 0.0001f)
             {
-                Graphics.Blit(_resolveTarget, destination, _material, SharpenPass);
+                Graphics.Blit(historyWrite, destination, _material, SharpenPass);
             }
             else
             {
-                Graphics.Blit(_resolveTarget, destination);
+                Graphics.Blit(historyWrite, destination);
             }
 
             _historyReadA = !_historyReadA;
@@ -418,7 +419,7 @@ namespace ReduxBetterAA.Backends
 
         private void OnCameraPreCull(Camera camera)
         {
-            if (!_active || camera == null)
+            if (!Active || camera == null)
             {
                 return;
             }
@@ -493,8 +494,7 @@ namespace ReduxBetterAA.Backends
             if (((TemporalTextures.IsCreated(_historyColorA) &&
                   TemporalTextures.IsCreated(_historyColorB) &&
                   TemporalTextures.IsCreated(_historyDepthA) &&
-                  TemporalTextures.IsCreated(_historyDepthB) &&
-                  TemporalTextures.IsCreated(_resolveTarget)) || _resourceCreationFailed) &&
+                  TemporalTextures.IsCreated(_historyDepthB)) || _resourceCreationFailed) &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceFormat == source.format &&
@@ -516,7 +516,6 @@ namespace ReduxBetterAA.Backends
 
             _historyColorA = CreateTexture(colorDescriptor, "Custom TAA History Color A");
             _historyColorB = CreateTexture(colorDescriptor, "Custom TAA History Color B");
-            _resolveTarget = CreateTexture(colorDescriptor, "Custom TAA Resolve");
 
             RenderTextureFormat depthFormat = SystemInfo.SupportsRenderTextureFormat(
                 RenderTextureFormat.RFloat
@@ -541,14 +540,13 @@ namespace ReduxBetterAA.Backends
             _resourceFormat = source.format;
             _resourceSrgb = source.sRGB;
             if (_historyColorA == null || _historyColorB == null ||
-                _resolveTarget == null || _historyDepthA == null ||
+                _historyDepthA == null ||
                 _historyDepthB == null)
             {
                 TemporalTextures.Release(ref _historyColorA);
                 TemporalTextures.Release(ref _historyColorB);
                 TemporalTextures.Release(ref _historyDepthA);
                 TemporalTextures.Release(ref _historyDepthB);
-                TemporalTextures.Release(ref _resolveTarget);
                 _resourceCreationFailed = true;
                 _logger.LogError(
                     "[ReduxBetterAA/Resources] Custom TAA resource creation failed; " +
@@ -560,7 +558,7 @@ namespace ReduxBetterAA.Backends
             int colorBytes = EstimateColorBytes(source.format);
             int depthBytes = depthFormat == RenderTextureFormat.RFloat ? 4 : 2;
             _estimatedMemoryBytes = (long)source.width * source.height *
-                (colorBytes * 3 + depthBytes * 2);
+                (colorBytes * 2 + depthBytes * 2);
             _historyReadA = true;
             _historyValid = false;
             _logger.LogInfo(
@@ -624,7 +622,6 @@ namespace ReduxBetterAA.Backends
             TemporalTextures.Release(ref _historyColorB);
             TemporalTextures.Release(ref _historyDepthA);
             TemporalTextures.Release(ref _historyDepthB);
-            TemporalTextures.Release(ref _resolveTarget);
             _resourceWidth = 0;
             _resourceHeight = 0;
             _estimatedMemoryBytes = 0;

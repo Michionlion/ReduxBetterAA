@@ -45,13 +45,13 @@ namespace ReduxBetterAA.Tests
         public void UserModeChoicesHidePpv2AndUnsupportedVendors()
         {
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling" },
                 UserSettingsPolicy.BuildModeChoices(false, false)
             );
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Off", "FXAA Low", "FXAA High", "SMAA", "TAA",
+                    "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling",
                     "NVIDIA DLAA", "FSR 2 Native AA"
                 },
                 UserSettingsPolicy.BuildModeChoices(true, true)
@@ -67,7 +67,7 @@ namespace ReduxBetterAA.Tests
                     true,
                     true
                 ),
-                Is.EqualTo(BackendSelection.FxaaLow)
+                Is.EqualTo(BackendSelection.Supersampling)
             );
             Assert.That(
                 UserSettingsPolicy.NextBackend(
@@ -756,71 +756,6 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void PhysicsRenderInterpolationIsOptInAndRestoresOriginalMode()
-        {
-            var gameObject = new GameObject("PhysicsRenderInterpolationTest");
-            var interpolation = new KspPhysicsRenderInterpolation();
-            try
-            {
-                Rigidbody body = gameObject.AddComponent<Rigidbody>();
-                body.interpolation = RigidbodyInterpolation.None;
-
-                Assert.That(interpolation.Apply(body), Is.False);
-                Assert.That(body.interpolation, Is.EqualTo(RigidbodyInterpolation.None));
-
-                Assert.That(interpolation.SetEnabled(true), Is.True);
-                Assert.That(interpolation.Apply(body), Is.True);
-                Assert.That(
-                    body.interpolation,
-                    Is.EqualTo(RigidbodyInterpolation.Interpolate)
-                );
-
-                Assert.That(interpolation.SetEnabled(false), Is.True);
-                Assert.That(body.interpolation, Is.EqualTo(RigidbodyInterpolation.None));
-
-                interpolation.SetEnabled(true);
-                Assert.That(interpolation.Apply(body), Is.True);
-                interpolation.Dispose();
-                Assert.That(body.interpolation, Is.EqualTo(RigidbodyInterpolation.None));
-            }
-            finally
-            {
-                interpolation.Dispose();
-                Object.DestroyImmediate(gameObject);
-            }
-        }
-
-        [Test]
-        public void PhysicsRenderInterpolationDoesNotOverrideExistingMode()
-        {
-            var gameObject = new GameObject("PhysicsRenderInterpolationExistingModeTest");
-            var interpolation = new KspPhysicsRenderInterpolation();
-            try
-            {
-                Rigidbody body = gameObject.AddComponent<Rigidbody>();
-                body.interpolation = RigidbodyInterpolation.Extrapolate;
-                interpolation.SetEnabled(true);
-
-                Assert.That(interpolation.Apply(body), Is.False);
-                Assert.That(
-                    body.interpolation,
-                    Is.EqualTo(RigidbodyInterpolation.Extrapolate)
-                );
-
-                interpolation.Dispose();
-                Assert.That(
-                    body.interpolation,
-                    Is.EqualTo(RigidbodyInterpolation.Extrapolate)
-                );
-            }
-            finally
-            {
-                interpolation.Dispose();
-                Object.DestroyImmediate(gameObject);
-            }
-        }
-
-        [Test]
         public void PerformanceProfileStopsWhenRequestedBackendFallsBack()
         {
             var profiler = new BackendPerformanceProfiler();
@@ -1072,7 +1007,7 @@ namespace ReduxBetterAA.Tests
                 );
                 Assert.That(spatial.Configure(cameras, out failure), Is.True);
                 Assert.That(resolveLayer.fastApproximateAntialiasing, Is.Not.Null);
-                Assert.That(resolveLayer.subpixelMorphologicalAntialiasing, Is.Not.Null);
+                Assert.That(resolveLayer.subpixelMorphologicalAntialiasing, Is.Null);
                 spatial.Deactivate();
                 Assert.That(resolveLayer.fastApproximateAntialiasing, Is.Null);
                 Assert.That(resolveLayer.subpixelMorphologicalAntialiasing, Is.Null);

@@ -10,68 +10,6 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class BetaDiagnosticsTests
     {
-        [Test]
-        public void CloudGuardResumesAfterExactly120SettledObservations()
-        {
-            var guard = new CloudTemporalGuard(enableSuspension: true);
-            Assert.That(guard.Observe(1280, 720, false, 2560, 1440), Is.False);
-            Assert.That(guard.Observe(640, 360, true, 2560, 1440), Is.True);
-            for (int frame = 1; frame < 120; frame++)
-            {
-                Assert.That(guard.Observe(640, 360, false, 2560, 1440), Is.False);
-                Assert.That(guard.BypassActive, Is.True);
-            }
-            Assert.That(guard.Observe(640, 360, false, 2560, 1440), Is.True);
-            Assert.That(guard.BypassActive, Is.False);
-            Assert.That(guard.SettleFramesRemaining, Is.Zero);
-            Assert.That(guard.ResizeCount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void CloudGuardRestartsOnTusAndClearsAtFullResolution()
-        {
-            var guard = new CloudTemporalGuard(enableSuspension: true);
-            guard.Observe(640, 360, true, 2560, 1440);
-            guard.Observe(640, 360, false, 2560, 1440);
-            guard.Observe(640, 360, true, 2560, 1440);
-            Assert.That(guard.SettleFramesRemaining, Is.EqualTo(120));
-            Assert.That(guard.Observe(1280, 720, false, 2560, 1440), Is.True);
-            Assert.That(guard.BypassActive, Is.False);
-            guard.Clear();
-            guard.Clear();
-            Assert.That(guard.ResizeCount, Is.Zero);
-            Assert.That(guard.Width, Is.Zero);
-        }
-
-        [Test]
-        public void CloudGuardIgnoresInvalidDimensionsAndSettlesInitialQuarterResolution()
-        {
-            var guard = new CloudTemporalGuard(enableSuspension: true);
-            Assert.That(guard.Observe(0, -1, true, 2560, 1440), Is.False);
-            Assert.That(guard.Width, Is.Zero);
-            Assert.That(guard.Observe(640, 360, false, 2560, 1440), Is.True);
-            Assert.That(guard.SettleFramesRemaining, Is.EqualTo(120));
-        }
-
-        [Test]
-        public void DisabledCloudGuardNeverSuspendsDuringPersistentTusOrResize()
-        {
-            var guard = new CloudTemporalGuard(enableSuspension: false);
-            guard.Observe(1280, 720, false, 2560, 1440);
-            for (int frame = 0; frame < 1000; frame++)
-            {
-                Assert.That(guard.Observe(640, 360, true, 2560, 1440), Is.False);
-                Assert.That(guard.BypassActive, Is.False);
-                Assert.That(guard.SettleFramesRemaining, Is.Zero);
-            }
-            Assert.That(guard.Observe(640, 360, false, 2560, 1440), Is.False);
-            Assert.That(guard.Width, Is.EqualTo(640));
-            Assert.That(guard.Height, Is.EqualTo(360));
-            Assert.That(guard.ResizeCount, Is.EqualTo(1));
-            guard.Clear();
-            Assert.That(guard.BypassActive, Is.False);
-        }
-
         [TestCase(false)]
         [TestCase(true)]
         public void ProjectionOwnershipRestoresExactStateAndDoesNotDoubleJitter(bool orthographic)

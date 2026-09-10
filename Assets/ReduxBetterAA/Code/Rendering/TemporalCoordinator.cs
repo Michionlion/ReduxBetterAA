@@ -1,6 +1,5 @@
 using System;
 using KSP.Game;
-using KSP.VolumeCloud;
 using ReduxBetterAA.Backends;
 using ReduxBetterAA.Configuration;
 using ReduxLib.Logging;
@@ -20,6 +19,20 @@ namespace ReduxBetterAA.Rendering
         private const float GameStatePollSeconds = 0.25f;
 
         public static TemporalCoordinator Current;
+        private bool _comparisonSuspended;
+        internal event Action<HistoryResetReason> ComparisonReset;
+
+        internal void SuspendForComparison(bool suspended)
+        {
+            if (_disposed) return;
+            _comparisonSuspended = suspended;
+            if (suspended)
+            {
+                DisableActiveBackend();
+                _renderScale.Apply(100);
+            }
+            else MarkDirty(HistoryResetReason.BackendChanged);
+        }
 
         private readonly ReduxLogger _logger;
         private readonly BackendPerformanceProfiler _performanceProfiler =
@@ -49,6 +62,22 @@ namespace ReduxBetterAA.Rendering
         private readonly NvidiaDlaaBackend _dlaaBackend;
         private readonly AmdFsr2Backend _fsr2Backend;
         private readonly DisabledBackend _disabledBackend = new DisabledBackend();
+        private readonly SupersamplingBackend _supersamplingBackend = new SupersamplingBackend();
+        private readonly RenderScaleOwnership _renderScale = new RenderScaleOwnership();
+        private int _supersamplingPercent = 150;
+        internal bool VegetationRepairRequested = true;
+        public int SupersamplingPercent => _supersamplingPercent;
+        public int AppliedRenderScalePercent => _renderScale.AppliedPercent;
+
+        public void SetSupersamplingPercent(int percent)
+        {
+            percent = Mathf.Clamp(percent, 125, 200);
+            if (percent == _supersamplingPercent) return;
+            _supersamplingPercent = percent;
+            _renderScale.Reclaim();
+            if (_requestedBackend == BackendSelection.Supersampling)
+                MarkDirty(HistoryResetReason.RenderScaleChanged);
+        }
         private readonly HistoryResetTracker _resetTracker = new HistoryResetTracker();
         private readonly TemporalGameEvents _gameEvents;
 
@@ -114,7 +143,7 @@ namespace ReduxBetterAA.Rendering
             _backends = new ITemporalBackend[]
             {
                 _disabledBackend, _fxaaLowBackend, _fxaaHighBackend, _smaaBackend,
-                _ppv2Backend, _customBackend, _dlaaBackend, _fsr2Backend
+                _ppv2Backend, _customBackend, _dlaaBackend, _fsr2Backend, _supersamplingBackend
             };
             _activeBackend = _disabledBackend;
             _requestedBackend = requestPpv2Taa
@@ -171,13 +200,6 @@ namespace ReduxBetterAA.Rendering
         public string DlaaExposureSource => _dlaaBackend.ExposureSource;
         public float DlaaEffectivePreExposure =>
             _dlaaBackend.EffectivePreExposure;
-        public bool DlaaCloudCompatibilityBypassActive =>
-            _dlaaBackend.CloudCompatibilityBypassActive;
-        public int DlaaCloudSettleFramesRemaining =>
-            _dlaaBackend.CloudSettleFramesRemaining;
-        public uint DlaaCloudResizeCount => _dlaaBackend.CloudResizeCount;
-        public int DlaaCloudRenderWidth => _dlaaBackend.CloudRenderWidth;
-        public int DlaaCloudRenderHeight => _dlaaBackend.CloudRenderHeight;
         public bool Fsr2ManagedSurfaceAvailable =>
             _fsr2Backend.ManagedSurfaceAvailable;
         public bool Fsr2ContextCreated => _fsr2Backend.ContextCreated;
@@ -297,7 +319,7 @@ namespace ReduxBetterAA.Rendering
 
         public void StartPerformanceProfile(BackendSelection mode)
         {
-            _performanceProfiler.Start(mode);
+            if (!_comparisonSuspended) _performanceProfiler.Start(mode);
         }
 
         public void CancelPerformanceProfile()
@@ -333,6 +355,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
 
+            if (_comparisonSuspended) return;
             if (TraceFrameHitches) TracePreviousFrameHitch();
             PollGameState();
 
@@ -515,24 +538,6 @@ namespace ReduxBetterAA.Rendering
             }
         }
 
-        public void NotifyCloudRenderResolution(
-            VolumeCloudRenderer renderer,
-            int width,
-            int height,
-            bool temporalUpscalingActive)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-            _dlaaBackend.NotifyCloudRenderResolution(
-                renderer,
-                width,
-                height,
-                temporalUpscalingActive
-            );
-        }
-
         public void NotifyMotionInputChanged()
         {
             if (_disposed)
@@ -585,6 +590,7 @@ namespace ReduxBetterAA.Rendering
 
         public void NotifyOriginRebased()
         {
+            ComparisonReset?.Invoke(HistoryResetReason.OriginRebased);
             if (_disposed || !_activeBackend.Active)
             {
                 return;
@@ -602,13 +608,16 @@ namespace ReduxBetterAA.Rendering
 
         public void SetRequestedBackend(BackendSelection requested)
         {
+            if (_disposed) return;
+            bool reclaimed = _renderScale.Reclaim();
             if (requested < BackendSelection.Off ||
-                requested > BackendSelection.AmdFsr2)
+                requested > BackendSelection.Supersampling)
             {
                 requested = BackendSelection.Off;
             }
             if (_requestedBackend == requested)
             {
+                if (reclaimed) MarkDirty(HistoryResetReason.BackendChanged);
                 return;
             }
 
@@ -635,6 +644,7 @@ namespace ReduxBetterAA.Rendering
 
         public void MarkDirty(HistoryResetReason reason)
         {
+            ComparisonReset?.Invoke(reason);
             if (_disposed)
             {
                 return;
@@ -664,6 +674,7 @@ namespace ReduxBetterAA.Rendering
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             foreach (ITemporalBackend backend in _backends)
                 backend.Dispose();
+            _renderScale.Dispose();
             _motionVectorSanitizer.Dispose();
             _depthDisocclusionMask.Dispose();
             _activeBackend = _disabledBackend;
@@ -685,6 +696,16 @@ namespace ReduxBetterAA.Rendering
                     : _cameras.SceneKind,
                 _mapViewAaEnabled
             );
+
+            if (!_renderScale.Apply(effectiveRequest == BackendSelection.Supersampling ? _supersamplingPercent : 100))
+            {
+                ActivateOffFallback("AA", "another render-scale owner changed the scene; reselect a mode to reclaim");
+                return;
+            }
+            _cameras = TemporalCameraDiscovery.Discover();
+            VegetationMotionCompatibility.Current?.SetEnabled(
+                VegetationRepairRequested && effectiveRequest != BackendSelection.Off &&
+                effectiveRequest != BackendSelection.Supersampling);
 
             _ppv2Backend.ApplyConfig(in _ppv2Config);
             _customBackend.ApplyConfig(in _customConfig);
@@ -773,6 +794,8 @@ namespace ReduxBetterAA.Rendering
         {
             DeactivateTemporalBackends();
             _activeBackend = _disabledBackend;
+            _renderScale.Apply(100);
+            VegetationMotionCompatibility.Current?.SetEnabled(false);
 
             string offFailure;
             if (_disabledBackend.Configure(_cameras, out offFailure))
@@ -931,7 +954,7 @@ namespace ReduxBetterAA.Rendering
         }
 
         internal ITemporalBackend GetBackend(BackendSelection selection) =>
-            selection >= BackendSelection.Off && selection <= BackendSelection.AmdFsr2
+            selection >= BackendSelection.Off && selection <= BackendSelection.Supersampling
                 ? _backends[(int)selection] : _disabledBackend;
 
         private string BackendName(BackendSelection selection) => GetBackend(selection).Id;

@@ -20,7 +20,7 @@ namespace ReduxBetterAA.Diagnostics
         public string camera;
         public string inputStage = "unavailable";
         public string note = "EXR files contain floating-point samples; PNGs are previews. " +
-            "Cloud and owned targets are observed after the AA pass. Vendor-internal " +
+            "Owned targets are observed after the AA pass. Vendor-internal " +
             "history is opaque and cannot be exported. Screenshots include visible UI. " +
             "Capture stalls are expected and are not performance measurements.";
         public readonly List<BufferCaptureRecord> buffers = new List<BufferCaptureRecord>();

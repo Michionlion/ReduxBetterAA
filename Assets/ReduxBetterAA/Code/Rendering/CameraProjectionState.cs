@@ -10,11 +10,13 @@ namespace ReduxBetterAA.Rendering
         public Matrix4x4 Projection { get; private set; }
         private Camera _camera;
         private Matrix4x4 _nonJitteredProjection;
+        private Matrix4x4 _appliedProjection;
         private bool _transparentJitter;
         private bool _applied;
         private int _appliedFrame;
 
-        public void Apply(Camera camera, Vector2 jitter)
+        public void Apply(Camera camera, Vector2 jitter,
+            System.Func<Camera, Vector2, Matrix4x4> jitterFunction = null)
         {
             if (_applied)
             {
@@ -29,9 +31,10 @@ namespace ReduxBetterAA.Rendering
             _nonJitteredProjection = camera.nonJitteredProjectionMatrix;
             _transparentJitter = camera.useJitteredProjectionMatrixForTransparentRendering;
             camera.nonJitteredProjectionMatrix = Projection;
-            camera.projectionMatrix = camera.orthographic
+            camera.projectionMatrix = jitterFunction != null ? jitterFunction(camera, jitter) : camera.orthographic
                 ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
                 : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
+            _appliedProjection = camera.projectionMatrix;
             camera.useJitteredProjectionMatrixForTransparentRendering = false;
         }
 
@@ -41,9 +44,11 @@ namespace ReduxBetterAA.Rendering
                 return;
             if (_camera != null)
             {
-                _camera.projectionMatrix = Projection;
-                _camera.nonJitteredProjectionMatrix = _nonJitteredProjection;
-                _camera.useJitteredProjectionMatrixForTransparentRendering = _transparentJitter;
+                if (_camera.projectionMatrix == _appliedProjection) _camera.projectionMatrix = Projection;
+                if (_camera.nonJitteredProjectionMatrix == Projection)
+                    _camera.nonJitteredProjectionMatrix = _nonJitteredProjection;
+                if (!_camera.useJitteredProjectionMatrixForTransparentRendering)
+                    _camera.useJitteredProjectionMatrixForTransparentRendering = _transparentJitter;
             }
             _applied = false;
             _camera = null;

@@ -14,53 +14,8 @@ namespace ReduxBetterAA.Diagnostics
         public CapabilityRecord capabilities;
         public CameraGraph cameraGraph;
         public EvidenceRecord evidence;
-        public MotionCadenceRecord motionCadence;
         public MotionSignDiagnosticRecord motionSignDiagnostic;
-        public CloudDiagnosticRecord cloud;
         public TemporalBackendRecord temporal;
-    }
-
-    [Serializable]
-    public sealed class CloudDiagnosticRecord
-    {
-        public string selectedCamera;
-        public bool cameraAvailable;
-        public bool rendererFound;
-        public string rendererType;
-        public bool enabled;
-        public string configuration;
-        public bool enableTaa;
-        public bool enableDynamicResolution;
-        public int dynamicResolutionLevel;
-        public bool useScaledCloudsOnly;
-        public bool readyToEnableTemporalUpscaling;
-        public bool startEnableTemporalUpscaling;
-        public bool startDisableTemporalUpscaling;
-        public bool firstFrame;
-        public bool readComplete;
-        public bool sampleCountSubmitted;
-        public bool renderTextureChanged;
-        public float resolutionScale;
-        public int renderWidth;
-        public int renderHeight;
-        public int renderWidthCurrent;
-        public int renderHeightCurrent;
-        public int originalWidth;
-        public int originalHeight;
-        public CloudTextureRecord[] textures;
-        public string status;
-    }
-
-    [Serializable]
-    public sealed class CloudTextureRecord
-    {
-        public string field;
-        public string name;
-        public int width;
-        public int height;
-        public string format;
-        public string graphicsFormat;
-        public bool created;
     }
 
     [Serializable]
@@ -133,16 +88,6 @@ namespace ReduxBetterAA.Diagnostics
     }
 
     [Serializable]
-    public sealed class MotionCadenceRecord
-    {
-        public float fixedDeltaTimeMilliseconds;
-        public float fixedUpdateHz;
-        public bool experimentalRenderInterpolationEnabled;
-        public int interpolatedKspPhysicsBodies;
-        public string interpolationStatus;
-    }
-
-    [Serializable]
     public sealed class MotionSignDiagnosticRecord
     {
         public string view;
@@ -170,6 +115,8 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     public sealed class TemporalBackendRecord
     {
+        public int supersamplingPercent;
+        public int appliedRenderScalePercent;
         public string requestedBackend;
         public string selectedBackend;
         public bool active;
@@ -255,11 +202,6 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     public sealed class DlaaSettingsRecord
     {
-        public bool cloudCompatibilityBypassActive;
-        public int cloudSettleFramesRemaining;
-        public uint cloudResizeCount;
-        public int cloudRenderWidth;
-        public int cloudRenderHeight;
         public float jitterSpread;
         public int sequenceLength;
         public float sharpness;

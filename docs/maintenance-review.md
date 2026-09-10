@@ -17,7 +17,7 @@ Scope is the current experimental native-AA implementation.
 | Backend registry | Selection, names, mode mapping and disposal repeated a backend list. | One registry with a mapping regression test. |
 | Jitter/reset | Scene-specific behavior has measured compatibility reasons. | Preserve sample math, map/menu zero jitter and explicit game-event resets. |
 | Vendor integration | Similar plumbing has different reflected fields/properties and dispatch contracts. | Retain separate cached-delegate adapters; no SDK/dependency change. |
-| Foliage/cloud | Exact engine gates and observation-only policy reflect recent investigations. | Preserve both and the documented unresolved cloud defect. |
+| Foliage | Exact engine gates protect the global motion shader replacement. | Restrict it to active AA and release it in Off. |
 | Settings/UI | Persistent settings, session diagnostics and migration already have distinct responsibilities. | Preserve labels/layout/defaults/callbacks; exercise the real settings page. |
 | Diagnostics | The large visualizer contains specialized modes and async readback ownership. | Retain its existing functions; avoid a cosmetic split or removing useful investigation tools. |
 | Build/distribution | SDK generation rewrites subasset IDs; distribution has existing licensing gates. | Exclude generated ID churn; preserve package gates and validate a local portable archive. |

@@ -15,6 +15,7 @@
     "autoReferenced": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "Assembly-CSharp.dll",
         "ReduxLib.dll",
         "nunit.framework.dll"
     ]

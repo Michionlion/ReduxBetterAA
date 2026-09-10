@@ -5,13 +5,21 @@ local original = beta.settings()
 local modes = {
     {"Off", "Off"}, {"FXAA Low", "FXAA Low"}, {"FXAA High", "FXAA High"},
     {"SMAA", "SMAA"}, {"TAA", "Custom TAA"},
-    {"NVIDIA DLAA", "NVIDIA DLAA"}, {"FSR 2 Native AA", "FSR2 Native AA"}
+    {"NVIDIA DLAA", "NVIDIA DLAA"}, {"FSR 2 Native AA", "FSR2 Native AA"},
+    {"Supersampling", "Supersampling"}
 }
 local function verify(mode, label)
     local state = beta.snapshot()
     Test.assert.equal(state.selected, mode[2], "Selected backend: " .. label)
     Test.assert.equal(state.active, mode[1] ~= "Off", "Active state: " .. label)
     Test.assert.equal(state.lost_targets, 0, "No lost targets: " .. label)
+    Test.assert.equal(state.msaa, 0, "No stacked MSAA: " .. label)
+    if mode[1] == "Off" then
+        Test.assert.equal(state.owned_targets, 0, "Off releases temporal targets")
+        Test.assert.equal(state.temporal_hooks, 0, "Off detaches temporal hooks")
+        Test.assert.false_(state.foliage_enabled, "Off releases foliage override")
+        Test.assert.equal(state.scene_width, state.screen_width, "Off is native resolution")
+    end
     Test.report.value(label, state)
 end
 local function report(label, temporal)
@@ -38,8 +46,8 @@ local ok, err = pcall(function()
         local label = "mode-" .. index
         verify(mode, label)
         Test.capture.screenshot(label)
-        if index == 1 or index >= 5 then report(label, index >= 5) end
-        if index >= 5 then
+        if index == 1 or (index >= 5 and index <= 7) then report(label, index >= 5) end
+        if index >= 5 and index <= 7 then
             local targets = beta.snapshot().owned_targets
             Test.assert.greater(beta.release_owned_targets(), 0, "Release active targets")
             Test.render.wait_stable(120)
@@ -47,6 +55,22 @@ local ok, err = pcall(function()
             Test.assert.equal(beta.snapshot().owned_targets, targets, "Recreated the full resource set")
             Test.capture.screenshot(label .. "-recovered")
         end
+    end
+    local stock_scale = beta.snapshot().stock_scale
+    for _, scale in ipairs({125, 150, 175, 200}) do
+        beta.set_settings({_modeEntry="Supersampling", _supersamplingEntry=scale})
+        Test.render.wait_stable(90)
+        local state = beta.snapshot()
+        verify(modes[8], "supersampling-" .. scale)
+        Test.assert.equal(state.render_scale, scale, "Selected supersampling scale")
+        Test.assert.equal(state.scene_width, math.ceil(state.screen_width * scale / 100), "Actual supersampled target")
+        Test.assert.equal(state.stock_scale, stock_scale, "Stock saved scale preserved")
+        Test.assert.equal(state.owned_targets, 0, "Supersampling has no temporal histories")
+        Test.assert.false_(state.foliage_enabled, "Supersampling does not install foliage repair")
+        Test.capture.screenshot("supersampling-" .. scale)
+        beta.set_settings({_modeEntry="Off"})
+        Test.render.wait_stable(15)
+        verify(modes[1], "off-after-supersampling-" .. scale)
     end
     for cycle = 1, 3 do
         for _, mode in ipairs(modes) do
@@ -65,6 +89,14 @@ local ok, err = pcall(function()
     Test.render.wait_stable(90)
     verify(modes[6], "map-dlaa-restored")
     Test.capture.screenshot("map-dlaa-restored")
+    beta.set_settings({_modeEntry="Supersampling", _supersamplingEntry=150})
+    Test.wait["until"](function() return string.find(beta.snapshot().status, "fallback") ~= nil end, 10)
+    verify(modes[1], "map-supersampling-fallback")
+    Test.assert.equal(beta.settings()._modeEntry, "Supersampling", "Unsupported map retains flight supersampling")
+    beta.set_settings({_mapViewAaEntry=false})
+    Test.render.wait_stable(30)
+    verify(modes[1], "map-supersampling-off")
+    Test.assert.equal(beta.settings()._modeEntry, "Supersampling", "Map Off retains supersampling selection")
 end)
 beta.set_settings(original)
 if not ok then error(err) end

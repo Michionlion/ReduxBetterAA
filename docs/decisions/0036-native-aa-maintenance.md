@@ -22,11 +22,6 @@ work. SPEC sections 7.5, 8, 11.2 and 12.2–12.4 apply. No upscaling is introduc
   reporting and cleanup. Failed/throwing configuration releases partial camera
   ownership before the existing retry/Off policy runs.
 
-Production shaders, motion-vector signs, samples, defaults, map/menu zero jitter,
-native UI placement, optional vendor binding and exact-version foliage repair
-are preserved. The stock-cloud observer remains observation-only; persistent TUS
-cannot suspend DLAA. The original cloud-disappearance issue remains unresolved.
-
 The render layer has no diagnostics dependency. Diagnostics owns the observer
 and temporary output hook, detaching on completion, timeout and disposal. The
 test adapter no longer patches DLAA execution to correct input reports.

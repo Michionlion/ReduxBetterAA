@@ -87,7 +87,7 @@ if ($encoder) {
 }
 & (Join-Path $PSScriptRoot 'Build-VisualGallery.ps1') -Directory $run -Ffmpeg $Ffmpeg
 $images = @(Get-ChildItem -LiteralPath $run -Recurse -Filter '*.png' -File)
-$expectedImages = switch ($Scene) { 'Menu' { 3 }; 'Flight' { 7 }; 'All' { 10 }; 'Maintenance' { 11 } }
+$expectedImages = switch ($Scene) { 'Menu' { 5 }; 'Flight' { 7 }; 'All' { 12 }; 'Maintenance' { 16 } }
 if ($images.Count -ne $expectedImages) { throw "Expected $expectedImages screenshots; found $($images.Count). See $run" }
 @{
     suite = $Scene; scene = $Scene; screenshots = $images.Count

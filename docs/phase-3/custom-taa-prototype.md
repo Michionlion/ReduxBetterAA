@@ -35,17 +35,20 @@ The initial pipeline is:
    history.
 5. For extreme or invalid motion only, validate a camera-only fallback from the
    current inverse and previous view-projection matrices.
-6. Sample history with a 16-tap Catmull-Rom filter.
+6. Sample history with a nine-read Catmull-Rom filter (positive middle weights
+   combined using hardware bilinear interpolation; see Decision 0037).
 7. Build 3x3 YCoCg bounds plus luminance variance bounds. At a depth edge,
    exclude samples from other surfaces before clamping history.
-8. At a depth edge, compare against exact previous-depth texel centers in a
-   one-pixel footprint. This avoids false rejection from bilinear depth values
+8. At a depth edge, compare against exact previous-depth texel centers in the
+   central 2x2 reconstruction footprint. This avoids false rejection from bilinear depth values
    between foreground and background and permits stable same-surface history.
 9. Reduce history by velocity, depth disagreement, and an inferred luminance
    reactive mask. The configurable edge-stability factor restores history
-   weight only after the surface-aware clamp and depth match pass.
-10. Blend, write the next color/depth history, and optionally apply mild
-   sharpening.
+   weight only after the surface-aware clamp and depth match pass, fading that
+   boost out as motion reaches the configured response threshold.
+10. Blend directly into the next color history, write depth, preserve current
+    alpha and optionally present with neighborhood-bounded sharpening. Invalid
+    history/reset frames use current color without sampling stale history.
 
 The current coherence-aware policy accepts camera motion above 256 pixels per
 frame only when it agrees with project-tracked reprojection. Unverified motion
@@ -59,22 +62,21 @@ At the active scene output size, the backend owns:
 
 - two scene-format color histories;
 - two linear-depth histories (`RFloat`, or `RHalf` fallback);
-- one scene-format resolve target;
 - one material and one final-camera render hook.
 
 All resources are persistent after warm-up, recreated on descriptor changes,
 and released on mode switch, scene invalidation, shutdown, or disposal. With a
-typical `ARGBHalf` scene target, the allocation is 32 bytes per pixel with
-`RFloat` depth or 28 bytes per pixel with `RHalf` depth:
+typical `ARGBHalf` scene target, the allocation is 24 bytes per pixel with
+`RFloat` depth or 20 bytes per pixel with `RHalf` depth:
 
 | Output | ARGBHalf + RFloat | ARGBHalf + RHalf |
 | --- | ---: | ---: |
-| 1920x1080 | 63.3 MiB | 55.4 MiB |
-| 2560x1440 | 112.5 MiB | 98.4 MiB |
-| 3840x2160 | 253.1 MiB | 221.5 MiB |
+| 1920x1080 | 47.5 MiB | 39.6 MiB |
+| 2560x1440 | 84.4 MiB | 70.3 MiB |
+| 3840x2160 | 189.8 MiB | 158.2 MiB |
 
-`ARGBFloat` output raises the `RFloat`-depth totals to approximately 110.7 MiB,
-196.9 MiB, and 443.0 MiB respectively. The actual allocation estimate is shown
+`ARGBFloat` output raises the `RFloat`-depth totals to approximately 79.1 MiB,
+140.6 MiB, and 316.4 MiB respectively. The actual allocation estimate is shown
 in the Custom tab and serialized into capability reports.
 
 ## Ctrl+F10 controls and diagnostics
@@ -157,3 +159,17 @@ a trail, and note the allocated MiB shown in the panel.
 - Phase 3 is not accepted until the required scenes show stability equal to or
   better than PPv2 and demonstrate reduced ghosting or softness in at least one
   documented Phase 2 failure case.
+
+## Measured temporal stability update (2026-09-10)
+
+The initial shimmer fix discounts local sampling variation near rest,
+fading the allowance out by .25 pixel/frame. The existing motion response and
+rejection safeguards remain intact. See [measured results](../taa-temporal-stability-results-20260910.md)
+for stationary/panning/settling comparisons, the remaining moving-detail gap,
+zero-allocation runtime samples and synchronized editor cost. Isolated hardware
+GPU pass timing and the broader scene acceptance gate remain outstanding.
+
+The subsequent [moving-geometry update](../taa-moving-stability-results-20260910.md)
+uses a consistent current reconstruction footprint, a sharper history kernel,
+a smaller sampling allowance during motion, and a response boost for small
+displacements. See decision 0040 for the selected curve and rejected alternatives.

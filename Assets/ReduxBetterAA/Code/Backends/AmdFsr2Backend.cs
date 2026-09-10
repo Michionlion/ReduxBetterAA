@@ -75,7 +75,8 @@ namespace ReduxBetterAA.Backends
         }
 
         public string Id => "FSR2 Native AA";
-        public bool Active => _active;
+        internal bool RenderEnabled = true;
+        public bool Active => _active && RenderEnabled;
         public bool ManagedSurfaceAvailable { get; private set; }
         public bool ContextCreated => _api.ContextCreated;
         public uint DeviceVersion => _api.DeviceVersion;
@@ -489,7 +490,7 @@ namespace ReduxBetterAA.Backends
 
         private void OnCameraPreCull(Camera camera)
         {
-            if (!_active || camera == null)
+            if (!Active || camera == null)
             {
                 return;
             }

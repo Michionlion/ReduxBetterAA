@@ -21,15 +21,6 @@ reprojection underneath is preserved. A moving-camera control confirms this is
 not zero-motion replacement or magnitude sanitization. The source repair stays
 enabled by default and the sanitizer remains independently optional.
 
-Version 0.5.27 changes the recommended and fresh-install DLAA preset from K to
-M. Later raw-buffer captures showed that K exposed the foliage-generated dotted
-ray more strongly rather than creating it, so explicit K remains supported and
-the source defect is fixed in 0.5.28. The intermittent distant-cloud loss did
-not reproduce across fresh DLAA contexts, cloud resolution transitions, or
-repeated fixed-camera Off/K/M toggles. Schema 22 and plain-F10 cloud source
-captures remain available for a future organic reproduction; Better AA does
-not reset or modify the cloud renderer's private temporal history.
-
 Version 0.5.26 restores numeric feedback on the normal Sharpness and TAA
 stability sliders and makes the foliage motion repair a persistent user-facing
 option. A separate persistent map-view AA switch can force the map renderer to

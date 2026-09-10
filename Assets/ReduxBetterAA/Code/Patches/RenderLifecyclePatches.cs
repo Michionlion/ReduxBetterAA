@@ -14,6 +14,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }
@@ -25,6 +26,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }
@@ -36,6 +38,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }
@@ -89,28 +92,4 @@ namespace ReduxBetterAA.Patches
         }
     }
 
-    [HarmonyPatch(typeof(RigidbodyBehavior), nameof(RigidbodyBehavior.StartPhysX))]
-    internal static class KspPhysicsBodyStartedPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(Rigidbody __result)
-        {
-            KspPhysicsRenderInterpolation.Current?.Apply(__result);
-        }
-    }
-
-    [HarmonyPatch(
-        typeof(RigidbodyBehavior),
-        nameof(RigidbodyBehavior.StopPhysX),
-        new[] { typeof(Transform), typeof(Vector3?) })]
-    internal static class KspPhysicsBodyStoppingPatch
-    {
-        [HarmonyPrefix]
-        private static void Prefix(RigidbodyBehavior __instance)
-        {
-            KspPhysicsRenderInterpolation.Current?.Restore(
-                __instance.activeRigidBody
-            );
-        }
-    }
 }

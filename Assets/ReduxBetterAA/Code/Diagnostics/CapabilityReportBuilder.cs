@@ -81,6 +81,8 @@ namespace ReduxBetterAA.Diagnostics
                 VegetationMotionCompatibility.Current;
             return new TemporalBackendRecord
             {
+                supersamplingPercent = coordinator.SupersamplingPercent,
+                appliedRenderScalePercent = coordinator.AppliedRenderScalePercent,
                 requestedBackend = coordinator.RequestedBackend.ToString(),
                 selectedBackend = coordinator.SelectedBackend,
                 active = coordinator.Active,
@@ -148,11 +150,6 @@ namespace ReduxBetterAA.Diagnostics
                 },
                 dlaa = new DlaaSettingsRecord
                 {
-                    cloudCompatibilityBypassActive = coordinator.DlaaCloudCompatibilityBypassActive,
-                    cloudSettleFramesRemaining = coordinator.DlaaCloudSettleFramesRemaining,
-                    cloudResizeCount = coordinator.DlaaCloudResizeCount,
-                    cloudRenderWidth = coordinator.DlaaCloudRenderWidth,
-                    cloudRenderHeight = coordinator.DlaaCloudRenderHeight,
                     jitterSpread = dlaa.JitterSpread,
                     sequenceLength = dlaa.SequenceLength,
                     sharpness = dlaa.Sharpness,
@@ -321,28 +318,6 @@ namespace ReduxBetterAA.Diagnostics
                 values[index] = matrix[index];
             }
             return values;
-        }
-
-        internal static MotionCadenceRecord CaptureMotionCadence()
-        {
-            float fixedDeltaTime = Time.fixedDeltaTime;
-            KspPhysicsRenderInterpolation interpolation =
-                KspPhysicsRenderInterpolation.Current;
-            return new MotionCadenceRecord
-            {
-                fixedDeltaTimeMilliseconds = fixedDeltaTime * 1000.0f,
-                fixedUpdateHz = fixedDeltaTime > 0.0f
-                    ? 1.0f / fixedDeltaTime
-                    : 0.0f,
-                experimentalRenderInterpolationEnabled =
-                    interpolation != null && interpolation.Enabled,
-                interpolatedKspPhysicsBodies = interpolation == null
-                    ? 0
-                    : interpolation.TrackedBodyCount,
-                interpolationStatus = interpolation == null
-                    ? "Unavailable"
-                    : interpolation.Status
-            };
         }
 
         private static PerformanceProfileRecord CapturePerformanceProfile(
