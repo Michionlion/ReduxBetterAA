@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "id": "20260907-165844-1f15f1cd",
+  "capturedUtc": "2026-09-07T16:58:44.7897870Z",
+  "status": "complete",
+  "inputFrame": 3285,
+  "outputFrame": 3285,
+  "screenshotFrame": 3285,
+  "camera": "Camera.Scaled",
+  "note": "EXR files contain floating-point samples; PNGs are previews. Cloud and owned targets are observed after the AA pass. Vendor-internal history is opaque and cannot be exported. Screenshots include visible UI. Capture stalls are expected and are not performance measurements.",
+  "buffers": [
+    {
+      "name": "scene-input",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-input.exr",
+      "previewFile": "scene-input.png",
+      "error": null
+    },
+    {
+      "name": "depth-device",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "None",
+      "status": "captured",
+      "rawFile": "depth-device.exr",
+      "previewFile": "depth-device.png",
+      "error": null
+    },
+    {
+      "name": "motion-raw",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "motion-raw.exr",
+      "previewFile": "motion-raw.png",
+      "error": null
+    },
+    {
+      "name": "scene-output",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-output.exr",
+      "previewFile": "scene-output.png",
+      "error": null
+    },
+    {
+      "name": "NvidiaDlaaBackend-output",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "NvidiaDlaaBackend-output.exr",
+      "previewFile": "NvidiaDlaaBackend-output.png",
+      "error": null
+    },
+    {
+      "name": "MotionVectorSanitizer-sanitizedMotion",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "MotionVectorSanitizer-sanitizedMotion.exr",
+      "previewFile": "MotionVectorSanitizer-sanitizedMotion.png",
+      "error": null
+    },
+    {
+      "name": "MotionVectorSanitizer-frameCorruption",
+      "frame": 3285,
+      "width": 1,
+      "height": 1,
+      "format": "R16_SFloat",
+      "status": "captured",
+      "rawFile": "MotionVectorSanitizer-frameCorruption.exr",
+      "previewFile": "MotionVectorSanitizer-frameCorruption.png",
+      "error": null
+    },
+    {
+      "name": "DepthDisocclusionMask-mask",
+      "frame": 3285,
+      "width": 2560,
+      "height": 1440,
+      "format": "R8G8B8A8_UNorm",
+      "status": "captured",
+      "rawFile": "DepthDisocclusionMask-mask.exr",
+      "previewFile": "DepthDisocclusionMask-mask.png",
+      "error": null
+    },
+    {
+      "name": "cloud",
+      "frame": 3285,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Resolve camera has no stock VolumeCloudRenderer"
+    }
+  ],
+  "errors": [],
+  "files": [
+    {
+      "path": "DepthDisocclusionMask-mask.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "DepthDisocclusionMask-mask.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "MotionVectorSanitizer-frameCorruption.exr",
+      "bytes": 363,
+      "sha256": "a4e6bb0d873725485661adfcde8fe373813c8a200af6ab18b6f223abf564aaa7"
+    },
+    {
+      "path": "MotionVectorSanitizer-frameCorruption.png",
+      "bytes": 70,
+      "sha256": "d40ca984a7d32f9555e5ead40df0d7d263dd88448bbfbbe880dfd34c7f556341"
+    },
+    {
+      "path": "MotionVectorSanitizer-sanitizedMotion.exr",
+      "bytes": 1903660,
+      "sha256": "4c0530ac25c2820260f268ab83ee0e387fcef18da2e1b4ea37d118a15f3c5be1"
+    },
+    {
+      "path": "MotionVectorSanitizer-sanitizedMotion.png",
+      "bytes": 135983,
+      "sha256": "494d96c3a52b7f2a5d8374dffe2897758f42472ed68d8091cc4251551b3c6d7a"
+    },
+    {
+      "path": "NvidiaDlaaBackend-output.exr",
+      "bytes": 20766796,
+      "sha256": "00cdd423fbfa585e78b318cac2407d66e09f3c422b198bf572eb27e8b9f315e4"
+    },
+    {
+      "path": "NvidiaDlaaBackend-output.png",
+      "bytes": 2243109,
+      "sha256": "7e91e25452c4f18f7bb89732500d1ba208cd5a2b631e94faf129bf50fc1ede48"
+    },
+    {
+      "path": "betteraa-log.txt",
+      "bytes": 3293,
+      "sha256": "4f27f041f2918532710a86909d047d8df3661fe9c01671d204f9f426c7f81a54"
+    },
+    {
+      "path": "capabilities.json",
+      "bytes": 33196,
+      "sha256": "8483bc1e3457c0dd79ad28eff731b691d7744ed2785a89bd574dcaa05d928b54"
+    },
+    {
+      "path": "depth-device.exr",
+      "bytes": 2951326,
+      "sha256": "1bb418cdd1befb3c716d96e8288f6084f2ff7d9606c1c1ec9378f109c3d66367"
+    },
+    {
+      "path": "depth-device.png",
+      "bytes": 169257,
+      "sha256": "680dfec7597e8091291334752ad8b85f2672017efac9dbcdfe2be4c0be737281"
+    },
+    {
+      "path": "motion-raw.exr",
+      "bytes": 1896296,
+      "sha256": "39d58ddf58148e0ead67859687d212ba969a6d3e86ebe8c36c924f5ec4f2aa3e"
+    },
+    {
+      "path": "motion-raw.png",
+      "bytes": 123428,
+      "sha256": "488181205ffe96824f36458a5c59cda278f1037dbd96812d898d0d94b0dc64e6"
+    },
+    {
+      "path": "presented.png",
+      "bytes": 4053120,
+      "sha256": "163d4598b24bd1abc7689db7c707c90c73a8cab58ccfa44fa28d2d622bb47097"
+    },
+    {
+      "path": "scene-input.exr",
+      "bytes": 23237943,
+      "sha256": "63b0f7a14262adf4ea48cc00dfe8997f9b8daac5088600f904cf12df4f8b40ab"
+    },
+    {
+      "path": "scene-input.png",
+      "bytes": 2702304,
+      "sha256": "1c9e14f597c00a6afe554f03ebfeaf57de1df04735752d8c6cdb6b53c7380c03"
+    },
+    {
+      "path": "scene-output.exr",
+      "bytes": 20766796,
+      "sha256": "00cdd423fbfa585e78b318cac2407d66e09f3c422b198bf572eb27e8b9f315e4"
+    },
+    {
+      "path": "scene-output.png",
+      "bytes": 2243109,
+      "sha256": "7e91e25452c4f18f7bb89732500d1ba208cd5a2b631e94faf129bf50fc1ede48"
+    }
+  ]
+}

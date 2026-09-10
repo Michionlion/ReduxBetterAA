@@ -1,0 +1,761 @@
+[
+  {
+    "target": "redux2.8.5",
+    "label": "menu-Off",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165837-edab7b6c",
+    "frames": [
+      2611,
+      2611,
+      2611
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 0.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "menu-DLAA",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165844-1f15f1cd",
+    "frames": [
+      3285,
+      3285,
+      3285
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 1.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": false,
+      "changed_pixels": 3686297,
+      "changed_percent": 99.99720594618056,
+      "changed_above_1e_4_percent": 81.51359049479167,
+      "mean_abs_rgb": 0.002579075684199644,
+      "max_abs_rgb": 8.6640625,
+      "p99_abs_rgb": 0.041748046875,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-Off",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165907-b9fdf22b",
+    "frames": [
+      8503,
+      8503,
+      8503
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 1.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-DLAA",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165924-2f283300",
+    "frames": [
+      9232,
+      9232,
+      9232
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 2.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-DLAA-rotated",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165941-4359d9c3",
+    "frames": [
+      9952,
+      9952,
+      9952
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 3.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-Off-rotated",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165958-427982f0",
+    "frames": [
+      10607,
+      10607,
+      10607
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 3.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-DLAA-unpaused",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170016-81c98e16",
+    "frames": [
+      11499,
+      11499,
+      11499
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 4.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-Off-clouds-disabled",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170034-5bb81da8",
+    "frames": [
+      12136,
+      12136,
+      12136
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 4.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5",
+    "label": "flight-DLAA-clouds-disabled",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170051-c2d4cfc6",
+    "frames": [
+      12863,
+      12863,
+      12863
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 5.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5-guard-isolation",
+    "label": "flight-Off-guard-control",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170622-76e8ea97",
+    "frames": [
+      4003,
+      4003,
+      4003
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 0.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5-guard-isolation",
+    "label": "flight-DLAA-production-guard",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170640-129ad652",
+    "frames": [
+      4750,
+      4750,
+      4750
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 1.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.8.5-guard-isolation",
+    "label": "flight-DLAA-guard-suppressed-TEST-ONLY",
+    "directory": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170658-844bd228",
+    "frames": [
+      5507,
+      5507,
+      5507
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 2.0,
+    "test_cloud_guard_suppressed": true,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": false,
+      "changed_pixels": 3686270,
+      "changed_percent": 99.99647352430556,
+      "changed_above_1e_4_percent": 99.97347005208333,
+      "mean_abs_rgb": 0.01316580414996241,
+      "max_abs_rgb": 1.073944091796875,
+      "p99_abs_rgb": 0.1630859375,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "menu-Off",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170207-7a8ff121",
+    "frames": [
+      2786,
+      2786,
+      2786
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 0.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "menu-DLAA",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170214-2a455de0",
+    "frames": [
+      3376,
+      3376,
+      3376
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 1.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": false,
+      "changed_pixels": 3686271,
+      "changed_percent": 99.99650065104166,
+      "changed_above_1e_4_percent": 79.20304361979167,
+      "mean_abs_rgb": 0.0016517988108076948,
+      "max_abs_rgb": 29.224609375,
+      "p99_abs_rgb": 0.01416015625,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-Off",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170237-cf15437d",
+    "frames": [
+      8657,
+      8657,
+      8657
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 1.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170254-8e1996ba",
+    "frames": [
+      9316,
+      9316,
+      9316
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 2.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA-rotated",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170312-5ae5b4a1",
+    "frames": [
+      9974,
+      9974,
+      9974
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 3.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-Off-rotated",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170328-59606349",
+    "frames": [
+      10549,
+      10549,
+      10549
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 3.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA-unpaused",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170347-bea9080f",
+    "frames": [
+      11368,
+      11368,
+      11368
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 4.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-Off-clouds-disabled",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170404-7a046999",
+    "frames": [
+      11951,
+      11951,
+      11951
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 4.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA-clouds-disabled",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170422-49a9ed4e",
+    "frames": [
+      12614,
+      12614,
+      12614
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "true_input_captures": 5.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-Off-guard-control",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170442-4098a63f",
+    "frames": [
+      13162,
+      13162,
+      13162
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 5.0,
+    "test_cloud_guard_suppressed": false,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA-guard-suppressed-TEST-ONLY",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170459-0af3cd0a",
+    "frames": [
+      13882,
+      13882,
+      13882
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "true_input_captures": 6.0,
+    "test_cloud_guard_suppressed": true,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": false,
+      "changed_pixels": 3686265,
+      "changed_percent": 99.996337890625,
+      "changed_above_1e_4_percent": 99.97344292534723,
+      "mean_abs_rgb": 0.01316562168472619,
+      "max_abs_rgb": 1.081573486328125,
+      "p99_abs_rgb": 0.16317764282226221,
+      "finite": true
+    }
+  }
+]

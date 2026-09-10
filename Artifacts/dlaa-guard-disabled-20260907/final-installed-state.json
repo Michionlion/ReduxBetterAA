@@ -1,0 +1,28 @@
+[
+  {
+    "target": "redux2.9",
+    "settings": {
+      "Mode": "NVIDIA DLAA",
+      "Sharpness": 0.24,
+      "TAA stability": 0.99,
+      "DLAA preset": "M",
+      "Foliage motion repair": true,
+      "Enable AA in map view": false
+    },
+    "adapterRemoved": true,
+    "assemblySha256": "3DFD42DB3A358A085A6D406EE6A763016E1BF150F1D0AED31231EADA94C00137"
+  },
+  {
+    "target": "redux2.8.5",
+    "settings": {
+      "Mode": "NVIDIA DLAA",
+      "Sharpness": 0.24,
+      "TAA stability": 0.99,
+      "DLAA preset": "M",
+      "Foliage motion repair": true,
+      "Enable AA in map view": false
+    },
+    "adapterRemoved": true,
+    "assemblySha256": "3DFD42DB3A358A085A6D406EE6A763016E1BF150F1D0AED31231EADA94C00137"
+  }
+]

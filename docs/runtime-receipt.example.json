@@ -1,0 +1,11 @@
+{
+  "unityVersion": "6000.5.8f1",
+  "redistributionApproved": false,
+  "provenance": "Fill with the licensed Unity/Redux player export, exact revision and review reference",
+  "files": [
+    { "name": "NVUnityPlugin.dll", "sha256": "REPLACE_WITH_REVIEWED_SHA256" },
+    { "name": "nvngx_dlss.dll", "sha256": "REPLACE_WITH_REVIEWED_SHA256" },
+    { "name": "AMDUnityPlugin.dll", "sha256": "REPLACE_WITH_REVIEWED_SHA256" }
+  ],
+  "notices": ["licenses/REPLACE_WITH_REQUIRED_LICENSES_AND_NOTICES.txt"]
+}

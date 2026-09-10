@@ -1,0 +1,16 @@
+{
+  "spec": "2.0",
+  "mod_id": "ReduxBetterAAVisualTests",
+  "name": "Better AA Visual Tests (developer only)",
+  "author": "Michionlion",
+  "description": "Optional semantic visual-test adapter. Remove after testing.",
+  "version": "0.1.0",
+  "ksp2_version": { "min": "0.2.8.5", "max": "0.2.9.0" },
+  "dependencies": [
+    { "id": "SpaceWarp2", "version": { "min": "2.0.0", "max": "*" } },
+    { "id": "ReduxBetterAA", "version": { "min": "0.6.0", "max": "*" } },
+    { "id": "ReduxTestHarness", "version": { "min": "0.1.0", "max": "*" } }
+  ],
+  "conflicts": [],
+  "main_assembly": "ReduxBetterAA.VisualTests.dll"
+}

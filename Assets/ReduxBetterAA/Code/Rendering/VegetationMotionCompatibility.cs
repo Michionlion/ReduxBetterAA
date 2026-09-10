@@ -67,11 +67,22 @@ namespace ReduxBetterAA.Rendering
         public long ReroutedCalls => _reroutedCalls;
         public long TransientBypasses => _transientBypasses;
         public string Status => _status;
+        // The official Built-in motion shader is byte-identical in these two releases.
+        internal static bool SupportsUnityVersion(string version) =>
+            version == "6000.4.1f1" || version == "6000.5.8f1";
 
         public void Initialize()
         {
             if (_disposed || _patchInstalled)
             {
+                return;
+            }
+
+            if (!SupportsUnityVersion(Application.unityVersion))
+            {
+                _enabled = false;
+                _status = "Unavailable: foliage motion shader has not been validated for Unity " + Application.unityVersion;
+                _logger.LogWarning("[ReduxBetterAA/Motion] " + _status);
                 return;
             }
 

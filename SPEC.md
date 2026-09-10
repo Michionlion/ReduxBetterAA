@@ -393,26 +393,14 @@ public interface ITemporalBackend : IDisposable
 
 ### 8.5 Fallback policy
 
-Default fallback order:
+The beta follows decision 0022: an unavailable or failed temporal backend falls
+back to **Off**. Preserve the requested mode and report the effective mode and
+reason; do not silently select another reconstruction algorithm. Latch runtime
+failures until an explicit new selection to prevent retry loops. A temporarily
+invalid frame may pass through without changing the requested mode.
 
-```text
-Requested DLSS SR
-  → NVIDIA DLAA or custom TAA at native resolution if SR setup fails
-  → custom TAA
-  → PPv2 TAA
-  → existing spatial AA / off
-
-Requested NVIDIA DLAA
-  → custom TAA
-  → PPv2 TAA
-  → existing spatial AA / off
-
-Requested custom TAA
-  → PPv2 TAA
-  → existing spatial AA / off
-```
-
-Fallback is logged once with a machine-readable reason.
+DLSS Super Resolution remains a future phase and has no production fallback
+contract yet. Fallback reasons are exposed in diagnostics.
 
 ## 9. Phase 1 specification — render probe
 
@@ -1070,6 +1058,22 @@ Compare:
 - custom TAA
 - DLAA
 - DLSS SR modes
+
+#### Compact routine capture
+
+The routine `tools/Run-VisualTests.ps1` smoke capture is deliberately bounded:
+three native Redux Better AA settings-page screenshots using DLAA M (sharpness
+0.15, 0, and 1), six settled DLAA launchpad views, and one DLAA map view. It drives
+the actual settings dropdowns/slider, verifies the active backend, restores the
+original settings, and bundles the gallery and harness metadata into one ZIP.
+Flight also captures a six-second DLAA camera-pan video: 180 sampled presented
+frames at 30 FPS at native resolution, streamed directly to an H.264 CRF 16
+encoder with the medium preset without retaining a PNG sequence. Report the
+resulting size; no hard size cap or automatic quality reduction is applied.
+This video is not a frame-pacing measurement.
+It does not capture the Ctrl+F10 developer panel, other AA modes, issue reports,
+EXRs, or long frame sequences. This compact check does not replace the broader
+rendering acceptance protocol above.
 
 ### 17.3 Evaluation dimensions
 

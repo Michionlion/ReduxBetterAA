@@ -1,0 +1,30 @@
+name: Rendering or settings issue
+description: Report a Better AA beta issue with a diagnostic ZIP.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the visible problem and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include scene, camera movement, AA mode and any relevant setting changes.
+  - type: textarea
+    id: report
+    attributes:
+      label: Issue report ZIP
+      description: Press F10 while the issue is visible, or use Generate issue report ZIP in mod settings. Review the images before attaching the ZIP here. If it exceeds the attachment limit, provide a download link. If capture failed, include its displayed error.
+  - type: input
+    id: versions
+    attributes:
+      label: Better AA and Redux versions
+      description: Include the beta ZIP filename. Versions and GPU details are also in a successful report.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Mention other graphics mods and whether the issue occurs with AA Off.

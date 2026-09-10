@@ -1,0 +1,157 @@
+[
+  {
+    "target": "redux2.9",
+    "label": "menu-Off",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165346-0b2c0dd5",
+    "frames": [
+      2998,
+      2998,
+      2998
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "menu-DLAA",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165353-c59f6023",
+    "frames": [
+      3591,
+      3591,
+      3591
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-Off",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165416-1a9b2d4a",
+    "frames": [
+      8768,
+      8768,
+      8768
+    ],
+    "requested": "Off",
+    "selected": "Off",
+    "active": false,
+    "fallback": "",
+    "cloud_bypass": false,
+    "settle_frames": 0,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165433-0a1d8015",
+    "frames": [
+      9415,
+      9415,
+      9415
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  },
+  {
+    "target": "redux2.9",
+    "label": "flight-DLAA-rotated",
+    "directory": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165451-a8e3e73a",
+    "frames": [
+      10067,
+      10067,
+      10067
+    ],
+    "requested": "NvidiaDlaa",
+    "selected": "NVIDIA DLAA",
+    "active": true,
+    "fallback": "",
+    "cloud_bypass": true,
+    "settle_frames": 120,
+    "boundary": {
+      "shape": [
+        1440,
+        2560,
+        3
+      ],
+      "identical": true,
+      "changed_pixels": 0,
+      "changed_percent": 0.0,
+      "changed_above_1e_4_percent": 0.0,
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0.0,
+      "p99_abs_rgb": 0.0,
+      "finite": true
+    }
+  }
+]

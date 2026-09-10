@@ -56,6 +56,8 @@ namespace ReduxBetterAA.Backends
 
         private readonly ReduxLogger _logger;
         private readonly Action _availabilityChanged;
+        private readonly Action<string> _runtimeFailure;
+        private string _lastFailure;
         private readonly BackendPerformanceProfiler _performanceProfiler;
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
 
@@ -97,30 +99,21 @@ namespace ReduxBetterAA.Backends
         private bool _currentMatrixValid;
         private bool _matrixHistoryValid;
         private bool _projectionJitterSupported;
-        private ProjectionState _resolveProjection;
-        private ProjectionState _sharedProjection;
+        private CameraProjectionState _resolveProjection;
+        private CameraProjectionState _sharedProjection;
         private bool _active;
         private bool _disposed;
-        private bool _sanitizerFailureLogged;
-
-        private struct ProjectionState
-        {
-            public bool Applied;
-            public int AppliedFrame;
-            public Camera Camera;
-            public Matrix4x4 Projection;
-            public Matrix4x4 NonJitteredProjection;
-            public bool TransparentJitter;
-        }
 
         public CustomTaaBackend(
             ReduxLogger logger,
             Action availabilityChanged,
             BackendPerformanceProfiler performanceProfiler,
-            MotionVectorSanitizer motionVectorSanitizer)
+            MotionVectorSanitizer motionVectorSanitizer,
+            Action<string> runtimeFailure)
         {
             _logger = logger;
             _availabilityChanged = availabilityChanged;
+            _runtimeFailure = runtimeFailure;
             _performanceProfiler = performanceProfiler;
             _motionVectorSanitizer = motionVectorSanitizer;
         }
@@ -150,6 +143,11 @@ namespace ReduxBetterAA.Backends
 
         public bool ProbeSupport(TemporalCameraSet cameras, out string unsupportedReason)
         {
+            if (_lastFailure != null)
+            {
+                unsupportedReason = _lastFailure;
+                return false;
+            }
             if (!ShaderReady)
             {
                 unsupportedReason = _shaderHandleValid && !_shaderHandle.IsDone
@@ -265,6 +263,11 @@ namespace ReduxBetterAA.Backends
             {
                 RenderCore(source, destination);
             }
+            catch (Exception exception)
+            {
+                FailRuntime("Custom TAA execution failed: " + exception.GetType().Name);
+                Graphics.Blit(source, destination);
+            }
             finally
             {
                 _performanceProfiler.EndResolve(
@@ -286,6 +289,7 @@ namespace ReduxBetterAA.Backends
             if (_resolveTarget == null)
             {
                 Graphics.Blit(source, destination);
+                FailRuntime("Custom TAA render targets could not be created");
                 return;
             }
 
@@ -314,17 +318,9 @@ namespace ReduxBetterAA.Backends
             {
                 Graphics.Blit(source, destination);
                 _historyValid = false;
-                if (!_sanitizerFailureLogged)
-                {
-                    _sanitizerFailureLogged = true;
-                    _logger.LogWarning(
-                        "[ReduxBetterAA/CustomTAA] Motion sanitization is unavailable; " +
-                        "passing the frame through safely."
-                    );
-                }
+                FailRuntime("Custom TAA depth/motion input or sanitization is unavailable");
                 return;
             }
-            _sanitizerFailureLogged = false;
 
             _material.SetTexture(HistoryTexture, historyRead);
             _material.SetTexture(HistoryDepthTexture, depthRead);
@@ -381,8 +377,8 @@ namespace ReduxBetterAA.Backends
         {
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
-            RestoreProjection(ref _resolveProjection);
-            RestoreProjection(ref _sharedProjection);
+            _resolveProjection.Restore();
+            _sharedProjection.Restore();
 
             if (_hook != null)
             {
@@ -421,7 +417,6 @@ namespace ReduxBetterAA.Backends
             _currentMatrixValid = false;
             _matrixHistoryValid = false;
             _motionVectorSanitizer.ResetCameraHistory();
-            _sanitizerFailureLogged = false;
             _active = false;
         }
 
@@ -500,7 +495,7 @@ namespace ReduxBetterAA.Backends
                     jitterPixels.x / width,
                     jitterPixels.y / height
                 );
-                ProjectionState projectionState = camera == _sharedJitterCamera
+                CameraProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
                     : _resolveProjection;
                 Matrix4x4 nonJitteredProjection = _projectionJitterSupported
@@ -524,61 +519,18 @@ namespace ReduxBetterAA.Backends
         {
             if (camera == _resolveCamera)
             {
-                RestoreProjection(ref _resolveProjection);
+                _resolveProjection.Restore();
             }
             if (camera == _sharedJitterCamera)
             {
-                RestoreProjection(ref _sharedProjection);
+                _sharedProjection.Restore();
             }
         }
 
-        private void ApplyJitter(Camera camera, ref ProjectionState state)
+        private void ApplyJitter(Camera camera, ref CameraProjectionState state)
         {
-            if (state.Applied)
-            {
-                if (state.AppliedFrame == Time.frameCount)
-                {
-                    return;
-                }
-
-                // A failed/aborted camera render may omit onPostRender. Restore
-                // the saved base projection before advancing temporal jitter.
-                RestoreProjection(ref state);
-            }
-            Vector2 jitter = SharedJitterSequence.GetCustomOffset(
-                _frameIndex,
-                _config.JitterSpread,
-                _config.SequenceLength
-            );
-            state.Applied = true;
-            state.AppliedFrame = Time.frameCount;
-            state.Camera = camera;
-            state.Projection = camera.projectionMatrix;
-            state.NonJitteredProjection = camera.nonJitteredProjectionMatrix;
-            state.TransparentJitter = camera.useJitteredProjectionMatrixForTransparentRendering;
-            camera.nonJitteredProjectionMatrix = state.Projection;
-            camera.projectionMatrix = camera.orthographic
-                ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
-                : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
-            camera.useJitteredProjectionMatrixForTransparentRendering = false;
-        }
-
-        private static void RestoreProjection(ref ProjectionState state)
-        {
-            if (!state.Applied)
-            {
-                return;
-            }
-            if (state.Camera != null)
-            {
-                state.Camera.projectionMatrix = state.Projection;
-                state.Camera.nonJitteredProjectionMatrix = state.NonJitteredProjection;
-                state.Camera.useJitteredProjectionMatrixForTransparentRendering =
-                    state.TransparentJitter;
-            }
-            state.Applied = false;
-            state.AppliedFrame = -1;
-            state.Camera = null;
+            state.Apply(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
         }
 
         private void EnsureResources(RenderTexture source)
@@ -639,7 +591,7 @@ namespace ReduxBetterAA.Backends
                 _resourceCreationFailed = true;
                 _logger.LogError(
                     "[ReduxBetterAA/Resources] Custom TAA resource creation failed; " +
-                    "the frame will pass through until the output or backend changes."
+                    "the frame will pass through and the backend will fall back to Off."
                 );
                 return;
             }
@@ -787,6 +739,18 @@ namespace ReduxBetterAA.Backends
                 _logger.LogError("[ReduxBetterAA/CustomTAA] Shader failed to load.");
             }
             _availabilityChanged?.Invoke();
+        }
+
+        internal void ClearRuntimeFailure() { _lastFailure = null; }
+
+        private void FailRuntime(string reason)
+        {
+            if (_lastFailure != null)
+                return;
+            _lastFailure = reason;
+            _active = false;
+            _logger.LogError("[ReduxBetterAA/CustomTAA] " + reason);
+            _runtimeFailure?.Invoke(reason);
         }
     }
 }

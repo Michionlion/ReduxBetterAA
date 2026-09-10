@@ -1,0 +1,1123 @@
+{
+  "schemaVersion": 1,
+  "id": "20260907-171308-93593c14",
+  "capturedUtc": "2026-09-07T17:13:08.1328895Z",
+  "status": "complete",
+  "inputFrame": 5525,
+  "outputFrame": 5525,
+  "screenshotFrame": 5525,
+  "camera": "FlightCameraPhysics_Main",
+  "note": "EXR files contain floating-point samples; PNGs are previews. Cloud and owned targets are observed after the AA pass. Vendor-internal history is opaque and cannot be exported. Screenshots include visible UI. Capture stalls are expected and are not performance measurements.",
+  "buffers": [
+    {
+      "name": "scene-input",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-input.exr",
+      "previewFile": "scene-input.png",
+      "error": null
+    },
+    {
+      "name": "depth-device",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "None",
+      "status": "captured",
+      "rawFile": "depth-device.exr",
+      "previewFile": "depth-device.png",
+      "error": null
+    },
+    {
+      "name": "motion-raw",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "motion-raw.exr",
+      "previewFile": "motion-raw.png",
+      "error": null
+    },
+    {
+      "name": "scene-output",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-output.exr",
+      "previewFile": "scene-output.png",
+      "error": null
+    },
+    {
+      "name": "NvidiaDlaaBackend-output",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "NvidiaDlaaBackend-output.exr",
+      "previewFile": "NvidiaDlaaBackend-output.png",
+      "error": null
+    },
+    {
+      "name": "MotionVectorSanitizer-sanitizedMotion",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "MotionVectorSanitizer-sanitizedMotion.exr",
+      "previewFile": "MotionVectorSanitizer-sanitizedMotion.png",
+      "error": null
+    },
+    {
+      "name": "MotionVectorSanitizer-frameCorruption",
+      "frame": 5525,
+      "width": 1,
+      "height": 1,
+      "format": "R16_SFloat",
+      "status": "captured",
+      "rawFile": "MotionVectorSanitizer-frameCorruption.exr",
+      "previewFile": "MotionVectorSanitizer-frameCorruption.png",
+      "error": null
+    },
+    {
+      "name": "DepthDisocclusionMask-mask",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R8G8B8A8_UNorm",
+      "status": "captured",
+      "rawFile": "DepthDisocclusionMask-mask.exr",
+      "previewFile": "DepthDisocclusionMask-mask.png",
+      "error": null
+    },
+    {
+      "name": "cloud-previousCloudLayerRaysColorBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-previousCloudLayerRaysColorBuffer.exr",
+      "previewFile": "cloud-previousCloudLayerRaysColorBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-previousCloudLayerRaysColorBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-previousCloudLayerRaysColorBuffer-alpha.exr",
+      "previewFile": "cloud-previousCloudLayerRaysColorBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-newCloudRaysDepthBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-newCloudRaysDepthBuffer.exr",
+      "previewFile": "cloud-newCloudRaysDepthBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-newCloudRaysDepthBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-newCloudRaysDepthBuffer-alpha.exr",
+      "previewFile": "cloud-newCloudRaysDepthBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-previousCloudLayerRaysDepthBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-previousCloudLayerRaysDepthBuffer.exr",
+      "previewFile": "cloud-previousCloudLayerRaysDepthBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-previousCloudLayerRaysDepthBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-previousCloudLayerRaysDepthBuffer-alpha.exr",
+      "previewFile": "cloud-previousCloudLayerRaysDepthBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-raySampleCountBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-raySampleCountBuffer.exr",
+      "previewFile": "cloud-raySampleCountBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-raySampleCountBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-raySampleCountBuffer-alpha.exr",
+      "previewFile": "cloud-raySampleCountBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-raySampleCountBufferTemp",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-raySampleCountBufferTemp.exr",
+      "previewFile": "cloud-raySampleCountBufferTemp.png",
+      "error": null
+    },
+    {
+      "name": "cloud-raySampleCountBufferTemp-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-raySampleCountBufferTemp-alpha.exr",
+      "previewFile": "cloud-raySampleCountBufferTemp-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historySceneColor",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historySceneColor.exr",
+      "previewFile": "cloud-historySceneColor.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historySceneColor-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historySceneColor-alpha.exr",
+      "previewFile": "cloud-historySceneColor-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-upsampledColorBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-upsampledColorBuffer.exr",
+      "previewFile": "cloud-upsampledColorBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-upsampledColorBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-upsampledColorBuffer-alpha.exr",
+      "previewFile": "cloud-upsampledColorBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-upsampledDepthBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-upsampledDepthBuffer.exr",
+      "previewFile": "cloud-upsampledDepthBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-upsampledDepthBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-upsampledDepthBuffer-alpha.exr",
+      "previewFile": "cloud-upsampledDepthBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-motionVectorsBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-motionVectorsBuffer.exr",
+      "previewFile": "cloud-motionVectorsBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-motionVectorsBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-motionVectorsBuffer-alpha.exr",
+      "previewFile": "cloud-motionVectorsBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyUpsampledColorBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyUpsampledColorBuffer.exr",
+      "previewFile": "cloud-historyUpsampledColorBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyUpsampledColorBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyUpsampledColorBuffer-alpha.exr",
+      "previewFile": "cloud-historyUpsampledColorBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyUpsampledDepthBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyUpsampledDepthBuffer.exr",
+      "previewFile": "cloud-historyUpsampledDepthBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyUpsampledDepthBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyUpsampledDepthBuffer-alpha.exr",
+      "previewFile": "cloud-historyUpsampledDepthBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyMotionVectorsBuffer",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyMotionVectorsBuffer.exr",
+      "previewFile": "cloud-historyMotionVectorsBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-historyMotionVectorsBuffer-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R16G16_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-historyMotionVectorsBuffer-alpha.exr",
+      "previewFile": "cloud-historyMotionVectorsBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-finalSceneColor",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-finalSceneColor.exr",
+      "previewFile": "cloud-finalSceneColor.png",
+      "error": null
+    },
+    {
+      "name": "cloud-finalSceneColor-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-finalSceneColor-alpha.exr",
+      "previewFile": "cloud-finalSceneColor-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-lowResFinalSceneColor",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-lowResFinalSceneColor.exr",
+      "previewFile": "cloud-lowResFinalSceneColor.png",
+      "error": null
+    },
+    {
+      "name": "cloud-lowResFinalSceneColor-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-lowResFinalSceneColor-alpha.exr",
+      "previewFile": "cloud-lowResFinalSceneColor-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-preUpsample",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-preUpsample.exr",
+      "previewFile": "cloud-preUpsample.png",
+      "error": null
+    },
+    {
+      "name": "cloud-preUpsample-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-preUpsample-alpha.exr",
+      "previewFile": "cloud-preUpsample-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-newCloudRaysColorBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-newCloudRaysColorBuffer.exr",
+      "previewFile": "cloud-newCloudRaysColorBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-newCloudRaysColorBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-newCloudRaysColorBuffer-alpha.exr",
+      "previewFile": "cloud-newCloudRaysColorBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-downsampledDepth",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-downsampledDepth.exr",
+      "previewFile": "cloud-downsampledDepth.png",
+      "error": null
+    },
+    {
+      "name": "cloud-downsampledDepth-alpha",
+      "frame": 5525,
+      "width": 1280,
+      "height": 720,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-downsampledDepth-alpha.exr",
+      "previewFile": "cloud-downsampledDepth-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-preDownsampledDepth",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-preDownsampledDepth.exr",
+      "previewFile": "cloud-preDownsampledDepth.png",
+      "error": null
+    },
+    {
+      "name": "cloud-preDownsampledDepth-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-preDownsampledDepth-alpha.exr",
+      "previewFile": "cloud-preDownsampledDepth-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-godrayBuffer",
+      "frame": 5525,
+      "width": 160,
+      "height": 90,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-godrayBuffer.exr",
+      "previewFile": "cloud-godrayBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-godrayBuffer-alpha",
+      "frame": 5525,
+      "width": 160,
+      "height": 90,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-godrayBuffer-alpha.exr",
+      "previewFile": "cloud-godrayBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-screenSpaceCloudShadowsBuffer",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-screenSpaceCloudShadowsBuffer.exr",
+      "previewFile": "cloud-screenSpaceCloudShadowsBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-screenSpaceCloudShadowsBuffer-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "R32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-screenSpaceCloudShadowsBuffer-alpha.exr",
+      "previewFile": "cloud-screenSpaceCloudShadowsBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-godrayBlurBuffer",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-godrayBlurBuffer.exr",
+      "previewFile": "cloud-godrayBlurBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-godrayBlurBuffer-alpha",
+      "frame": 5525,
+      "width": 640,
+      "height": 360,
+      "format": "R32G32B32A32_SFloat",
+      "status": "captured",
+      "rawFile": "cloud-godrayBlurBuffer-alpha.exr",
+      "previewFile": "cloud-godrayBlurBuffer-alpha.png",
+      "error": null
+    },
+    {
+      "name": "cloud-copyDepthStencilBuffer",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "None",
+      "status": "captured",
+      "rawFile": "cloud-copyDepthStencilBuffer.exr",
+      "previewFile": "cloud-copyDepthStencilBuffer.png",
+      "error": null
+    },
+    {
+      "name": "cloud-copyDepthStencilBuffer-alpha",
+      "frame": 5525,
+      "width": 2560,
+      "height": 1440,
+      "format": "None",
+      "status": "captured",
+      "rawFile": "cloud-copyDepthStencilBuffer-alpha.exr",
+      "previewFile": "cloud-copyDepthStencilBuffer-alpha.png",
+      "error": null
+    }
+  ],
+  "errors": [],
+  "files": [
+    {
+      "path": "DepthDisocclusionMask-mask.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "DepthDisocclusionMask-mask.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "MotionVectorSanitizer-frameCorruption.exr",
+      "bytes": 363,
+      "sha256": "a4e6bb0d873725485661adfcde8fe373813c8a200af6ab18b6f223abf564aaa7"
+    },
+    {
+      "path": "MotionVectorSanitizer-frameCorruption.png",
+      "bytes": 70,
+      "sha256": "d40ca984a7d32f9555e5ead40df0d7d263dd88448bbfbbe880dfd34c7f556341"
+    },
+    {
+      "path": "MotionVectorSanitizer-sanitizedMotion.exr",
+      "bytes": 3333490,
+      "sha256": "6b5f092a7a34c74ec8d02221e1f7e7f2723c3ad65b99aa63a4d141cf271be694"
+    },
+    {
+      "path": "MotionVectorSanitizer-sanitizedMotion.png",
+      "bytes": 335964,
+      "sha256": "67044b1649d37960eb43c7537fc80cba69dbf78a975c87971393fada366fcbb3"
+    },
+    {
+      "path": "NvidiaDlaaBackend-output.exr",
+      "bytes": 19187729,
+      "sha256": "ba5fbc17d072894e642f8dd6d5221ad418057fa646df573620e613dde502ff72"
+    },
+    {
+      "path": "NvidiaDlaaBackend-output.png",
+      "bytes": 7360826,
+      "sha256": "bd24f84e5b2d2988125e351730b316b9ad1e2960b33a4882fb56da7ef34b779d"
+    },
+    {
+      "path": "betteraa-log.txt",
+      "bytes": 4504,
+      "sha256": "d2f90923d76cd004879a46ce545270b4cd5482558a3788510f112a5370268472"
+    },
+    {
+      "path": "capabilities.json",
+      "bytes": 112142,
+      "sha256": "c86cf9930d66832180e5a5385206ab8e02e3799e91c8eff2328387f1cb09d01e"
+    },
+    {
+      "path": "cloud-copyDepthStencilBuffer-alpha.exr",
+      "bytes": 6867636,
+      "sha256": "cc93989ea97a7309bd6a0c8d8a6bc7fbe9140daf34ad64eccebacab9395576df"
+    },
+    {
+      "path": "cloud-copyDepthStencilBuffer-alpha.png",
+      "bytes": 67943,
+      "sha256": "07b38c31a8f27c88f8103eef918e0fae1a20d2a8e8cdbd263e733e226a6580d2"
+    },
+    {
+      "path": "cloud-copyDepthStencilBuffer.exr",
+      "bytes": 6867636,
+      "sha256": "cc93989ea97a7309bd6a0c8d8a6bc7fbe9140daf34ad64eccebacab9395576df"
+    },
+    {
+      "path": "cloud-copyDepthStencilBuffer.png",
+      "bytes": 110171,
+      "sha256": "cd77ddc07d99a1173361d4d171a3b62b7fae92ebfb34c15eeb25aa0751a964c3"
+    },
+    {
+      "path": "cloud-downsampledDepth-alpha.exr",
+      "bytes": 2009829,
+      "sha256": "f950dd24ca92b8142dd8ea7bb3d93edb31bba5458cc15cdc4b6c063f687e77c1"
+    },
+    {
+      "path": "cloud-downsampledDepth-alpha.png",
+      "bytes": 17706,
+      "sha256": "6f6891921ad4acbe03216478161f6a9226cb7d9f415611d6c278989002a4a613"
+    },
+    {
+      "path": "cloud-downsampledDepth.exr",
+      "bytes": 2009829,
+      "sha256": "f950dd24ca92b8142dd8ea7bb3d93edb31bba5458cc15cdc4b6c063f687e77c1"
+    },
+    {
+      "path": "cloud-downsampledDepth.png",
+      "bytes": 35637,
+      "sha256": "6e95994e1d1d8aa38654e892233eaf90941d9bf749cb7fda867093d1f8c7ae26"
+    },
+    {
+      "path": "cloud-finalSceneColor-alpha.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-finalSceneColor-alpha.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-finalSceneColor.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-finalSceneColor.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-godrayBlurBuffer-alpha.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-godrayBlurBuffer-alpha.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-godrayBlurBuffer.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-godrayBlurBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-godrayBuffer-alpha.exr",
+      "bytes": 790,
+      "sha256": "50b9fe42eecdff413cb5765f1b20d84bbceed5d8f497389d0e55ae0cdd56fdcd"
+    },
+    {
+      "path": "cloud-godrayBuffer-alpha.png",
+      "bytes": 479,
+      "sha256": "6eece882bd01780a710fc2f56184abfd5d2c53bd46fcaad26f4b8eb8b257124e"
+    },
+    {
+      "path": "cloud-godrayBuffer.exr",
+      "bytes": 790,
+      "sha256": "50b9fe42eecdff413cb5765f1b20d84bbceed5d8f497389d0e55ae0cdd56fdcd"
+    },
+    {
+      "path": "cloud-godrayBuffer.png",
+      "bytes": 479,
+      "sha256": "6eece882bd01780a710fc2f56184abfd5d2c53bd46fcaad26f4b8eb8b257124e"
+    },
+    {
+      "path": "cloud-historyMotionVectorsBuffer-alpha.exr",
+      "bytes": 176988,
+      "sha256": "43d55c6d6e658722ba6e5fd7ffc7578046fbbbf3782c34480c8453a4dc7ddba1"
+    },
+    {
+      "path": "cloud-historyMotionVectorsBuffer-alpha.png",
+      "bytes": 17706,
+      "sha256": "6f6891921ad4acbe03216478161f6a9226cb7d9f415611d6c278989002a4a613"
+    },
+    {
+      "path": "cloud-historyMotionVectorsBuffer.exr",
+      "bytes": 176988,
+      "sha256": "43d55c6d6e658722ba6e5fd7ffc7578046fbbbf3782c34480c8453a4dc7ddba1"
+    },
+    {
+      "path": "cloud-historyMotionVectorsBuffer.png",
+      "bytes": 18844,
+      "sha256": "49206f94792b7f07dd37dd2da789138316b3b0ef619362db94d90ff67a36879a"
+    },
+    {
+      "path": "cloud-historySceneColor-alpha.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-historySceneColor-alpha.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-historySceneColor.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-historySceneColor.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-historyUpsampledColorBuffer-alpha.exr",
+      "bytes": 16351,
+      "sha256": "a97ae422c9ed2c100bf8e443e37edaa24bba84d69c91f365edd1a48f6fb78f84"
+    },
+    {
+      "path": "cloud-historyUpsampledColorBuffer-alpha.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "cloud-historyUpsampledColorBuffer.exr",
+      "bytes": 16351,
+      "sha256": "a97ae422c9ed2c100bf8e443e37edaa24bba84d69c91f365edd1a48f6fb78f84"
+    },
+    {
+      "path": "cloud-historyUpsampledColorBuffer.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "cloud-historyUpsampledDepthBuffer-alpha.exr",
+      "bytes": 27016,
+      "sha256": "030f1626c58f15ea1ccf339567a85ca5acf0bb4650da8ff5376a2d0cd4613d2e"
+    },
+    {
+      "path": "cloud-historyUpsampledDepthBuffer-alpha.png",
+      "bytes": 17706,
+      "sha256": "6f6891921ad4acbe03216478161f6a9226cb7d9f415611d6c278989002a4a613"
+    },
+    {
+      "path": "cloud-historyUpsampledDepthBuffer.exr",
+      "bytes": 27016,
+      "sha256": "030f1626c58f15ea1ccf339567a85ca5acf0bb4650da8ff5376a2d0cd4613d2e"
+    },
+    {
+      "path": "cloud-historyUpsampledDepthBuffer.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "cloud-lowResFinalSceneColor-alpha.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-lowResFinalSceneColor-alpha.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-lowResFinalSceneColor.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-lowResFinalSceneColor.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-motionVectorsBuffer-alpha.exr",
+      "bytes": 176988,
+      "sha256": "43d55c6d6e658722ba6e5fd7ffc7578046fbbbf3782c34480c8453a4dc7ddba1"
+    },
+    {
+      "path": "cloud-motionVectorsBuffer-alpha.png",
+      "bytes": 17706,
+      "sha256": "6f6891921ad4acbe03216478161f6a9226cb7d9f415611d6c278989002a4a613"
+    },
+    {
+      "path": "cloud-motionVectorsBuffer.exr",
+      "bytes": 176988,
+      "sha256": "43d55c6d6e658722ba6e5fd7ffc7578046fbbbf3782c34480c8453a4dc7ddba1"
+    },
+    {
+      "path": "cloud-motionVectorsBuffer.png",
+      "bytes": 18844,
+      "sha256": "49206f94792b7f07dd37dd2da789138316b3b0ef619362db94d90ff67a36879a"
+    },
+    {
+      "path": "cloud-newCloudRaysColorBuffer-alpha.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-newCloudRaysColorBuffer-alpha.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-newCloudRaysColorBuffer.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-newCloudRaysColorBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-newCloudRaysDepthBuffer-alpha.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-newCloudRaysDepthBuffer-alpha.png",
+      "bytes": 4789,
+      "sha256": "a875e667b5ad0bc6c1b634c129d4a9f181af4b34d5db778e2994219614300ab1"
+    },
+    {
+      "path": "cloud-newCloudRaysDepthBuffer.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-newCloudRaysDepthBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-preDownsampledDepth-alpha.exr",
+      "bytes": 6867636,
+      "sha256": "cc93989ea97a7309bd6a0c8d8a6bc7fbe9140daf34ad64eccebacab9395576df"
+    },
+    {
+      "path": "cloud-preDownsampledDepth-alpha.png",
+      "bytes": 67943,
+      "sha256": "07b38c31a8f27c88f8103eef918e0fae1a20d2a8e8cdbd263e733e226a6580d2"
+    },
+    {
+      "path": "cloud-preDownsampledDepth.exr",
+      "bytes": 6867636,
+      "sha256": "cc93989ea97a7309bd6a0c8d8a6bc7fbe9140daf34ad64eccebacab9395576df"
+    },
+    {
+      "path": "cloud-preDownsampledDepth.png",
+      "bytes": 110171,
+      "sha256": "cd77ddc07d99a1173361d4d171a3b62b7fae92ebfb34c15eeb25aa0751a964c3"
+    },
+    {
+      "path": "cloud-preUpsample-alpha.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-preUpsample-alpha.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-preUpsample.exr",
+      "bytes": 60991,
+      "sha256": "d0782626bb895d2cc1f682b6b15bfd6720811eee1201ab15fc02b38251a11916"
+    },
+    {
+      "path": "cloud-preUpsample.png",
+      "bytes": 67946,
+      "sha256": "f5d328687cd4892a0a3968e1927638fd256a9bd86a2ff292f90c5b1c33149cc6"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysColorBuffer-alpha.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysColorBuffer-alpha.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysColorBuffer.exr",
+      "bytes": 4784,
+      "sha256": "f0b09a246aa43ddf0f0955a378333ac37252ace223a4e040f8145757dcc86d54"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysColorBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysDepthBuffer-alpha.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysDepthBuffer-alpha.png",
+      "bytes": 4789,
+      "sha256": "a875e667b5ad0bc6c1b634c129d4a9f181af4b34d5db778e2994219614300ab1"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysDepthBuffer.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-previousCloudLayerRaysDepthBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-raySampleCountBuffer-alpha.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-raySampleCountBuffer-alpha.png",
+      "bytes": 4789,
+      "sha256": "a875e667b5ad0bc6c1b634c129d4a9f181af4b34d5db778e2994219614300ab1"
+    },
+    {
+      "path": "cloud-raySampleCountBuffer.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-raySampleCountBuffer.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-raySampleCountBufferTemp-alpha.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-raySampleCountBufferTemp-alpha.png",
+      "bytes": 4789,
+      "sha256": "a875e667b5ad0bc6c1b634c129d4a9f181af4b34d5db778e2994219614300ab1"
+    },
+    {
+      "path": "cloud-raySampleCountBufferTemp.exr",
+      "bytes": 9465,
+      "sha256": "c5c42d2fa0e5ae0779166a4f1631e44aa14a3aec156ad3e5ce53b992339ed021"
+    },
+    {
+      "path": "cloud-raySampleCountBufferTemp.png",
+      "bytes": 4792,
+      "sha256": "095824529502d142e5675ecb4f6dceba215cdbdb9e7aad7a984de567d161bb53"
+    },
+    {
+      "path": "cloud-screenSpaceCloudShadowsBuffer-alpha.exr",
+      "bytes": 87721,
+      "sha256": "65fd8ba14345882ef61bfe2c9cac8eaac1067513471a4f261f5fc83e800de36b"
+    },
+    {
+      "path": "cloud-screenSpaceCloudShadowsBuffer-alpha.png",
+      "bytes": 67943,
+      "sha256": "07b38c31a8f27c88f8103eef918e0fae1a20d2a8e8cdbd263e733e226a6580d2"
+    },
+    {
+      "path": "cloud-screenSpaceCloudShadowsBuffer.exr",
+      "bytes": 87721,
+      "sha256": "65fd8ba14345882ef61bfe2c9cac8eaac1067513471a4f261f5fc83e800de36b"
+    },
+    {
+      "path": "cloud-screenSpaceCloudShadowsBuffer.png",
+      "bytes": 67945,
+      "sha256": "6e1918fcc4fe59d5ca826d6633be4dd5b7d6d9da279fd979053004a3e05b93ad"
+    },
+    {
+      "path": "cloud-upsampledColorBuffer-alpha.exr",
+      "bytes": 16351,
+      "sha256": "a97ae422c9ed2c100bf8e443e37edaa24bba84d69c91f365edd1a48f6fb78f84"
+    },
+    {
+      "path": "cloud-upsampledColorBuffer-alpha.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "cloud-upsampledColorBuffer.exr",
+      "bytes": 16351,
+      "sha256": "a97ae422c9ed2c100bf8e443e37edaa24bba84d69c91f365edd1a48f6fb78f84"
+    },
+    {
+      "path": "cloud-upsampledColorBuffer.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "cloud-upsampledDepthBuffer-alpha.exr",
+      "bytes": 27016,
+      "sha256": "030f1626c58f15ea1ccf339567a85ca5acf0bb4650da8ff5376a2d0cd4613d2e"
+    },
+    {
+      "path": "cloud-upsampledDepthBuffer-alpha.png",
+      "bytes": 17706,
+      "sha256": "6f6891921ad4acbe03216478161f6a9226cb7d9f415611d6c278989002a4a613"
+    },
+    {
+      "path": "cloud-upsampledDepthBuffer.exr",
+      "bytes": 27016,
+      "sha256": "030f1626c58f15ea1ccf339567a85ca5acf0bb4650da8ff5376a2d0cd4613d2e"
+    },
+    {
+      "path": "cloud-upsampledDepthBuffer.png",
+      "bytes": 17709,
+      "sha256": "ede929abdeee3784b0ceb3faa063a2ab22a21b47cef09106552487c7f66dde8e"
+    },
+    {
+      "path": "depth-device.exr",
+      "bytes": 6867636,
+      "sha256": "cc93989ea97a7309bd6a0c8d8a6bc7fbe9140daf34ad64eccebacab9395576df"
+    },
+    {
+      "path": "depth-device.png",
+      "bytes": 156660,
+      "sha256": "dc87a0104b952ae9144569643cbdb78e0d89f237666de831b6e66035c6ab97a5"
+    },
+    {
+      "path": "motion-raw.exr",
+      "bytes": 3329059,
+      "sha256": "d11f8ed0ce836888279e54f7c933805f74ef46bfcdc2448e9807ad35a2c79e39"
+    },
+    {
+      "path": "motion-raw.png",
+      "bytes": 2808541,
+      "sha256": "f72802a954f554fa63369db9e8f1390f98261cc1abf4da43bc163c1531faa094"
+    },
+    {
+      "path": "presented.png",
+      "bytes": 6421087,
+      "sha256": "ea34a2b32cece3cc911e3307872c1349dad7ea73d13f0cdf8476f91fa7e1624e"
+    },
+    {
+      "path": "scene-input.exr",
+      "bytes": 19713729,
+      "sha256": "da5d308fe1c21662824fc36ce150eef4b3e20cc3c913bb1b14566176e5b7fe7e"
+    },
+    {
+      "path": "scene-input.png",
+      "bytes": 7517627,
+      "sha256": "69033686a89aed68eccf30c0d3f4f7a33a6a7a453e03878dabe9666459edd914"
+    },
+    {
+      "path": "scene-output.exr",
+      "bytes": 19187729,
+      "sha256": "ba5fbc17d072894e642f8dd6d5221ad418057fa646df573620e613dde502ff72"
+    },
+    {
+      "path": "scene-output.png",
+      "bytes": 7360826,
+      "sha256": "bd24f84e5b2d2988125e351730b316b9ad1e2960b33a4882fb56da7ef34b779d"
+    }
+  ]
+}

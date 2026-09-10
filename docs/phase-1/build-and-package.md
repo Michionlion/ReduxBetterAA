@@ -414,3 +414,26 @@ The capability report records B active and available, sanitizer E disabled,
 and 3,407 rerouted draws; no diagnostic motion-pass override was used. Cloud
 behavior remains shelved, while schema-22 and five-image F10 capture diagnostics
 stay installed for a future reproduction.
+
+The post-0.5.28 Phase 4 cloud-transition fix is documented in Decision 0033.
+The exact reporter camera sequence first reproduced the stock-cloud loss with
+DLAA in all three baseline cycles (`333987932708498aab5ddc3b65997347`). The
+stock `_finalSceneColor` retained RGB and alpha coverage while the DLAA-presented
+frame developed rectangular holes. Projection/history, depth, motion, and
+color-bias experiments each failed three-cycle isolation runs; skipping only
+the NVIDIA resolve remained clean.
+
+The final working-tree artifact observes the stock `VolumeCloudRenderer`
+transition without modifying its state, suspends DLAA while `EnableTUS` is
+active and for 120 settling frames, then resets and resumes DLAA. The installed
+DLL SHA-256 is
+`BD3CAB3E0FA0A8D8DA07F92328E0617DDE897D2C536375017BFB76FB4643FD57`.
+The Unity 6000.4.1f1 EditMode rerun passes 47/47 tests; the first invocation had
+one unrelated Burst cache error in `Unity.Entities.Editor` and passed
+immediately on repetition. Final installed-game TestHarness run
+`56967b0490844f669090afe4c64c3f50` passes three independently reloaded DLAA M
+cycles with no test errors or warnings. Reports 14-17 are protected, reports
+18-20 prove DLAA has resumed with zero settle frames, and the six post-resume
+camera-motion captures retain the clouds. The tested environment is KSP2
+0.2.3.0, Redux 0.2.8.5.103184-beta, Unity 6000.4.1f1, Windows player, NVIDIA
+GeForce RTX 5070 Ti, and 2560x1440 native rendering.

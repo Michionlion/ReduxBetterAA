@@ -17,10 +17,10 @@ MonoBehaviour:
   author: Michionlion
   description: Renderer diagnostics plus experimental PPv2, custom TAA, managed NVIDIA
     DLAA, and FSR2 Native AA for KSP2 Redux.
-  version: 0.5.28
+  version: 0.6.0
   versionCheck: 
   minKsp2Version: 0.2.8.5
-  maxKsp2Version: '*'
+  maxKsp2Version: 0.2.9.0
   source: https://github.com/Michionlion/ReduxBetterAA
   allGroup: {fileID: 11400000, guid: 8e7c3f4a33a784b48a8c437c55490441, type: 2}
   partsGroup: {fileID: 11400000, guid: baa345e904b38304889aea253ccdccf7, type: 2}

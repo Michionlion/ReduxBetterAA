@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "runId": "1757231e6a1f4bef8770e29820acaafc",
+  "name": "DLAA reinstall: actual same-frame resolve versus no AA",
+  "script": "G:\\KSP2\\ReduxBetterAA\\tests\\Visual\\dlaa-noaa-buffers.lua",
+  "status": "passed",
+  "startedUtc": "2026-09-07T16:56:01.934439Z",
+  "endedUtc": "2026-09-07T16:57:37.5067067Z",
+  "durationSeconds": 95.577,
+  "environment": {
+    "kspVersion": "0.2.3.0",
+    "reduxVersion": "0.2.8.5.103184-beta (commit ffc94930)",
+    "reduxCommit": "ffc94930",
+    "harnessVersion": "0.2.0.0",
+    "unityVersion": "6000.4.1f1",
+    "platform": "WindowsPlayer",
+    "graphicsDevice": "NVIDIA GeForce RTX 5070 Ti",
+    "mods": [
+      {
+        "id": "Ksp2Redux",
+        "name": "KSP2 Redux",
+        "version": "0.2.8.5.103184",
+        "assembly": null
+      },
+      {
+        "id": "PatchManager",
+        "name": "Patch Manager",
+        "version": "1.0.0",
+        "assembly": null
+      },
+      {
+        "id": "ReduxAlarmClock",
+        "name": "Redux Alarm Clock",
+        "version": "0.1.0",
+        "assembly": "ReduxAlarmClock.dll"
+      },
+      {
+        "id": "ReduxBetterAA",
+        "name": "Redux Better AA",
+        "version": "0.6.0",
+        "assembly": "ReduxBetterAA.dll"
+      },
+      {
+        "id": "ReduxBetterAAVisualTests",
+        "name": "Better AA Visual Tests (developer only)",
+        "version": "0.1.0",
+        "assembly": "ReduxBetterAA.VisualTests.dll"
+      },
+      {
+        "id": "ReduxMissionLog",
+        "name": "Redux Mission Log",
+        "version": "0.5.0",
+        "assembly": "ReduxMissionLog.dll"
+      },
+      {
+        "id": "ReduxTestHarness",
+        "name": "Redux Test Harness",
+        "version": "0.2.0",
+        "assembly": "ReduxTestHarness.dll"
+      },
+      {
+        "id": "SkipSplashScreen",
+        "name": "Skip Splash Screen",
+        "version": "1.3.1",
+        "assembly": "SkipSplashScreen.dll"
+      },
+      {
+        "id": "SpaceWarp2",
+        "name": "Space Warp",
+        "version": "2.0.0",
+        "assembly": null
+      },
+      {
+        "id": "VSwift",
+        "name": "V-SwiFT",
+        "version": "1.0.0",
+        "assembly": null
+      }
+    ]
+  },
+  "fixture": "local/launchpad-fly-safe-15",
+  "assertions": [
+    {
+      "status": "passed",
+      "expression": "values are not equal",
+      "message": "Visual adapter installed",
+      "actual": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "modes": "function: 0000050B",
+        "settings": "function: 0000050C",
+        "set_settings": "function: 0000050D",
+        "snapshot": "function: 0000050E",
+        "report": "function: 0000050F",
+        "panel": "function: 00000510"
+      },
+      "expected": null
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: menu-Off",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: menu-DLAA",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-rotated",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off-rotated",
+      "actual": true,
+      "expected": true
+    }
+  ],
+  "notes": [
+    "Compare scene-input and scene-output within each report, then compare the same camera pose across true Off and DLAA. Sharpness is zero; cloud guard state is recorded. Different sequential frames alone do not prove AA."
+  ],
+  "metrics": {},
+  "values": {
+    "menu-Off-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on Camera.Scaled",
+      "report_busy": false,
+      "report_zip": "",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "menu-Off-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-menu-Off": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165602-49e86c0b.zip",
+    "menu-Off-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on Camera.Scaled",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165602-49e86c0b.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "menu-DLAA-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on Camera.Scaled with synchronized Skybox",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165602-49e86c0b.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "menu-DLAA-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-menu-DLAA": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165609-17902583.zip",
+    "menu-DLAA-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on Camera.Scaled with synchronized Skybox",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165609-17902583.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-Off-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165609-17902583.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-Off-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165630-a833b57e.zip",
+    "flight-Off-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165630-a833b57e.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-DLAA-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165630-a833b57e.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-DLAA-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165647-0a2728c7.zip",
+    "flight-DLAA-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165647-0a2728c7.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-DLAA-rotated-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165647-0a2728c7.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-DLAA-rotated-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA-rotated": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165705-c6dd2604.zip",
+    "flight-DLAA-rotated-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165705-c6dd2604.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-Off-rotated-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165705-c6dd2604.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    },
+    "flight-Off-rotated-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off-rotated": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165721-3f79d228.zip",
+    "flight-Off-rotated-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-165721-3f79d228.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false
+    }
+  },
+  "screenshots": [],
+  "attachments": [],
+  "logs": [
+    "logs/Ksp2.log",
+    "logs/LogOutput.log",
+    "logs/Player.log"
+  ],
+  "errors": [],
+  "warnings": [],
+  "process": {
+    "processId": 33640,
+    "exitCode": null,
+    "crashed": false
+  }
+}

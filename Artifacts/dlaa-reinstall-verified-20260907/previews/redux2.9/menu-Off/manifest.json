@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "id": "20260907-170207-7a8ff121",
+  "capturedUtc": "2026-09-07T17:02:07.6449608Z",
+  "status": "complete",
+  "inputFrame": 2786,
+  "outputFrame": 2786,
+  "screenshotFrame": 2786,
+  "camera": "Camera.Scaled",
+  "note": "EXR files contain floating-point samples; PNGs are previews. Cloud and owned targets are observed after the AA pass. Vendor-internal history is opaque and cannot be exported. Screenshots include visible UI. Capture stalls are expected and are not performance measurements.",
+  "buffers": [
+    {
+      "name": "scene-input",
+      "frame": 2786,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-input.exr",
+      "previewFile": "scene-input.png",
+      "error": null
+    },
+    {
+      "name": "depth-device",
+      "frame": 2786,
+      "width": 2560,
+      "height": 1440,
+      "format": "None",
+      "status": "captured",
+      "rawFile": "depth-device.exr",
+      "previewFile": "depth-device.png",
+      "error": null
+    },
+    {
+      "name": "motion-raw",
+      "frame": 2786,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Resolve camera did not request motion vectors; global ownership is unproven"
+    },
+    {
+      "name": "scene-output",
+      "frame": 2786,
+      "width": 2560,
+      "height": 1440,
+      "format": "R16G16B16A16_SFloat",
+      "status": "captured",
+      "rawFile": "scene-output.exr",
+      "previewFile": "scene-output.png",
+      "error": null
+    },
+    {
+      "name": "MotionVectorSanitizer-sanitizedMotion",
+      "frame": 2786,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Not allocated by the current scene/backend"
+    },
+    {
+      "name": "MotionVectorSanitizer-frameCorruption",
+      "frame": 2786,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Not allocated by the current scene/backend"
+    },
+    {
+      "name": "DepthDisocclusionMask-mask",
+      "frame": 2786,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Not allocated by the current scene/backend"
+    },
+    {
+      "name": "cloud",
+      "frame": 2786,
+      "width": 0,
+      "height": 0,
+      "format": null,
+      "status": "unavailable",
+      "rawFile": null,
+      "previewFile": null,
+      "error": "Resolve camera has no stock VolumeCloudRenderer"
+    }
+  ],
+  "errors": [],
+  "files": [
+    {
+      "path": "betteraa-log.txt",
+      "bytes": 2232,
+      "sha256": "6ab104d07dcf2c529d86aecbccdb7d530c293f2ec486cbb8e45697f32a8fd21a"
+    },
+    {
+      "path": "capabilities.json",
+      "bytes": 32764,
+      "sha256": "ed4dcf297a195e8daf2cb771eb1fe151f34a4c5ad2c294d347309ae3f6ed7b16"
+    },
+    {
+      "path": "depth-device.exr",
+      "bytes": 1059726,
+      "sha256": "4954ddb29308061d82a2d2ce770fe68e660c121cad0f50e10fa8a285c6a46f85"
+    },
+    {
+      "path": "depth-device.png",
+      "bytes": 91852,
+      "sha256": "972ba47f353357c81eaaa4944717b8c823829d88a6890add28ff5f0346b2dbc3"
+    },
+    {
+      "path": "presented.png",
+      "bytes": 3555434,
+      "sha256": "acffbc6adb9dde3e51b03074597c41d62db1fd2b7860e03f06ddb76228632072"
+    },
+    {
+      "path": "scene-input.exr",
+      "bytes": 20545562,
+      "sha256": "19be7c1e5e82df1f8160dceeac25ca12c52d4a6f7e73b9f01cd6bdad86769440"
+    },
+    {
+      "path": "scene-input.png",
+      "bytes": 2267685,
+      "sha256": "63273ebf17869aac9bd210bd1406e7f935b636b21a75bdf699dc53d8e3989d23"
+    },
+    {
+      "path": "scene-output.exr",
+      "bytes": 20545562,
+      "sha256": "19be7c1e5e82df1f8160dceeac25ca12c52d4a6f7e73b9f01cd6bdad86769440"
+    },
+    {
+      "path": "scene-output.png",
+      "bytes": 2267685,
+      "sha256": "63273ebf17869aac9bd210bd1406e7f935b636b21a75bdf699dc53d8e3989d23"
+    }
+  ]
+}

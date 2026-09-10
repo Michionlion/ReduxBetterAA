@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "runId": "53a048cb28fe454fb7726a52a748c836",
+  "name": "DLAA cloud guard causal isolation - TEST ONLY",
+  "script": "G:\\KSP2\\ReduxBetterAA\\tests\\Visual\\dlaa-guard-isolation.lua",
+  "status": "passed",
+  "startedUtc": "2026-09-07T17:06:10.6060082Z",
+  "endedUtc": "2026-09-07T17:07:18.5543117Z",
+  "durationSeconds": 67.952,
+  "environment": {
+    "kspVersion": "0.2.3.0",
+    "reduxVersion": "0.2.8.5.103184-beta (commit ffc94930)",
+    "reduxCommit": "ffc94930",
+    "harnessVersion": "0.2.0.0",
+    "unityVersion": "6000.4.1f1",
+    "platform": "WindowsPlayer",
+    "graphicsDevice": "NVIDIA GeForce RTX 5070 Ti",
+    "mods": [
+      {
+        "id": "Ksp2Redux",
+        "name": "KSP2 Redux",
+        "version": "0.2.8.5.103184",
+        "assembly": null
+      },
+      {
+        "id": "PatchManager",
+        "name": "Patch Manager",
+        "version": "1.0.0",
+        "assembly": null
+      },
+      {
+        "id": "ReduxAlarmClock",
+        "name": "Redux Alarm Clock",
+        "version": "0.1.0",
+        "assembly": "ReduxAlarmClock.dll"
+      },
+      {
+        "id": "ReduxBetterAA",
+        "name": "Redux Better AA",
+        "version": "0.6.0",
+        "assembly": "ReduxBetterAA.dll"
+      },
+      {
+        "id": "ReduxBetterAAVisualTests",
+        "name": "Better AA Visual Tests (developer only)",
+        "version": "0.1.0",
+        "assembly": "ReduxBetterAA.VisualTests.dll"
+      },
+      {
+        "id": "ReduxMissionLog",
+        "name": "Redux Mission Log",
+        "version": "0.5.0",
+        "assembly": "ReduxMissionLog.dll"
+      },
+      {
+        "id": "ReduxTestHarness",
+        "name": "Redux Test Harness",
+        "version": "0.2.0",
+        "assembly": "ReduxTestHarness.dll"
+      },
+      {
+        "id": "SkipSplashScreen",
+        "name": "Skip Splash Screen",
+        "version": "1.3.1",
+        "assembly": "SkipSplashScreen.dll"
+      },
+      {
+        "id": "SpaceWarp2",
+        "name": "Space Warp",
+        "version": "2.0.0",
+        "assembly": null
+      },
+      {
+        "id": "VSwift",
+        "name": "V-SwiFT",
+        "version": "1.0.0",
+        "assembly": null
+      }
+    ]
+  },
+  "fixture": "local/launchpad-fly-safe-15",
+  "assertions": [
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off-guard-control",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-production-guard",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True DLAA input captured",
+      "actual": 1.0,
+      "expected": 0.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-guard-suppressed-TEST-ONLY",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True DLAA input captured",
+      "actual": 2.0,
+      "expected": 1.0
+    }
+  ],
+  "notes": [
+    "Cloud guard suppression is a temporary diagnostic override, not a production fix or cloud-quality validation. No stock cloud state is altered by the override."
+  ],
+  "metrics": {},
+  "values": {
+    "flight-Off-guard-control-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-guard-control-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off-guard-control": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170622-76e8ea97.zip",
+    "flight-Off-guard-control-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170622-76e8ea97.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-production-guard-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170622-76e8ea97.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-production-guard-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA-production-guard": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170640-129ad652.zip",
+    "flight-DLAA-production-guard-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170640-129ad652.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-guard-suppressed-TEST-ONLY-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170640-129ad652.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": true
+    },
+    "flight-DLAA-guard-suppressed-TEST-ONLY-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-DLAA-guard-suppressed-TEST-ONLY": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170658-844bd228.zip",
+    "flight-DLAA-guard-suppressed-TEST-ONLY-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170658-844bd228.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 2.0,
+      "test_cloud_guard_suppressed": true
+    }
+  },
+  "screenshots": [],
+  "attachments": [],
+  "logs": [
+    "logs/Ksp2.log",
+    "logs/LogOutput.log",
+    "logs/Player.log"
+  ],
+  "errors": [],
+  "warnings": [],
+  "process": {
+    "processId": 12140,
+    "exitCode": null,
+    "crashed": false
+  }
+}

@@ -1,0 +1,646 @@
+{
+  "schemaVersion": 1,
+  "runId": "9c3a911026574020990b7435c777e3c0",
+  "name": "DLAA reinstall: actual same-frame resolve versus no AA",
+  "script": "G:\\KSP2\\ReduxBetterAA\\tests\\Visual\\dlaa-noaa-buffers.lua",
+  "status": "passed",
+  "startedUtc": "2026-09-07T17:02:07.1377245Z",
+  "endedUtc": "2026-09-07T17:05:19.6661007Z",
+  "durationSeconds": 192.534,
+  "environment": {
+    "kspVersion": "0.2.9.0",
+    "reduxVersion": "0.2.9.0.104521-beta (26w36c, commit d299b906)",
+    "reduxCommit": "d299b906",
+    "harnessVersion": "0.2.0.0",
+    "unityVersion": "6000.5.8f1",
+    "platform": "WindowsPlayer",
+    "graphicsDevice": "NVIDIA GeForce RTX 5070 Ti",
+    "mods": [
+      {
+        "id": "Ksp2Redux",
+        "name": "KSP2 Redux",
+        "version": "0.2.9.0.104521",
+        "assembly": null
+      },
+      {
+        "id": "PatchManager",
+        "name": "Patch Manager",
+        "version": "1.0.0",
+        "assembly": null
+      },
+      {
+        "id": "ReduxAlarmClock",
+        "name": "Redux Alarm Clock",
+        "version": "0.1.0",
+        "assembly": "ReduxAlarmClock.dll"
+      },
+      {
+        "id": "ReduxBetterAA",
+        "name": "Redux Better AA",
+        "version": "0.6.0",
+        "assembly": "ReduxBetterAA.dll"
+      },
+      {
+        "id": "ReduxBetterAAVisualTests",
+        "name": "Better AA Visual Tests (developer only)",
+        "version": "0.1.0",
+        "assembly": "ReduxBetterAA.VisualTests.dll"
+      },
+      {
+        "id": "ReduxMissionLog",
+        "name": "Redux Mission Log",
+        "version": "0.5.0",
+        "assembly": "ReduxMissionLog.dll"
+      },
+      {
+        "id": "ReduxTestHarness",
+        "name": "Redux Test Harness",
+        "version": "0.2.0",
+        "assembly": "ReduxTestHarness.dll"
+      },
+      {
+        "id": "SkipSplashScreen",
+        "name": "Skip Splash Screen",
+        "version": "1.3.1",
+        "assembly": "SkipSplashScreen.dll"
+      },
+      {
+        "id": "SpaceWarp2",
+        "name": "Space Warp",
+        "version": "2.0.0",
+        "assembly": null
+      },
+      {
+        "id": "VSwift",
+        "name": "V-SwiFT",
+        "version": "1.0.0",
+        "assembly": null
+      }
+    ]
+  },
+  "fixture": "local/launchpad-fly-safe-15",
+  "assertions": [
+    {
+      "status": "passed",
+      "expression": "values are not equal",
+      "message": "Visual adapter installed",
+      "actual": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "modes": "function: 0000076A",
+        "settings": "function: 0000076B",
+        "set_settings": "function: 0000076C",
+        "snapshot": "function: 0000076D",
+        "report": "function: 0000076E",
+        "panel": "function: 0000076F",
+        "set_cloud_guard_suppressed": "function: 00000770"
+      },
+      "expected": null
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: menu-Off",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: menu-DLAA",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: menu-DLAA",
+      "actual": 1.0,
+      "expected": 0.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: flight-DLAA",
+      "actual": 2.0,
+      "expected": 1.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-rotated",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: flight-DLAA-rotated",
+      "actual": 3.0,
+      "expected": 2.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off-rotated",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-unpaused",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: flight-DLAA-unpaused",
+      "actual": 4.0,
+      "expected": 3.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off-clouds-disabled",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-clouds-disabled",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: flight-DLAA-clouds-disabled",
+      "actual": 5.0,
+      "expected": 4.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-Off-guard-control",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Buffer report accepted: flight-DLAA-guard-suppressed-TEST-ONLY",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "True backend input captured before DLAA: flight-DLAA-guard-suppressed-TEST-ONLY",
+      "actual": 6.0,
+      "expected": 5.0
+    }
+  ],
+  "notes": [
+    "Compare scene-input and scene-output within each report, then compare the same camera pose across true Off and DLAA. Sharpness is zero; cloud guard state is recorded. Different sequential frames alone do not prove AA."
+  ],
+  "metrics": {},
+  "values": {
+    "menu-Off-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on Camera.Scaled",
+      "report_busy": false,
+      "report_zip": "",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "menu-Off-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-menu-Off": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170207-7a8ff121.zip",
+    "menu-Off-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on Camera.Scaled",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170207-7a8ff121.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "menu-DLAA-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on Camera.Scaled with synchronized Skybox",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170207-7a8ff121.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "menu-DLAA-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-menu-DLAA": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170214-2a455de0.zip",
+    "menu-DLAA-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on Camera.Scaled with synchronized Skybox",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170214-2a455de0.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170214-2a455de0.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170237-cf15437d.zip",
+    "flight-Off-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170237-cf15437d.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170237-cf15437d.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170254-8e1996ba.zip",
+    "flight-DLAA-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170254-8e1996ba.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 2.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-rotated-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170254-8e1996ba.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 2.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-rotated-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA-rotated": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170312-5ae5b4a1.zip",
+    "flight-DLAA-rotated-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170312-5ae5b4a1.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 3.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-rotated-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170312-5ae5b4a1.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 3.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-rotated-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off-rotated": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170328-59606349.zip",
+    "flight-Off-rotated-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170328-59606349.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 3.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-unpaused-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170328-59606349.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 3.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-unpaused-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA-unpaused": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170347-bea9080f.zip",
+    "flight-DLAA-unpaused-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170347-bea9080f.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 4.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-clouds-disabled-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170347-bea9080f.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 4.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-clouds-disabled-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off-clouds-disabled": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170404-7a046999.zip",
+    "flight-Off-clouds-disabled-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170404-7a046999.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 4.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-clouds-disabled-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170404-7a046999.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 4.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-clouds-disabled-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": true,
+      "settleFramesRemaining": 120.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "buffers-flight-DLAA-clouds-disabled": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170422-49a9ed4e.zip",
+    "flight-DLAA-clouds-disabled-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170422-49a9ed4e.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 5.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-guard-control-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170422-49a9ed4e.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 5.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-guard-control-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-Off-guard-control": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170442-4098a63f.zip",
+    "flight-Off-guard-control-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170442-4098a63f.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 5.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-guard-suppressed-TEST-ONLY-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170442-4098a63f.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 5.0,
+      "test_cloud_guard_suppressed": true
+    },
+    "flight-DLAA-guard-suppressed-TEST-ONLY-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "buffers-flight-DLAA-guard-suppressed-TEST-ONLY": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170459-0af3cd0a.zip",
+    "flight-DLAA-guard-suppressed-TEST-ONLY-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\SteamLibrary\\steamapps\\common\\Kerbal Space Program 2\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-170459-0af3cd0a.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 6.0,
+      "test_cloud_guard_suppressed": true
+    }
+  },
+  "screenshots": [],
+  "attachments": [],
+  "logs": [
+    "logs/Ksp2.log",
+    "logs/LogOutput.log",
+    "logs/Player.log"
+  ],
+  "errors": [],
+  "warnings": [],
+  "process": {
+    "processId": 47852,
+    "exitCode": null,
+    "crashed": false
+  }
+}

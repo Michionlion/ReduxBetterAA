@@ -58,6 +58,8 @@ namespace Utilities.Editor
                 DiagnosticShaderPath,
                 DiagnosticShaderPath
             );
+            const string captureShader = "Assets/ReduxBetterAA/Shaders/IssueBufferCapture.shader";
+            AddressablesTools.MakeAddressable(mod.allGroup, captureShader, captureShader);
             AddressablesTools.MakeAddressable(
                 mod.allGroup,
                 MotionVectorPassProbeShaderPath,

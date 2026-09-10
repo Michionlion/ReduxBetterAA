@@ -1,0 +1,1399 @@
+{
+  "schemaVersion": 1,
+  "runId": "c586230dc4e34e2c8b5c0d8c6774a2aa",
+  "name": "Production DLAA remains enabled through stock cloud TUS",
+  "script": "G:\\KSP2\\ReduxBetterAA\\tests\\Visual\\dlaa-production-enabled.lua",
+  "status": "passed",
+  "startedUtc": "2026-09-07T17:14:08.8806812Z",
+  "endedUtc": "2026-09-07T17:15:21.8711686Z",
+  "durationSeconds": 72.995,
+  "environment": {
+    "kspVersion": "0.2.3.0",
+    "reduxVersion": "0.2.8.5.103184-beta (commit ffc94930)",
+    "reduxCommit": "ffc94930",
+    "harnessVersion": "0.2.0.0",
+    "unityVersion": "6000.4.1f1",
+    "platform": "WindowsPlayer",
+    "graphicsDevice": "NVIDIA GeForce RTX 5070 Ti",
+    "mods": [
+      {
+        "id": "Ksp2Redux",
+        "name": "KSP2 Redux",
+        "version": "0.2.8.5.103184",
+        "assembly": null
+      },
+      {
+        "id": "PatchManager",
+        "name": "Patch Manager",
+        "version": "1.0.0",
+        "assembly": null
+      },
+      {
+        "id": "ReduxAlarmClock",
+        "name": "Redux Alarm Clock",
+        "version": "0.1.0",
+        "assembly": "ReduxAlarmClock.dll"
+      },
+      {
+        "id": "ReduxBetterAA",
+        "name": "Redux Better AA",
+        "version": "0.6.0",
+        "assembly": "ReduxBetterAA.dll"
+      },
+      {
+        "id": "ReduxBetterAAVisualTests",
+        "name": "Better AA Visual Tests (developer only)",
+        "version": "0.1.0",
+        "assembly": "ReduxBetterAA.VisualTests.dll"
+      },
+      {
+        "id": "ReduxMissionLog",
+        "name": "Redux Mission Log",
+        "version": "0.5.0",
+        "assembly": "ReduxMissionLog.dll"
+      },
+      {
+        "id": "ReduxTestHarness",
+        "name": "Redux Test Harness",
+        "version": "0.2.0",
+        "assembly": "ReduxTestHarness.dll"
+      },
+      {
+        "id": "SkipSplashScreen",
+        "name": "Skip Splash Screen",
+        "version": "1.3.1",
+        "assembly": "SkipSplashScreen.dll"
+      },
+      {
+        "id": "SpaceWarp2",
+        "name": "Space Warp",
+        "version": "2.0.0",
+        "assembly": null
+      },
+      {
+        "id": "VSwift",
+        "name": "V-SwiFT",
+        "version": "1.0.0",
+        "assembly": null
+      }
+    ]
+  },
+  "fixture": "local/launchpad-fly-safe-15",
+  "assertions": [
+    {
+      "status": "passed",
+      "expression": "condition is false",
+      "message": "No test-only guard override",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Capture accepted: flight-Off",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "values are equal",
+      "message": "Requested DLAA did not fall back",
+      "actual": "NVIDIA DLAA",
+      "expected": "NVIDIA DLAA"
+    },
+    {
+      "status": "passed",
+      "expression": "condition is false",
+      "message": "No test-only guard override",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Production DLAA active",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is false",
+      "message": "Production guard is disabled",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "status": "passed",
+      "expression": "values are equal",
+      "message": "No suspension countdown",
+      "actual": 0.0,
+      "expected": 0.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Capture accepted: flight-DLAA",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "Actual DLAA input captured at backend entry",
+      "actual": 1.0,
+      "expected": 0.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is false",
+      "message": "No test-only guard override",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Production DLAA active",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "condition is false",
+      "message": "Production guard is disabled",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "status": "passed",
+      "expression": "values are equal",
+      "message": "No suspension countdown",
+      "actual": 0.0,
+      "expected": 0.0
+    },
+    {
+      "status": "passed",
+      "expression": "condition is true",
+      "message": "Capture accepted: flight-DLAA-after-pan",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "status": "passed",
+      "expression": "actual > expected",
+      "message": "Actual DLAA input captured at backend entry",
+      "actual": 2.0,
+      "expected": 1.0
+    }
+  ],
+  "notes": [
+    "Production payload, no guard override. Pair the runtime assertions with external numeric comparison of same-frame EXR input/output. This test verifies continued AA execution, not resolution of the original cloud-disappearance defect."
+  ],
+  "metrics": {},
+  "values": {
+    "original-settings": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "_modeEntry": "NVIDIA DLAA",
+      "_sharpnessEntry": 0.23999999463558197,
+      "_taaStabilityEntry": 0.99000000953674316,
+      "_dlaaPresetEntry": "M",
+      "_foliageMotionRepairEntry": true,
+      "_mapViewAaEntry": false,
+      "_cycleKeyEntry": "None",
+      "_hotkeysEntry": true
+    },
+    "flight-Off-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-Off-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 0.0,
+      "renderHeight": 0.0
+    },
+    "flight-Off-stock-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "camera": "FlightCameraPhysics_Main",
+      "enabled": true,
+      "configuration": "KSP.VolumeCloud.VolumeCloudConfiguration:kerbin_cloudconfig_high",
+      "firstCumulusData": "KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData:KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData",
+      "DownSample": 0.0,
+      "EnableTAA": true,
+      "EnableDynamicResolution": true,
+      "_dynamicResolutionLevel": 4.0,
+      "BlendAlpha": 0.05000000074505806,
+      "TrilinearSample": true,
+      "EnableTUS": true,
+      "EnableATAA": true,
+      "_IsUseScaleCloudsOnly": false,
+      "_readyToEnableTemporalUpscaling": false,
+      "_startEnableTemporalUpscaling": false,
+      "_startDisableTemporalUpscaling": false,
+      "_timeMultiplier": 1.0,
+      "_allCloudsLayersRange": "UnityEngine.Vector2:(0.00, 10000.00)",
+      "_cumulusMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cumulusPostProcessMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader"
+      },
+      "_cumulusCloudDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudDepthShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudDepthShader"
+      },
+      "_cumulusCloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShadowShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShadowShader"
+      },
+      "_currentMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudGodRayBlurMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_currentCloudsMat": "UnityEngine.Material[] Count=4",
+      "_SecondPassCloudsMat": "UnityEngine.Material[] Count=4",
+      "_cloudsShadowMaterialArray": "UnityEngine.Material[] Count=4",
+      "_resultColorAndDistance": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_temporalUpscalingRenderTarget": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_previousCloudLayerRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudLayerRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_previousCloudLayerRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBufferTemp": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBufferTemp",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historySceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistorySceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_motionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "motionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_historyUpsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_historyUpsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historyMotionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "historyMotionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_finalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "FinalSceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_lowResFinalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "LowResFinalSceneColor",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_preUpsample": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreUpSample",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_downsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_preDownsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBuffer",
+        "width": 160.0,
+        "height": 90.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_screenSpaceCloudShadowsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "shadowMapBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBlurBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBlurBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_copyDepthStencilBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "CopyDepthStencilBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "Depth",
+        "graphicsFormat": "None",
+        "created": true
+      },
+      "_gameManager": "KSP.Game.GameManager:GameManager",
+      "_currentLocalLight": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_currentScaledLight": "UnityEngine.Light:ScaledSpace_Light_Kerbol",
+      "_cameraSnapVector": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_preFloatingOringin": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_prevV": "UnityEngine.Matrix4x4:0.96586\t0.00001\t0.25908\t-0.00003\n0.21285\t0.57013\t-0.79350\t0.00000\n0.14771\t-0.82155\t-0.55066\t-44.99999\n0.00000\t0.00000\t0.00000\t1.00000\n",
+      "_mCamera": "UnityEngine.Camera:FlightCameraPhysics_Main",
+      "_sequence": "KSP.VolumeCloud.FrameIndexSequences:KSP.VolumeCloud.FrameIndexSequences",
+      "_firstFrame": false,
+      "_sampleCountBuffer": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer",
+      "_cumulusCloudShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShader",
+      "_cumulusCloudPostProcessShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+      "_cumulusCloudDepthShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudDepthShader",
+      "_cumulusCloudShadowShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShadowShader",
+      "_cloudsComputeShader": "UnityEngine.ComputeShader:CloudsComputeShader",
+      "_rayCheckGetTile": "UnityEngine.ComputeShader:RayCheck",
+      "_listCreationShader": "UnityEngine.Shader:Hidden/LinkedListCreation",
+      "_listRenderingShader": "UnityEngine.Shader:Hidden/LinkedListRendering",
+      "_listDepthShader": "UnityEngine.Shader:Hidden/LinkedListDepth",
+      "_listCreationMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListCreation",
+        "shader": "Hidden/LinkedListCreation"
+      },
+      "_listRenderingMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListRendering",
+        "shader": "Hidden/LinkedListRendering"
+      },
+      "_listDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListDepth",
+        "shader": "Hidden/LinkedListDepth"
+      },
+      "_readIsComplete": true,
+      "_cloudsDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+CloudsData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=2",
+      "_boxCloudDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+BoxCloudData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=0",
+      "_cloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_secondPassCloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_graphicsManager": "KSP.Rendering.GraphicsManager:Graphics Manager(Clone)",
+      "_dynamicResolutionRatioMax": 20.0,
+      "_dynamicResolutionRatioMin": 14.0,
+      "_minimumResolutionUnit": 8.0,
+      "_resolutionScale": 0.25,
+      "_renderWidth": 640.0,
+      "_renderHeight": 360.0,
+      "_renderWidthCurrent": 640.0,
+      "_renderHeightCurrent": 360.0,
+      "_originalWidth": 2560.0,
+      "_originalHeight": 1440.0,
+      "_quarterOriginalWidth": 1280.0,
+      "_quarterOriginalHeight": 720.0,
+      "_configAndCelestial": "System.Collections.Generic.Dictionary`2[[KSP.VolumeCloud.VolumeCloudConfiguration, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null],[UnityEngine.GameObject, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]] Count=1",
+      "_setGlobalShadowMapCommand": "CommandBuffer:SetShadowMapForCloud",
+      "_lightPre": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_cloudsCommandBuffer": "CommandBuffer:CloudCommandBuffer",
+      "_cloudsShadowCommandBuffer": "CommandBuffer:cloudsShadowCommandBuffer",
+      "_clearShadowCommandBuffer": "CommandBuffer:ClearShadowCommandBuffer",
+      "_kernelClearBuffer": 0.0,
+      "_kernelComputeSum": 2.0,
+      "_kernelClearToNegative": 1.0,
+      "_fullScreenQuad": "UnityEngine.Mesh:Atmospheric Scatter Effect",
+      "_sampleCountSubmmited": false,
+      "_renderTextureChanged": false,
+      "_cloudsLayerData": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer"
+    },
+    "buffers-flight-Off": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171420-960e8d43.zip",
+    "flight-Off-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "Off",
+      "selected": "Off",
+      "active": false,
+      "status": "Off; PPv2 AA disabled on FlightCameraPhysics_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171420-960e8d43.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171420-960e8d43.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 0.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "flight-DLAA-stock-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "camera": "FlightCameraPhysics_Main",
+      "enabled": true,
+      "configuration": "KSP.VolumeCloud.VolumeCloudConfiguration:kerbin_cloudconfig_high",
+      "firstCumulusData": "KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData:KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData",
+      "DownSample": 0.0,
+      "EnableTAA": true,
+      "EnableDynamicResolution": true,
+      "_dynamicResolutionLevel": 4.0,
+      "BlendAlpha": 0.05000000074505806,
+      "TrilinearSample": true,
+      "EnableTUS": true,
+      "EnableATAA": true,
+      "_IsUseScaleCloudsOnly": false,
+      "_readyToEnableTemporalUpscaling": false,
+      "_startEnableTemporalUpscaling": false,
+      "_startDisableTemporalUpscaling": false,
+      "_timeMultiplier": 1.0,
+      "_allCloudsLayersRange": "UnityEngine.Vector2:(0.00, 10000.00)",
+      "_cumulusMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cumulusPostProcessMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader"
+      },
+      "_cumulusCloudDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudDepthShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudDepthShader"
+      },
+      "_cumulusCloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShadowShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShadowShader"
+      },
+      "_currentMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudGodRayBlurMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_currentCloudsMat": "UnityEngine.Material[] Count=4",
+      "_SecondPassCloudsMat": "UnityEngine.Material[] Count=4",
+      "_cloudsShadowMaterialArray": "UnityEngine.Material[] Count=4",
+      "_resultColorAndDistance": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_temporalUpscalingRenderTarget": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_previousCloudLayerRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudLayerRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_previousCloudLayerRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBufferTemp": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBufferTemp",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historySceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistorySceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_motionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "motionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_historyUpsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_historyUpsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historyMotionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "historyMotionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_finalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "FinalSceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_lowResFinalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "LowResFinalSceneColor",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_preUpsample": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreUpSample",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_downsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_preDownsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBuffer",
+        "width": 160.0,
+        "height": 90.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_screenSpaceCloudShadowsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "shadowMapBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBlurBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBlurBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_copyDepthStencilBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "CopyDepthStencilBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "Depth",
+        "graphicsFormat": "None",
+        "created": true
+      },
+      "_gameManager": "KSP.Game.GameManager:GameManager",
+      "_currentLocalLight": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_currentScaledLight": "UnityEngine.Light:ScaledSpace_Light_Kerbol",
+      "_cameraSnapVector": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_preFloatingOringin": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_prevV": "UnityEngine.Matrix4x4:0.96586\t0.00001\t0.25908\t-0.00003\n0.21285\t0.57013\t-0.79350\t0.00000\n0.14771\t-0.82155\t-0.55066\t-44.99999\n0.00000\t0.00000\t0.00000\t1.00000\n",
+      "_mCamera": "UnityEngine.Camera:FlightCameraPhysics_Main",
+      "_sequence": "KSP.VolumeCloud.FrameIndexSequences:KSP.VolumeCloud.FrameIndexSequences",
+      "_firstFrame": false,
+      "_sampleCountBuffer": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer",
+      "_cumulusCloudShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShader",
+      "_cumulusCloudPostProcessShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+      "_cumulusCloudDepthShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudDepthShader",
+      "_cumulusCloudShadowShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShadowShader",
+      "_cloudsComputeShader": "UnityEngine.ComputeShader:CloudsComputeShader",
+      "_rayCheckGetTile": "UnityEngine.ComputeShader:RayCheck",
+      "_listCreationShader": "UnityEngine.Shader:Hidden/LinkedListCreation",
+      "_listRenderingShader": "UnityEngine.Shader:Hidden/LinkedListRendering",
+      "_listDepthShader": "UnityEngine.Shader:Hidden/LinkedListDepth",
+      "_listCreationMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListCreation",
+        "shader": "Hidden/LinkedListCreation"
+      },
+      "_listRenderingMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListRendering",
+        "shader": "Hidden/LinkedListRendering"
+      },
+      "_listDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListDepth",
+        "shader": "Hidden/LinkedListDepth"
+      },
+      "_readIsComplete": true,
+      "_cloudsDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+CloudsData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=2",
+      "_boxCloudDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+BoxCloudData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=0",
+      "_cloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_secondPassCloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_graphicsManager": "KSP.Rendering.GraphicsManager:Graphics Manager(Clone)",
+      "_dynamicResolutionRatioMax": 20.0,
+      "_dynamicResolutionRatioMin": 14.0,
+      "_minimumResolutionUnit": 8.0,
+      "_resolutionScale": 0.25,
+      "_renderWidth": 640.0,
+      "_renderHeight": 360.0,
+      "_renderWidthCurrent": 640.0,
+      "_renderHeightCurrent": 360.0,
+      "_originalWidth": 2560.0,
+      "_originalHeight": 1440.0,
+      "_quarterOriginalWidth": 1280.0,
+      "_quarterOriginalHeight": 720.0,
+      "_configAndCelestial": "System.Collections.Generic.Dictionary`2[[KSP.VolumeCloud.VolumeCloudConfiguration, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null],[UnityEngine.GameObject, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]] Count=1",
+      "_setGlobalShadowMapCommand": "CommandBuffer:SetShadowMapForCloud",
+      "_lightPre": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_cloudsCommandBuffer": "CommandBuffer:CloudCommandBuffer",
+      "_cloudsShadowCommandBuffer": "CommandBuffer:cloudsShadowCommandBuffer",
+      "_clearShadowCommandBuffer": "CommandBuffer:ClearShadowCommandBuffer",
+      "_kernelClearBuffer": 0.0,
+      "_kernelComputeSum": 2.0,
+      "_kernelClearToNegative": 1.0,
+      "_fullScreenQuad": "UnityEngine.Mesh:Atmospheric Scatter Effect",
+      "_sampleCountSubmmited": false,
+      "_renderTextureChanged": false,
+      "_cloudsLayerData": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer"
+    },
+    "buffers-flight-DLAA": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171439-1c764f8a.zip",
+    "flight-DLAA-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171439-1c764f8a.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-after-pan-before": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171439-1c764f8a.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 1.0,
+      "test_cloud_guard_suppressed": false
+    },
+    "flight-DLAA-after-pan-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "resizeCount": 0.0,
+      "compatibilityBypassActive": false,
+      "settleFramesRemaining": 0.0,
+      "renderWidth": 640.0,
+      "renderHeight": 360.0
+    },
+    "flight-DLAA-after-pan-stock-cloud": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "camera": "FlightCameraPhysics_Main",
+      "enabled": true,
+      "configuration": "KSP.VolumeCloud.VolumeCloudConfiguration:kerbin_cloudconfig_high",
+      "firstCumulusData": "KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData:KSP.VolumeCloud.VolumeCloudConfiguration+CumulusData",
+      "DownSample": 0.0,
+      "EnableTAA": true,
+      "EnableDynamicResolution": true,
+      "_dynamicResolutionLevel": 4.0,
+      "BlendAlpha": 0.05000000074505806,
+      "TrilinearSample": true,
+      "EnableTUS": true,
+      "EnableATAA": true,
+      "_IsUseScaleCloudsOnly": false,
+      "_readyToEnableTemporalUpscaling": false,
+      "_startEnableTemporalUpscaling": false,
+      "_startDisableTemporalUpscaling": false,
+      "_timeMultiplier": 1.0,
+      "_allCloudsLayersRange": "UnityEngine.Vector2:(0.00, 10000.00)",
+      "_cumulusMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cumulusPostProcessMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudPostProcessShader"
+      },
+      "_cumulusCloudDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudDepthShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudDepthShader"
+      },
+      "_cumulusCloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShadowShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShadowShader"
+      },
+      "_currentMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudShadowMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_cloudGodRayBlurMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "KSP2/Environment/Clouds/CumulusCloudShader",
+        "shader": "KSP2/Environment/Clouds/CumulusCloudShader"
+      },
+      "_currentCloudsMat": "UnityEngine.Material[] Count=4",
+      "_SecondPassCloudsMat": "UnityEngine.Material[] Count=4",
+      "_cloudsShadowMaterialArray": "UnityEngine.Material[] Count=4",
+      "_resultColorAndDistance": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_temporalUpscalingRenderTarget": "UnityEngine.Rendering.RenderTargetIdentifier[] Count=3",
+      "_previousCloudLayerRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudLayerRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_previousCloudLayerRaysDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreviousCloudRaysDepthBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RGFloat",
+        "graphicsFormat": "R32G32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_raySampleCountBufferTemp": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "RaySampleCountBufferTemp",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historySceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistorySceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_upsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "UpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_motionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "motionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_historyUpsampledColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledColorBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_historyUpsampledDepthBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "HistoryUpsampledDepthBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_historyMotionVectorsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "historyMotionVectorsBuffer",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RGHalf",
+        "graphicsFormat": "R16G16_SFloat",
+        "created": true
+      },
+      "_finalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "FinalSceneColor",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_lowResFinalSceneColor": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "LowResFinalSceneColor",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_preUpsample": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "PreUpSample",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_newCloudRaysColorBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "NewCloudRaysColorBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_downsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 1280.0,
+        "height": 720.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_preDownsampledDepth": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "EffectBase_Unnamed",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBuffer",
+        "width": 160.0,
+        "height": 90.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_screenSpaceCloudShadowsBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "shadowMapBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "RFloat",
+        "graphicsFormat": "R32_SFloat",
+        "created": true
+      },
+      "_godrayBlurBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "GodrayBlurBuffer",
+        "width": 640.0,
+        "height": 360.0,
+        "format": "ARGBFloat",
+        "graphicsFormat": "R32G32B32A32_SFloat",
+        "created": true
+      },
+      "_copyDepthStencilBuffer": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.RenderTexture",
+        "name": "CopyDepthStencilBuffer",
+        "width": 2560.0,
+        "height": 1440.0,
+        "format": "Depth",
+        "graphicsFormat": "None",
+        "created": true
+      },
+      "_gameManager": "KSP.Game.GameManager:GameManager",
+      "_currentLocalLight": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_currentScaledLight": "UnityEngine.Light:ScaledSpace_Light_Kerbol",
+      "_cameraSnapVector": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_preFloatingOringin": "UnityEngine.Vector3:(0.00, 0.00, 0.00)",
+      "_prevV": "UnityEngine.Matrix4x4:0.83592\t-0.50000\t0.22639\t-0.00002\n0.48974\t0.49327\t-0.71891\t-0.00001\n-0.24778\t-0.71182\t-0.65720\t-44.99998\n0.00000\t0.00000\t0.00000\t1.00000\n",
+      "_mCamera": "UnityEngine.Camera:FlightCameraPhysics_Main",
+      "_sequence": "KSP.VolumeCloud.FrameIndexSequences:KSP.VolumeCloud.FrameIndexSequences",
+      "_firstFrame": false,
+      "_sampleCountBuffer": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer",
+      "_cumulusCloudShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShader",
+      "_cumulusCloudPostProcessShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudPostProcessShader",
+      "_cumulusCloudDepthShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudDepthShader",
+      "_cumulusCloudShadowShader": "UnityEngine.Shader:KSP2/Environment/Clouds/CumulusCloudShadowShader",
+      "_cloudsComputeShader": "UnityEngine.ComputeShader:CloudsComputeShader",
+      "_rayCheckGetTile": "UnityEngine.ComputeShader:RayCheck",
+      "_listCreationShader": "UnityEngine.Shader:Hidden/LinkedListCreation",
+      "_listRenderingShader": "UnityEngine.Shader:Hidden/LinkedListRendering",
+      "_listDepthShader": "UnityEngine.Shader:Hidden/LinkedListDepth",
+      "_listCreationMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListCreation",
+        "shader": "Hidden/LinkedListCreation"
+      },
+      "_listRenderingMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListRendering",
+        "shader": "Hidden/LinkedListRendering"
+      },
+      "_listDepthMat": {
+        "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+        "type": "UnityEngine.Material",
+        "name": "Hidden/LinkedListDepth",
+        "shader": "Hidden/LinkedListDepth"
+      },
+      "_readIsComplete": true,
+      "_cloudsDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+CloudsData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=2",
+      "_boxCloudDataList": "System.Collections.Generic.List`1[[KSP.VolumeCloud.VolumeCloudConfiguration+BoxCloudData, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null]] Count=0",
+      "_cloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_secondPassCloudsLayerDrawIndex": "System.Collections.Generic.List`1[[System.Collections.Generic.List`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] Count=1",
+      "_graphicsManager": "KSP.Rendering.GraphicsManager:Graphics Manager(Clone)",
+      "_dynamicResolutionRatioMax": 20.0,
+      "_dynamicResolutionRatioMin": 14.0,
+      "_minimumResolutionUnit": 8.0,
+      "_resolutionScale": 0.25,
+      "_renderWidth": 640.0,
+      "_renderHeight": 360.0,
+      "_renderWidthCurrent": 640.0,
+      "_renderHeightCurrent": 360.0,
+      "_originalWidth": 2560.0,
+      "_originalHeight": 1440.0,
+      "_quarterOriginalWidth": 1280.0,
+      "_quarterOriginalHeight": 720.0,
+      "_configAndCelestial": "System.Collections.Generic.Dictionary`2[[KSP.VolumeCloud.VolumeCloudConfiguration, Assembly-CSharp, Version=0.0.9677.22262, Culture=neutral, PublicKeyToken=null],[UnityEngine.GameObject, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]] Count=1",
+      "_setGlobalShadowMapCommand": "CommandBuffer:SetShadowMapForCloud",
+      "_lightPre": "UnityEngine.Light:LocalSpace_Light_Kerbol",
+      "_cloudsCommandBuffer": "CommandBuffer:CloudCommandBuffer",
+      "_cloudsShadowCommandBuffer": "CommandBuffer:cloudsShadowCommandBuffer",
+      "_clearShadowCommandBuffer": "CommandBuffer:ClearShadowCommandBuffer",
+      "_kernelClearBuffer": 0.0,
+      "_kernelComputeSum": 2.0,
+      "_kernelClearToNegative": 1.0,
+      "_fullScreenQuad": "UnityEngine.Mesh:Atmospheric Scatter Effect",
+      "_sampleCountSubmmited": false,
+      "_renderTextureChanged": false,
+      "_cloudsLayerData": "UnityEngine.ComputeBuffer:UnityEngine.ComputeBuffer"
+    },
+    "buffers-flight-DLAA-after-pan": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171501-2ff7a9b7.zip",
+    "flight-DLAA-after-pan-after": {
+      "$type": "System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Object, mscorlib]], mscorlib",
+      "requested": "NvidiaDlaa",
+      "selected": "NVIDIA DLAA",
+      "active": true,
+      "status": "NVIDIA DLAA active on FlightCameraPhysics_Main with synchronized FlightCameraScaled_Main",
+      "report_busy": false,
+      "report_zip": "G:\\KSP2\\_diagnostics\\Redux29\\mods\\ReduxBetterAA\\diagnostics\\reports\\betteraa-20260907-171501-2ff7a9b7.zip",
+      "sharpness": 0.0,
+      "stability": 0.99000000953674316,
+      "map_override": false,
+      "true_dlaa_input_captures": 2.0,
+      "test_cloud_guard_suppressed": false
+    }
+  },
+  "screenshots": [],
+  "attachments": [],
+  "logs": [
+    "logs/Ksp2.log",
+    "logs/LogOutput.log",
+    "logs/Player.log"
+  ],
+  "errors": [],
+  "warnings": [],
+  "process": {
+    "processId": 30048,
+    "exitCode": null,
+    "crashed": false
+  }
+}

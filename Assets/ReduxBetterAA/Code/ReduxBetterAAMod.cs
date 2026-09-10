@@ -39,12 +39,15 @@ namespace ReduxBetterAA
         private IConfigEntry _dlaaPresetEntry;
         private IConfigEntry _foliageMotionRepairEntry;
         private IConfigEntry _mapViewAaEntry;
+        private IConfigEntry _hotkeysEntry;
+        private IConfigEntry _cycleKeyEntry;
+        private IConfigEntry _issueReportEntry;
+        private KeyCode _cycleKey = KeyCode.None;
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
         private bool _syncingConfiguration;
         private int _originalMsaaSamples;
         private bool _ownsMsaa;
-        private const bool HotkeysEnabled = true;
         private Phase1ProbeService _probeService;
         private TemporalCoordinator _temporalCoordinator;
         private VegetationMotionCompatibility _vegetationMotionCompatibility;
@@ -113,6 +116,22 @@ namespace ReduxBetterAA
                 "worse, without changing the normal flight AA selection."
             );
 
+            _hotkeysEntry = SWConfiguration.Bind("Diagnostics", "Enable diagnostic hotkeys", true,
+                "F10 generates an issue-report ZIP; Ctrl+F10 opens the panel; Shift+F10 takes a screenshot.");
+            _cycleKeyEntry = SWConfiguration.Bind("Diagnostics", "Cycle AA mode key", "None",
+                "Optional mode-cycle key. Disabled by default to avoid Steam's F12 screenshot shortcut.",
+                new ListConstraint<string>(new[] { "None", "F6", "F7", "F9", "F11", "F12" }));
+            _issueReportEntry = SWConfiguration.Bind("Diagnostics", "Generate issue report ZIP", false,
+                "Turn on to capture the current scene, available buffers and settings. Resets immediately. " +
+                "Capture may pause the game briefly. The resulting ZIP stays local; review its images before sending it.");
+            Persist(_issueReportEntry, false);
+            _issueReportEntry.RegisterCallback((previous, current) =>
+            {
+                if (!(bool)current) return;
+                Persist(_issueReportEntry, false);
+                _probeService?.RequestIssueReport();
+            });
+
             MigrateUserFacingSettings();
 
             RegisterSettingsCallbacks();
@@ -138,11 +157,12 @@ namespace ReduxBetterAA
                 SWLogger,
                 SWMetadata,
                 false,
-                HotkeysEnabled,
+                (bool)_hotkeysEntry.Value,
                 true
             );
             Phase1ProbeService.Current = _probeService;
             _probeService.Initialize();
+            _probeService.InitializeIssueReports(this);
 
             _temporalCoordinator = new TemporalCoordinator(
                 SWLogger,
@@ -168,34 +188,35 @@ namespace ReduxBetterAA
             );
             KspPhysicsRenderInterpolation.Current = _physicsRenderInterpolation;
             _physicsRenderInterpolation.Initialize();
-            _probeService.SetTemporalControls(
-                () => _temporalCoordinator.Status,
-                () => _temporalCoordinator.RequestedBackend,
-                SetRequestedBackendAndPersist,
-                () => _temporalCoordinator.Ppv2Config,
-                SetPpv2ConfigAndPersist,
-                RestoreConservativePpv2PresetAndPersist,
-                () => _temporalCoordinator.CustomConfig,
-                SetCustomConfigAndPersist,
-                RestoreConservativeCustomPresetAndPersist,
-                () => _temporalCoordinator.CustomEstimatedMemoryBytes,
-                () => _temporalCoordinator.DlaaConfig,
-                SetDlaaConfigAndPersist,
-                RestoreConservativeDlaaPresetAndPersist,
-                () => _temporalCoordinator.DlaaDetails,
-                () => _temporalCoordinator.DlaaEstimatedMemoryBytes,
-                () => _temporalCoordinator.Fsr2Config,
-                SetFsr2ConfigAndPersist,
-                RestoreConservativeFsr2PresetAndPersist,
-                () => _temporalCoordinator.Fsr2Details,
-                () => _temporalCoordinator.Fsr2EstimatedMemoryBytes,
-                _temporalCoordinator.GetPerformanceProfile,
-                _temporalCoordinator.StartPerformanceProfile,
-                _temporalCoordinator.CancelPerformanceProfile,
-                _temporalCoordinator.RequestHistoryReset,
-                () => _temporalCoordinator.MapViewAaEnabled,
-                SetMapViewAaEnabled
-            );
+            _probeService.SetTemporalControls(new BackendSettingsPanel
+            {
+                TemporalStatus = () => _temporalCoordinator.Status,
+                RequestedBackend = () => _temporalCoordinator.RequestedBackend,
+                SetRequestedBackend = SetRequestedBackendAndPersist,
+                Ppv2Config = () => _temporalCoordinator.Ppv2Config,
+                SetPpv2Config = SetPpv2ConfigAndPersist,
+                RestorePpv2Preset = RestoreConservativePpv2PresetAndPersist,
+                CustomConfig = () => _temporalCoordinator.CustomConfig,
+                SetCustomConfig = SetCustomConfigAndPersist,
+                RestoreCustomPreset = RestoreConservativeCustomPresetAndPersist,
+                CustomMemoryBytes = () => _temporalCoordinator.CustomEstimatedMemoryBytes,
+                DlaaConfig = () => _temporalCoordinator.DlaaConfig,
+                SetDlaaConfig = SetDlaaConfigAndPersist,
+                RestoreDlaaPreset = RestoreConservativeDlaaPresetAndPersist,
+                DlaaDetails = () => _temporalCoordinator.DlaaDetails,
+                DlaaMemoryBytes = () => _temporalCoordinator.DlaaEstimatedMemoryBytes,
+                Fsr2Config = () => _temporalCoordinator.Fsr2Config,
+                SetFsr2Config = SetFsr2ConfigAndPersist,
+                RestoreFsr2Preset = RestoreConservativeFsr2PresetAndPersist,
+                Fsr2Details = () => _temporalCoordinator.Fsr2Details,
+                Fsr2MemoryBytes = () => _temporalCoordinator.Fsr2EstimatedMemoryBytes,
+                PerformanceProfile = _temporalCoordinator.GetPerformanceProfile,
+                StartPerformanceProfile = _temporalCoordinator.StartPerformanceProfile,
+                CancelPerformanceProfile = _temporalCoordinator.CancelPerformanceProfile,
+                ResetTemporalHistory = _temporalCoordinator.RequestHistoryReset,
+                MapViewAaEnabled = () => _temporalCoordinator.MapViewAaEnabled,
+                SetMapViewAaEnabled = SetMapViewAaEnabled,
+            });
             _probeService.SetMotionCadenceControls(
                 () => _physicsRenderInterpolation.Enabled,
                 SetPhysicsRenderInterpolation,
@@ -228,13 +249,13 @@ namespace ReduxBetterAA
         {
             _probeService.MarkDirty(ProbeDirtyReason.ModsInitialized);
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Probe] Controls: Ctrl+F10 panel; F10 report+screenshot; F12 cycles AA mode; Ctrl+Alt+F8 report."
+                "[ReduxBetterAA/Probe] Controls: Ctrl+F10 panel; F10 issue ZIP; Shift+F10 screenshot; optional cycle key in settings; Ctrl+Alt+F8 report."
             );
         }
 
         private void Update()
         {
-            if (HotkeysEnabled && Input.GetKeyDown(KeyCode.F12))
+            if (_cycleKey != KeyCode.None && Input.GetKeyDown(_cycleKey) && !DiagnosticHotkeys.AnyModifierDown())
             {
                 CycleRequestedBackendAndPersist();
             }
@@ -363,6 +384,8 @@ namespace ReduxBetterAA
             _dlaaPresetEntry.RegisterCallback(OnPersistentSettingChanged);
             _foliageMotionRepairEntry.RegisterCallback(OnPersistentSettingChanged);
             _mapViewAaEntry.RegisterCallback(OnPersistentSettingChanged);
+            _hotkeysEntry.RegisterCallback(OnPersistentSettingChanged);
+            _cycleKeyEntry.RegisterCallback(OnPersistentSettingChanged);
         }
 
         private void OnPersistentSettingChanged(object previous, object current)
@@ -375,6 +398,10 @@ namespace ReduxBetterAA
 
         private void ApplyPersistentSettings()
         {
+            if (_probeService != null)
+                _probeService.HotkeysEnabled = (bool)_hotkeysEntry.Value;
+            if (!Enum.TryParse((string)_cycleKeyEntry.Value, out _cycleKey))
+                _cycleKey = KeyCode.None;
             if (_temporalCoordinator == null)
             {
                 return;

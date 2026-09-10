@@ -1,4 +1,4 @@
-// Exact production derivative of Unity 6000.4.1f1's
+// Production derivative of Unity 6000.4.1f1 / 6000.5.8f1's byte-identical
 // Hidden/Internal-MotionVectors shader. Unity's original shader source is
 // MIT-licensed by Unity Technologies.
 //

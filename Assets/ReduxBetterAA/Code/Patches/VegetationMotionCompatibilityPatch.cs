@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 namespace ReduxBetterAA.Patches
 {
     /// <summary>
-    /// Version-sensitive Harmony boundary for the Redux 2.8.5 vegetation
+    /// Version-sensitive Harmony boundary for the Redux 2.8.5 / 2.9 vegetation
     /// renderer. Rendering behavior remains in VegetationMotionCompatibility.
     /// </summary>
     internal static class VegetationMotionCompatibilityPatch
@@ -67,7 +67,7 @@ namespace ReduxBetterAA.Patches
                 TargetSignature);
             if (target == null || target.ReturnType != typeof(void))
             {
-                reason = "the exact Redux 2.8.5 vegetation method signature " +
+                reason = "the validated vegetation method signature " +
                     "was not found";
                 target = null;
                 return false;
