@@ -1,5 +1,6 @@
 using System;
 using KSP.Game;
+using KSP.VolumeCloud;
 using ReduxBetterAA.Backends;
 using ReduxBetterAA.Configuration;
 using ReduxLib.Logging;
@@ -49,6 +50,7 @@ namespace ReduxBetterAA.Rendering
         private readonly AmdFsr2Backend _fsr2Backend;
         private readonly DisabledBackend _disabledBackend = new DisabledBackend();
         private readonly HistoryResetTracker _resetTracker = new HistoryResetTracker();
+        private readonly TemporalGameEvents _gameEvents;
 
         private ITemporalBackend _activeBackend;
         private TemporalCameraSet _cameras;
@@ -56,8 +58,6 @@ namespace ReduxBetterAA.Rendering
         private HistoryResetReason _pendingResetReasons;
         private bool _dirty;
         private bool _disposed;
-        private bool _dlaaRuntimeFailed;
-        private bool _fsr2RuntimeFailed;
         private bool _mapViewAaEnabled = true;
         private bool _originRebasedPending;
         private float _discoverAfter;
@@ -79,6 +79,7 @@ namespace ReduxBetterAA.Rendering
         public TemporalCoordinator(ReduxLogger logger, bool requestPpv2Taa)
         {
             _logger = logger;
+            _gameEvents = new TemporalGameEvents(MarkDirty);
             _motionVectorSanitizer = new MotionVectorSanitizer(
                 logger,
                 OnTemporalResourceAvailabilityChanged
@@ -91,7 +92,8 @@ namespace ReduxBetterAA.Rendering
                 logger,
                 OnTemporalResourceAvailabilityChanged,
                 _performanceProfiler,
-                _motionVectorSanitizer
+                _motionVectorSanitizer,
+                OnCustomRuntimeFailure
             );
             _dlaaBackend = new NvidiaDlaaBackend(
                 logger,
@@ -117,6 +119,13 @@ namespace ReduxBetterAA.Rendering
         public BackendSelection RequestedBackend => _requestedBackend;
         public bool Active => _activeBackend.Active;
         public string SelectedBackend => _activeBackend.Id;
+        internal Camera ResolveCamera => _cameras?.ResolveCamera;
+
+        // Called only by an explicit diagnostic capture; no traversal in the render loop.
+        internal object[] CaptureBufferOwners() => new object[]
+        {
+            _activeBackend, _motionVectorSanitizer, _depthDisocclusionMask
+        };
         public string ResolveCameraName =>
             _cameras == null || _cameras.ResolveCamera == null
                 ? string.Empty
@@ -155,6 +164,13 @@ namespace ReduxBetterAA.Rendering
         public string DlaaExposureSource => _dlaaBackend.ExposureSource;
         public float DlaaEffectivePreExposure =>
             _dlaaBackend.EffectivePreExposure;
+        public bool DlaaCloudCompatibilityBypassActive =>
+            _dlaaBackend.CloudCompatibilityBypassActive;
+        public int DlaaCloudSettleFramesRemaining =>
+            _dlaaBackend.CloudSettleFramesRemaining;
+        public uint DlaaCloudResizeCount => _dlaaBackend.CloudResizeCount;
+        public int DlaaCloudRenderWidth => _dlaaBackend.CloudRenderWidth;
+        public int DlaaCloudRenderHeight => _dlaaBackend.CloudRenderHeight;
         public bool Fsr2ManagedSurfaceAvailable =>
             _fsr2Backend.ManagedSurfaceAvailable;
         public bool Fsr2ContextCreated => _fsr2Backend.ContextCreated;
@@ -264,6 +280,7 @@ namespace ReduxBetterAA.Rendering
             }
         }
         public string Status => _status;
+        internal bool TraceFrameHitches { get; set; }
 
         public PerformanceProfileSnapshot GetPerformanceProfile(
             BackendSelection mode)
@@ -309,7 +326,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
 
-            TracePreviousFrameHitch();
+            if (TraceFrameHitches) TracePreviousFrameHitch();
             PollGameState();
 
             float now = Time.unscaledTime;
@@ -518,6 +535,24 @@ namespace ReduxBetterAA.Rendering
             }
         }
 
+        public void NotifyCloudRenderResolution(
+            VolumeCloudRenderer renderer,
+            int width,
+            int height,
+            bool temporalUpscalingActive)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            _dlaaBackend.NotifyCloudRenderResolution(
+                renderer,
+                width,
+                height,
+                temporalUpscalingActive
+            );
+        }
+
         public void NotifyMotionInputChanged()
         {
             if (_disposed)
@@ -601,8 +636,8 @@ namespace ReduxBetterAA.Rendering
             _requestedBackend = requested;
             _pendingResetReasons |= HistoryResetReason.BackendChanged;
             _frameIndex = 0;
-            _dlaaRuntimeFailed = false;
-            _fsr2RuntimeFailed = false;
+            if (requested == BackendSelection.CustomTaa)
+                _customBackend.ClearRuntimeFailure();
             if (requested == BackendSelection.NvidiaDlaa)
             {
                 _dlaaBackend.ClearRuntimeFailure();
@@ -643,6 +678,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             _disposed = true;
+            _gameEvents.Dispose();
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
@@ -890,6 +926,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             _nextGameStatePollTime = now + GameStatePollSeconds;
+            _gameEvents.Refresh();
 
             GameState state = ReadGameState();
             if (_lastGameState != GameState.Invalid &&
@@ -927,12 +964,10 @@ namespace ReduxBetterAA.Rendering
 
         private void OnDlaaRuntimeFailure(string reason)
         {
-            if (_disposed || _requestedBackend != BackendSelection.NvidiaDlaa ||
-                _dlaaRuntimeFailed)
+            if (_disposed || _requestedBackend != BackendSelection.NvidiaDlaa)
             {
                 return;
             }
-            _dlaaRuntimeFailed = true;
             _status = "DLAA runtime failure (" + reason +
                 "); switching to the Off fallback...";
             _dirty = true;
@@ -940,14 +975,22 @@ namespace ReduxBetterAA.Rendering
             _discoverAfter = Time.unscaledTime;
         }
 
+        private void OnCustomRuntimeFailure(string reason)
+        {
+            if (_disposed || _requestedBackend != BackendSelection.CustomTaa)
+                return;
+            _status = "Custom TAA runtime failure (" + reason + "); switching to Off...";
+            _dirty = true;
+            _remainingDiscoveryRetries = 0;
+            _discoverAfter = Time.unscaledTime;
+        }
+
         private void OnFsr2RuntimeFailure(string reason)
         {
-            if (_disposed || _requestedBackend != BackendSelection.AmdFsr2 ||
-                _fsr2RuntimeFailed)
+            if (_disposed || _requestedBackend != BackendSelection.AmdFsr2)
             {
                 return;
             }
-            _fsr2RuntimeFailed = true;
             _status = "FSR2 runtime failure (" + reason +
                 "); switching to the Off fallback...";
             _dirty = true;

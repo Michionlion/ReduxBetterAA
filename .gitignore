@@ -103,3 +103,5 @@ ksp2.catalog
 /out
 /TestResults*.xml
 /BuildArtifacts/
+/Artifacts/visual-*/
+/Artifacts/beta-review.html

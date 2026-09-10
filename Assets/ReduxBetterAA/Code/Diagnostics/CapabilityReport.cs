@@ -7,6 +7,7 @@ namespace ReduxBetterAA.Diagnostics
     public sealed class Phase1Report
     {
         public int schemaVersion;
+        public int frame;
         public string capturedUtc;
         public string captureReason;
         public RuntimeRecord runtime;
@@ -65,6 +66,8 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     public sealed class RuntimeRecord
     {
+        public ModVersionRecord[] mods;
+        public string modAssemblySha256;
         public string modVersion;
         public string gameVersion;
         public string reduxVersion;
@@ -78,6 +81,13 @@ namespace ReduxBetterAA.Diagnostics
         public int graphicsMemoryMb;
         public string graphicsDeviceVersion;
         public bool graphicsMultiThreaded;
+    }
+
+    [Serializable]
+    public sealed class ModVersionRecord
+    {
+        public string id;
+        public string version;
     }
 
     [Serializable]
@@ -245,6 +255,11 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     public sealed class DlaaSettingsRecord
     {
+        public bool cloudCompatibilityBypassActive;
+        public int cloudSettleFramesRemaining;
+        public uint cloudResizeCount;
+        public int cloudRenderWidth;
+        public int cloudRenderHeight;
         public float jitterSpread;
         public int sequenceLength;
         public float sharpness;

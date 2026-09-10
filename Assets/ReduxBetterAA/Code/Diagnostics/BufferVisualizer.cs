@@ -79,21 +79,6 @@ namespace ReduxBetterAA.Diagnostics
                 "FSR2 AA",
                 "Buffers"
             };
-        private static readonly string[] DlaaPresetLabels =
-            { "F", "J", "K", "L", "M" };
-        private static readonly string[] CustomDebugLabels =
-        {
-            "Final resolve",
-            "Current color",
-            "History color",
-            "Reprojected history",
-            "Depth rejection",
-            "Reactive mask",
-            "History weight",
-            "Clamp extent",
-            "Motion vectors",
-            "Depth edges"
-        };
         private static readonly BufferDebugView[] MotionDiagnosticBurstViews =
         {
             BufferDebugView.MotionVectorsRaw,
@@ -187,6 +172,10 @@ namespace ReduxBetterAA.Diagnostics
         private bool _cameraRefreshRequested;
         private float _nextCameraRefresh;
         private bool _reportRequested;
+        internal Func<bool> CreateIssueReport;
+        internal Func<bool> IssueReportBusy;
+        internal bool CaptureBusy => _screenshotRequested || _motionDiagnosticBurstActive ||
+            _statisticsCaptureArmed || _statisticsReadbackPending || _panelSuspendedForScreenshot;
         private bool _screenshotRequested;
         private bool _statisticsCaptureArmed;
         private bool _statisticsReadbackPending;
@@ -205,9 +194,6 @@ namespace ReduxBetterAA.Diagnostics
         private Rect _windowRect = new Rect(24f, 60f, 620f, 760f);
         private Vector2 _panelContentScroll;
         private Vector2 _cameraScroll;
-        private Vector2 _customScroll;
-        private Vector2 _dlaaScroll;
-        private Vector2 _fsr2Scroll;
         private Vector2 _bufferScroll;
         private readonly GUI.WindowFunction _drawWindow;
         private bool _cursorStateCaptured;
@@ -215,33 +201,6 @@ namespace ReduxBetterAA.Diagnostics
         private bool _previousCursorVisible;
         private EventSystem _suppressedEventSystem;
         private bool _eventSystemWasEnabled;
-        private Func<string> _temporalStatus;
-        private Func<BackendSelection> _requestedBackend;
-        private Action<BackendSelection> _setRequestedBackend;
-        private Func<TemporalBackendConfig> _ppv2Config;
-        private Action<TemporalBackendConfig> _setPpv2Config;
-        private Action _restorePpv2Preset;
-        private Func<CustomTaaConfig> _customConfig;
-        private Action<CustomTaaConfig> _setCustomConfig;
-        private Action _restoreCustomPreset;
-        private Func<long> _customMemoryBytes;
-        private Func<DlaaConfig> _dlaaConfig;
-        private Action<DlaaConfig> _setDlaaConfig;
-        private Action _restoreDlaaPreset;
-        private Func<string> _dlaaDetails;
-        private Func<long> _dlaaMemoryBytes;
-        private Func<Fsr2Config> _fsr2Config;
-        private Action<Fsr2Config> _setFsr2Config;
-        private Action _restoreFsr2Preset;
-        private Func<string> _fsr2Details;
-        private Func<long> _fsr2MemoryBytes;
-        private Func<BackendSelection, PerformanceProfileSnapshot>
-            _performanceProfile;
-        private Action<BackendSelection> _startPerformanceProfile;
-        private Action _cancelPerformanceProfile;
-        private Action _resetTemporalHistory;
-        private Func<bool> _mapViewAaEnabled;
-        private Action<bool> _setMapViewAaEnabled;
         private Func<Texture> _sanitizedMotionTexture;
         private Func<Texture> _motionCorruptionTexture;
         private Func<Vector2> _currentJitterNormalized;
@@ -256,6 +215,7 @@ namespace ReduxBetterAA.Diagnostics
         private Action<bool> _setPhysicsInterpolationEnabled;
         private Func<string> _physicsInterpolationStatus;
         private Action _refreshPhysicsInterpolation;
+        private BackendSettingsPanel _backendPanel = new BackendSettingsPanel();
         private int _panelTab;
         private BackendSelection _lastObservedBackend = (BackendSelection)(-1);
         private Matrix4x4 _currentViewProjection;
@@ -372,60 +332,14 @@ namespace ReduxBetterAA.Diagnostics
             );
         }
 
-        public void SetTemporalControls(
-            Func<string> status,
-            Func<BackendSelection> requestedBackend,
-            Action<BackendSelection> setRequestedBackend,
-            Func<TemporalBackendConfig> ppv2Config,
-            Action<TemporalBackendConfig> setPpv2Config,
-            Action restorePpv2Preset,
-            Func<CustomTaaConfig> customConfig,
-            Action<CustomTaaConfig> setCustomConfig,
-            Action restoreCustomPreset,
-            Func<long> customMemoryBytes,
-            Func<DlaaConfig> dlaaConfig,
-            Action<DlaaConfig> setDlaaConfig,
-            Action restoreDlaaPreset,
-            Func<string> dlaaDetails,
-            Func<long> dlaaMemoryBytes,
-            Func<Fsr2Config> fsr2Config,
-            Action<Fsr2Config> setFsr2Config,
-            Action restoreFsr2Preset,
-            Func<string> fsr2Details,
-            Func<long> fsr2MemoryBytes,
-            Func<BackendSelection, PerformanceProfileSnapshot> performanceProfile,
-            Action<BackendSelection> startPerformanceProfile,
-            Action cancelPerformanceProfile,
-            Action resetHistory,
-            Func<bool> mapViewAaEnabled,
-            Action<bool> setMapViewAaEnabled)
+        public void SetTemporalControls(BackendSettingsPanel panel)
         {
-            _temporalStatus = status;
-            _requestedBackend = requestedBackend;
-            _setRequestedBackend = setRequestedBackend;
-            _ppv2Config = ppv2Config;
-            _setPpv2Config = setPpv2Config;
-            _restorePpv2Preset = restorePpv2Preset;
-            _customConfig = customConfig;
-            _setCustomConfig = setCustomConfig;
-            _restoreCustomPreset = restoreCustomPreset;
-            _customMemoryBytes = customMemoryBytes;
-            _dlaaConfig = dlaaConfig;
-            _setDlaaConfig = setDlaaConfig;
-            _restoreDlaaPreset = restoreDlaaPreset;
-            _dlaaDetails = dlaaDetails;
-            _dlaaMemoryBytes = dlaaMemoryBytes;
-            _fsr2Config = fsr2Config;
-            _setFsr2Config = setFsr2Config;
-            _restoreFsr2Preset = restoreFsr2Preset;
-            _fsr2Details = fsr2Details;
-            _fsr2MemoryBytes = fsr2MemoryBytes;
-            _performanceProfile = performanceProfile;
-            _startPerformanceProfile = startPerformanceProfile;
-            _cancelPerformanceProfile = cancelPerformanceProfile;
-            _resetTemporalHistory = resetHistory;
-            _mapViewAaEnabled = mapViewAaEnabled;
-            _setMapViewAaEnabled = setMapViewAaEnabled;
+            _backendPanel = panel;
+            panel.ClosePanel = () =>
+            {
+                _panelOpen = false;
+                RestorePanelInputState();
+            };
         }
 
         public void SetMotionCadenceControls(
@@ -512,6 +426,11 @@ namespace ReduxBetterAA.Diagnostics
             {
                 RestorePanelInputState();
             }
+        }
+
+        internal void SetPanelVisible(bool visible)
+        {
+            if (_panelOpen != visible) TogglePanel();
         }
 
         public bool ConsumeReportRequest()
@@ -939,32 +858,10 @@ namespace ReduxBetterAA.Diagnostics
             _motionVectorPassProbeShader = null;
             _candidates = Array.Empty<Camera>();
             _candidateLabels = Array.Empty<string>();
-            _temporalStatus = null;
-            _requestedBackend = null;
-            _setRequestedBackend = null;
-            _ppv2Config = null;
-            _setPpv2Config = null;
-            _restorePpv2Preset = null;
-            _customConfig = null;
-            _setCustomConfig = null;
-            _restoreCustomPreset = null;
-            _customMemoryBytes = null;
-            _dlaaConfig = null;
-            _setDlaaConfig = null;
-            _restoreDlaaPreset = null;
-            _dlaaDetails = null;
-            _dlaaMemoryBytes = null;
-            _fsr2Config = null;
-            _setFsr2Config = null;
-            _restoreFsr2Preset = null;
-            _fsr2Details = null;
-            _fsr2MemoryBytes = null;
-            _performanceProfile = null;
-            _startPerformanceProfile = null;
-            _cancelPerformanceProfile = null;
-            _resetTemporalHistory = null;
-            _mapViewAaEnabled = null;
-            _setMapViewAaEnabled = null;
+            _backendPanel.ClosePanel = null;
+            _backendPanel = null;
+            CreateIssueReport = null;
+            IssueReportBusy = null;
             _physicsInterpolationEnabled = null;
             _setPhysicsInterpolationEnabled = null;
             _physicsInterpolationStatus = null;
@@ -995,9 +892,13 @@ namespace ReduxBetterAA.Diagnostics
 
         private void DrawWindow(int windowId)
         {
-            BackendSelection requested = _requestedBackend == null
+            Color previousColor = GUI.color;
+            GUI.color = new Color(0.07f, 0.08f, 0.1f, 1f);
+            GUI.DrawTexture(new Rect(0f, 20f, _windowRect.width, _windowRect.height - 20f), Texture2D.whiteTexture);
+            GUI.color = previousColor;
+            BackendSelection requested = _backendPanel.RequestedBackend == null
                 ? BackendSelection.Off
-                : _requestedBackend();
+                : _backendPanel.RequestedBackend();
             if (requested != _lastObservedBackend)
             {
                 _panelTab = (int)requested;
@@ -1006,7 +907,7 @@ namespace ReduxBetterAA.Diagnostics
             }
 
             bool previousEnabled = GUI.enabled;
-            GUI.enabled = _setRequestedBackend != null;
+            GUI.enabled = _backendPanel.SetRequestedBackend != null;
             int selectedTab = GUILayout.Toolbar(
                 _panelTab,
                 PanelTabs,
@@ -1023,59 +924,59 @@ namespace ReduxBetterAA.Diagnostics
                 }
                 if (selectedTab >= (int)BackendSelection.Off &&
                     selectedTab <= (int)BackendSelection.AmdFsr2 &&
-                    _setRequestedBackend != null)
+                    _backendPanel.SetRequestedBackend != null)
                 {
                     BackendSelection selectedBackend =
                         (BackendSelection)selectedTab;
                     _lastObservedBackend = selectedBackend;
-                    _setRequestedBackend(selectedBackend);
+                    _backendPanel.SetRequestedBackend(selectedBackend);
                 }
             }
 
-            float contentHeight = Mathf.Max(120f, _windowRect.height - 145f);
+            float contentHeight = Mathf.Max(120f, _windowRect.height - 177f);
             _panelContentScroll = GUILayout.BeginScrollView(
                 _panelContentScroll,
                 GUILayout.Height(contentHeight)
             );
-            GUILayout.Label("AA mode and settings (F12 cycles modes)");
+            GUILayout.Label("AA mode and settings");
             GUILayout.Label(
-                _temporalStatus == null
+                _backendPanel.TemporalStatus == null
                     ? "Unavailable"
-                    : _temporalStatus()
+                    : _backendPanel.TemporalStatus()
             );
-            DrawMapViewAaControl();
+            _backendPanel.DrawMapViewAaControl();
             GUILayout.Space(8f);
             if (_panelTab == 0)
             {
-                DrawOffTab();
+                BackendSettingsPanel.DrawOffTab();
             }
             else if (_panelTab == 1)
             {
-                DrawSpatialAaTab(BackendSelection.FxaaLow);
+                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.FxaaLow);
             }
             else if (_panelTab == 2)
             {
-                DrawSpatialAaTab(BackendSelection.FxaaHigh);
+                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.FxaaHigh);
             }
             else if (_panelTab == 3)
             {
-                DrawSpatialAaTab(BackendSelection.Smaa);
+                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.Smaa);
             }
             else if (_panelTab == 4)
             {
-                DrawPpv2Tab();
+                _backendPanel.DrawPpv2Tab();
             }
             else if (_panelTab == 5)
             {
-                DrawCustomTab();
+                _backendPanel.DrawCustomTab();
             }
             else if (_panelTab == 6)
             {
-                DrawDlaaTab();
+                _backendPanel.DrawDlaaTab();
             }
             else if (_panelTab == 7)
             {
-                DrawFsr2Tab();
+                _backendPanel.DrawFsr2Tab();
             }
             else
             {
@@ -1084,510 +985,11 @@ namespace ReduxBetterAA.Diagnostics
             if (_panelTab >= (int)BackendSelection.Off &&
                 _panelTab <= (int)BackendSelection.AmdFsr2)
             {
-                DrawPerformanceProfile((BackendSelection)_panelTab);
+                _backendPanel.DrawPerformanceProfile((BackendSelection)_panelTab);
             }
             GUILayout.EndScrollView();
             DrawCommonControls();
             GUI.DragWindow(new Rect(0f, 0f, _windowRect.width, 24f));
-        }
-
-        private void DrawMapViewAaControl()
-        {
-            bool enabled = _mapViewAaEnabled == null || _mapViewAaEnabled();
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = _setMapViewAaEnabled != null;
-            Color previousColor = GUI.backgroundColor;
-            if (enabled)
-            {
-                GUI.backgroundColor = Color.cyan;
-            }
-            if (GUILayout.Button(
-                    enabled
-                        ? "Map-view AA: ON"
-                        : "Map-view AA: OFF (flight setting preserved)",
-                    GUILayout.Height(28f)))
-            {
-                _setMapViewAaEnabled(!enabled);
-            }
-            GUI.backgroundColor = previousColor;
-            GUI.enabled = previousEnabled;
-            GUILayout.Label(
-                "This independently forces AA Off only while map view is active."
-            );
-        }
-
-        private static void DrawOffTab()
-        {
-            GUILayout.Label(
-                "Redux forces PPv2 anti-aliasing off while this mode is selected, " +
-                "providing a true unfiltered baseline. The renderer's prior AA " +
-                "state is restored when Redux releases the scene. Choose FXAA " +
-                "Low, FXAA High, SMAA, PPv2, Custom, DLAA, or FSR2 AA above to " +
-                "enable that mode and open its settings."
-            );
-        }
-
-        private static void DrawSpatialAaTab(BackendSelection mode)
-        {
-            switch (mode)
-            {
-                case BackendSelection.FxaaLow:
-                    GUILayout.Label("KSP stock Low / PPv2 FXAA fast mode");
-                    GUILayout.Label(
-                        "A fast spatial edge filter with no temporal history. " +
-                        "This is the exact effect selected by KSP's Low setting."
-                    );
-                    break;
-                case BackendSelection.Smaa:
-                    GUILayout.Label("PPv2 SMAA (high quality spatial mode)");
-                    GUILayout.Label(
-                        "The existing Unity Post Processing Stack SMAA effect, " +
-                        "using its shipped High quality preset. It does not use " +
-                        "motion vectors or temporal history."
-                    );
-                    break;
-                default:
-                    GUILayout.Label("KSP stock High / PPv2 FXAA quality mode");
-                    GUILayout.Label(
-                        "The higher-quality spatial FXAA variant selected by KSP's " +
-                        "High setting. It has no temporal history."
-                    );
-                    break;
-            }
-        }
-
-        private void DrawPpv2Tab()
-        {
-            GUILayout.Label("Phase 2 / PPv2 TAA parameters");
-
-            if (_ppv2Config == null || _setPpv2Config == null)
-            {
-                GUILayout.Label("PPv2 parameter controls are unavailable.");
-                return;
-            }
-
-            TemporalBackendConfig config = _ppv2Config();
-            float jitterSpread = DrawParameter(
-                "Jitter spread",
-                config.JitterSpread,
-                0.1f,
-                1.0f
-            );
-            float sharpness = DrawParameter(
-                "Sharpness",
-                config.Sharpness,
-                0.0f,
-                1.0f
-            );
-            float stationaryBlending = DrawParameter(
-                "Stationary history",
-                config.StationaryBlending,
-                0.0f,
-                0.99f
-            );
-            float motionBlending = DrawParameter(
-                "Moving history",
-                config.MotionBlending,
-                0.0f,
-                0.99f
-            );
-
-            var updated = new TemporalBackendConfig(
-                jitterSpread,
-                sharpness,
-                stationaryBlending,
-                motionBlending
-            );
-            if (!config.ValuesEqual(in updated))
-            {
-                _setPpv2Config(updated);
-            }
-
-            GUILayout.Space(10f);
-            GUILayout.Label(
-                "Changes apply immediately. Shared sharpness is saved; the other " +
-                "engineering parameters remain session-only. Each temporal " +
-                "parameter change resets history once."
-            );
-            GUILayout.Label(
-                "Launchpad warning: high Moving history values can amplify the " +
-                "observed motion-vector spikes."
-            );
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
-            {
-                _restorePpv2Preset?.Invoke();
-            }
-            bool previousHistoryEnabled = GUI.enabled;
-            GUI.enabled = IsTemporalBackendActive() && _resetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f)))
-            {
-                _resetTemporalHistory();
-            }
-            GUI.enabled = previousHistoryEnabled;
-            GUILayout.EndHorizontal();
-        }
-
-        private void DrawCustomTab()
-        {
-            GUILayout.Label("Phase 3 / project-owned custom TAA");
-            if (_customConfig == null || _setCustomConfig == null)
-            {
-                GUILayout.Label("Custom TAA parameter controls are unavailable.");
-                return;
-            }
-
-            _customScroll = GUILayout.BeginScrollView(
-                _customScroll,
-                GUILayout.Height(370f)
-            );
-            CustomTaaConfig config = _customConfig();
-            float jitterSpread = DrawParameter(
-                "Jitter spread", config.JitterSpread, 0.1f, 1.5f
-            );
-            int sequenceLength = Mathf.RoundToInt(DrawParameter(
-                "Jitter sequence", config.SequenceLength, 4.0f, 32.0f
-            ));
-            float stationaryHistory = DrawParameter(
-                "Stationary history", config.StationaryHistory, 0.0f, 0.99f
-            );
-            float movingHistory = DrawParameter(
-                "Moving history", config.MovingHistory, 0.0f, 0.99f
-            );
-            float motionResponsePixels = DrawParameter(
-                "Motion response (px)", config.MotionResponsePixels, 0.5f, 64.0f
-            );
-            float maximumMotionPixels = DrawParameter(
-                "Reject motion above (px)", config.MaximumMotionPixels, 8.0f, 512.0f
-            );
-            float depthThreshold = DrawParameter(
-                "Surface/depth threshold", config.DepthThreshold, 0.0001f, 0.1f
-            );
-            float depthEdgeStability = DrawParameter(
-                "Depth-edge stability", config.DepthEdgeStability, 0.0f, 1.0f
-            );
-            float varianceGamma = DrawParameter(
-                "Variance clip gamma", config.VarianceGamma, 0.5f, 3.0f
-            );
-            float reactiveScale = DrawParameter(
-                "Inferred reactive scale", config.ReactiveScale, 0.0f, 10.0f
-            );
-            float sharpening = DrawParameter(
-                "Sharpening", config.Sharpening, 0.0f, 1.0f
-            );
-            float noDepthHistory = DrawParameter(
-                "No-depth history cap", config.NoDepthHistory, 0.0f, 0.99f
-            );
-
-            GUILayout.Space(6f);
-            GUILayout.Label("Custom resolve debug output");
-            int debugMode = GUILayout.SelectionGrid(
-                (int)config.DebugView,
-                CustomDebugLabels,
-                2,
-                GUILayout.Height(112f)
-            );
-
-            var updated = new CustomTaaConfig(
-                jitterSpread,
-                sequenceLength,
-                stationaryHistory,
-                movingHistory,
-                motionResponsePixels,
-                maximumMotionPixels,
-                depthThreshold,
-                depthEdgeStability,
-                varianceGamma,
-                reactiveScale,
-                sharpening,
-                noDepthHistory,
-                (CustomTaaDebugView)debugMode
-            );
-            if (!config.ValuesEqual(in updated))
-            {
-                _setCustomConfig(updated);
-            }
-            GUILayout.EndScrollView();
-
-            long bytes = _customMemoryBytes == null ? 0 : _customMemoryBytes();
-            GUILayout.Label(
-                bytes > 0
-                    ? "Allocated custom history: " +
-                      (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
-                    : "Custom history is allocated when the backend first renders."
-            );
-            GUILayout.Label(
-                "Motion above the configured limit is rejected, including the " +
-                "launchpad outliers observed in Phase 1."
-            );
-            GUILayout.Label(
-                "Depth-edge stability filters the clamp and depth match to the " +
-                "current surface; set it to 0 for the legacy edge path."
-            );
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
-            {
-                _restoreCustomPreset?.Invoke();
-            }
-            bool previousHistoryEnabled = GUI.enabled;
-            GUI.enabled = IsTemporalBackendActive() && _resetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f)))
-            {
-                _resetTemporalHistory();
-            }
-            GUI.enabled = previousHistoryEnabled;
-            GUILayout.EndHorizontal();
-        }
-
-        private bool IsTemporalBackendActive()
-        {
-            return _requestedBackend != null &&
-                   _requestedBackend() != BackendSelection.Off;
-        }
-
-        private void DrawDlaaTab()
-        {
-            GUILayout.Label("Phase 4 / managed Unity NVIDIA DLAA");
-            GUILayout.Label(
-                _dlaaDetails == null
-                    ? "DLAA runtime details are unavailable."
-                    : _dlaaDetails()
-            );
-            if (_dlaaConfig == null || _setDlaaConfig == null)
-            {
-                GUILayout.Label("DLAA parameter controls are unavailable.");
-                return;
-            }
-
-            _dlaaScroll = GUILayout.BeginScrollView(
-                _dlaaScroll,
-                GUILayout.Height(330f)
-            );
-            DlaaConfig config = _dlaaConfig();
-            float jitterSpread = DrawParameter(
-                "Jitter spread", config.JitterSpread, 0.1f, 1.5f
-            );
-            int sequenceLength = Mathf.RoundToInt(DrawParameter(
-                "Jitter sequence", config.SequenceLength, 4.0f, 32.0f
-            ));
-            float sharpness = DrawParameter(
-                "DLAA sharpness", config.Sharpness, 0.0f, 1.0f
-            );
-            float preExposure = DrawParameter(
-                "Pre-exposure", config.PreExposure, 0.01f, 16.0f
-            );
-            bool autoExposure = GUILayout.Toggle(
-                config.AutoExposure,
-                " Automatic exposure"
-            );
-            bool preferPpv2Exposure = GUILayout.Toggle(
-                config.PreferPpv2Exposure,
-                " Prefer game / PPv2 exposure"
-            );
-            bool invertMotionX = GUILayout.Toggle(
-                config.InvertMotionX,
-                " Invert motion-vector X in sanitizer"
-            );
-            bool invertMotionY = GUILayout.Toggle(
-                config.InvertMotionY,
-                " Invert motion-vector Y in sanitizer"
-            );
-            bool allowSupersampling = GUILayout.Toggle(
-                config.AllowSupersampling,
-                " Allow Redux supersampling above 100%"
-            );
-
-            GUILayout.Space(6f);
-            GUILayout.Label("DLAA preset hint");
-            int presetIndex = GUILayout.SelectionGrid(
-                DlaaPresetToIndex(config.Preset),
-                DlaaPresetLabels,
-                3,
-                GUILayout.Height(50f)
-            );
-            var updated = new DlaaConfig(
-                jitterSpread,
-                sequenceLength,
-                sharpness,
-                preExposure,
-                autoExposure,
-                invertMotionX,
-                invertMotionY,
-                DlaaPresetFromIndex(presetIndex),
-                allowSupersampling,
-                preferPpv2Exposure
-            );
-            if (!config.ValuesEqual(in updated))
-            {
-                _setDlaaConfig(updated);
-            }
-            GUILayout.EndScrollView();
-
-            long bytes = _dlaaMemoryBytes == null ? 0 : _dlaaMemoryBytes();
-            GUILayout.Label(
-                bytes > 0
-                    ? "Project-owned DLAA output: " +
-                      (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
-                    : "The DLAA output is allocated when its context first renders."
-            );
-            GUILayout.Label(
-                "Unity Built-in motion is previous-to-current, while DLAA expects " +
-                "current-to-previous, so X and Y inversion should both be enabled. " +
-                "These are shader transforms; NVIDIA's similarly named fields only " +
-                "orient its optional status indicator. A same-frame detector " +
-                "replaces screen-wide corruption. Coherent camera pans may exceed " +
-                "256 px; invalid, unverified >256 px, or >96 px disagreement uses a " +
-                "<=256 px camera fallback. The " +
-                "supersampling option runs equal-size DLAA on Redux's larger " +
-                "scene buffer before Redux downsamples it."
-            );
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
-            {
-                _restoreDlaaPreset?.Invoke();
-            }
-            bool previousHistoryEnabled = GUI.enabled;
-            GUI.enabled = IsTemporalBackendActive() && _resetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f)))
-            {
-                _resetTemporalHistory();
-            }
-            GUI.enabled = previousHistoryEnabled;
-            GUILayout.EndHorizontal();
-        }
-
-        private static int DlaaPresetToIndex(DlaaPreset preset)
-        {
-            switch (preset)
-            {
-                case DlaaPreset.F:
-                    return 0;
-                case DlaaPreset.J:
-                    return 1;
-                case DlaaPreset.K:
-                    return 2;
-                case DlaaPreset.L:
-                    return 3;
-                case DlaaPreset.M:
-                    return 4;
-                default:
-                    return 2;
-            }
-        }
-
-        private static DlaaPreset DlaaPresetFromIndex(int index)
-        {
-            switch (index)
-            {
-                case 0:
-                    return DlaaPreset.F;
-                case 1:
-                    return DlaaPreset.J;
-                case 2:
-                    return DlaaPreset.K;
-                case 3:
-                    return DlaaPreset.L;
-                case 4:
-                    return DlaaPreset.M;
-                default:
-                    return DlaaPreset.M;
-            }
-        }
-
-        private void DrawFsr2Tab()
-        {
-            GUILayout.Label("Phase 5 experiment / Unity AMD FSR2 Native AA");
-            GUILayout.Label(
-                _fsr2Details == null
-                    ? "FSR2 runtime details are unavailable."
-                    : _fsr2Details()
-            );
-            if (_fsr2Config == null || _setFsr2Config == null)
-            {
-                GUILayout.Label("FSR2 parameter controls are unavailable.");
-                return;
-            }
-
-            _fsr2Scroll = GUILayout.BeginScrollView(
-                _fsr2Scroll,
-                GUILayout.Height(330f)
-            );
-            Fsr2Config config = _fsr2Config();
-            float jitterSpread = DrawParameter(
-                "Jitter spread", config.JitterSpread, 0.1f, 1.5f
-            );
-            int sequenceLength = Mathf.RoundToInt(DrawParameter(
-                "Jitter sequence", config.SequenceLength, 4.0f, 32.0f
-            ));
-            float sharpness = DrawParameter(
-                "Sharpness", config.Sharpness, 0.0f, 1.0f
-            );
-            float preExposure = DrawParameter(
-                "Pre-exposure", config.PreExposure, 0.01f, 16.0f
-            );
-            bool autoExposure = GUILayout.Toggle(
-                config.AutoExposure,
-                " Automatic exposure"
-            );
-            bool preferPpv2Exposure = GUILayout.Toggle(
-                config.PreferPpv2Exposure,
-                " Prefer game / PPv2 exposure"
-            );
-            bool invertMotionX = GUILayout.Toggle(
-                config.InvertMotionX,
-                " Invert motion-vector X in sanitizer"
-            );
-            bool invertMotionY = GUILayout.Toggle(
-                config.InvertMotionY,
-                " Invert motion-vector Y in sanitizer"
-            );
-
-            var updated = new Fsr2Config(
-                jitterSpread,
-                sequenceLength,
-                sharpness,
-                preExposure,
-                autoExposure,
-                invertMotionX,
-                invertMotionY,
-                preferPpv2Exposure
-            );
-            if (!config.ValuesEqual(in updated))
-            {
-                _setFsr2Config(updated);
-            }
-            GUILayout.EndScrollView();
-
-            long bytes = _fsr2MemoryBytes == null ? 0 : _fsr2MemoryBytes();
-            GUILayout.Label(
-                bytes > 0
-                    ? "Project-owned FSR2 output: " +
-                      (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
-                    : "The FSR2 output is allocated when its context first renders."
-            );
-            GUILayout.Label(
-                "This first FSR2 mode is native-resolution AA only: render scale " +
-                "must be 100%. It is selectable on AMD, NVIDIA, and Intel GPUs " +
-                "when Unity's AMD runtime loads. Screen-wide corruption is " +
-                "replaced in the same frame. Coherent camera pans may exceed " +
-                "256 px; invalid, unverified >256 px, or >96 px disagreement uses " +
-                "a <=256 px " +
-                "camera fallback. " +
-                "Unity-to-vendor X and Y inversion should both remain enabled."
-            );
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
-            {
-                _restoreFsr2Preset?.Invoke();
-            }
-            bool previousHistoryEnabled = GUI.enabled;
-            GUI.enabled = IsTemporalBackendActive() && _resetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f)))
-            {
-                _resetTemporalHistory();
-            }
-            GUI.enabled = previousHistoryEnabled;
-            GUILayout.EndHorizontal();
         }
 
         private void DrawBufferTab()
@@ -1863,157 +1265,18 @@ namespace ReduxBetterAA.Diagnostics
             );
         }
 
-        private void DrawPerformanceProfile(BackendSelection mode)
-        {
-            GUILayout.Space(10f);
-            GUILayout.Label("Performance profile (30 warm-up + 240 measured frames)");
-            if (_performanceProfile == null || _startPerformanceProfile == null)
-            {
-                GUILayout.Label("Performance profiling is unavailable.");
-                return;
-            }
-
-            PerformanceProfileSnapshot profile = _performanceProfile(mode);
-            switch (profile.State)
-            {
-                case PerformanceProfileState.WarmingUp:
-                    GUILayout.Label(
-                        "Warming up: " + profile.WarmupFramesRemaining +
-                        " frames remaining."
-                    );
-                    break;
-                case PerformanceProfileState.Sampling:
-                    GUILayout.Label(
-                        "Sampling: " + profile.Samples + "/" +
-                        profile.TargetSamples + " frames."
-                    );
-                    break;
-                case PerformanceProfileState.Complete:
-                    DrawCompletedPerformanceProfile(mode, in profile);
-                    break;
-                case PerformanceProfileState.BackendUnavailable:
-                    GUILayout.Label(
-                        "Profile stopped: this requested mode was unavailable or " +
-                        "fell back to another backend."
-                    );
-                    break;
-                case PerformanceProfileState.Cancelled:
-                    GUILayout.Label("Profile cancelled before completion.");
-                    break;
-                default:
-                    GUILayout.Label("No completed profile for this mode.");
-                    break;
-            }
-
-            if (profile.Running)
-            {
-                if (GUILayout.Button("Cancel performance profile", GUILayout.Height(28f)))
-                {
-                    _cancelPerformanceProfile?.Invoke();
-                }
-            }
-            else if (GUILayout.Button(
-                         "Profile 240 frames (panel closes)",
-                         GUILayout.Height(28f)))
-            {
-                _startPerformanceProfile(mode);
-                _panelOpen = false;
-                RestorePanelInputState();
-            }
-        }
-
-        private void DrawCompletedPerformanceProfile(
-            BackendSelection mode,
-            in PerformanceProfileSnapshot profile)
-        {
-            GUILayout.Label(
-                "Whole frame CPU: " +
-                profile.AverageCpuFrameMilliseconds.ToString("0.00") +
-                " ms average, " +
-                profile.PeakCpuFrameMilliseconds.ToString("0.00") + " ms peak."
-            );
-            GUILayout.Label(
-                profile.GpuSamples > 0
-                    ? "Whole frame GPU: " +
-                      profile.AverageGpuFrameMilliseconds.ToString("0.00") +
-                      " ms average, " +
-                      profile.PeakGpuFrameMilliseconds.ToString("0.00") +
-                      " ms peak (" + profile.GpuSamples + " samples)."
-                    : "Whole frame GPU timing was unavailable from Unity."
-            );
-
-            if (profile.ResolveSamples > 0)
-            {
-                GUILayout.Label(
-                    "Mod resolve CPU submission: " +
-                    profile.AverageResolveCpuMilliseconds.ToString("0.000") +
-                    " ms average, " +
-                    profile.PeakResolveCpuMilliseconds.ToString("0.000") +
-                    " ms peak."
-                );
-            }
-            else if (mode == BackendSelection.Ppv2Taa)
-            {
-                GUILayout.Label(
-                    "PPv2 resolve-only timing is unavailable because Unity owns " +
-                    "the internal post-process pass. Use whole-frame comparison."
-                );
-            }
-
-            if (mode == BackendSelection.Off)
-            {
-                GUILayout.Label(
-                    "Saved as the Off baseline for later mode comparisons."
-                );
-                return;
-            }
-
-            PerformanceProfileSnapshot baseline = _performanceProfile(
-                BackendSelection.Off
-            );
-            if (baseline.State != PerformanceProfileState.Complete)
-            {
-                GUILayout.Label(
-                    "Profile Off in the same scene to display approximate deltas."
-                );
-                return;
-            }
-
-            double cpuDelta = profile.AverageCpuFrameMilliseconds -
-                baseline.AverageCpuFrameMilliseconds;
-            GUILayout.Label(
-                "Versus saved Off baseline: CPU " + FormatSigned(cpuDelta) + " ms" +
-                FormatGpuDelta(in profile, in baseline) + "."
-            );
-        }
-
-        private static string FormatGpuDelta(
-            in PerformanceProfileSnapshot profile,
-            in PerformanceProfileSnapshot baseline)
-        {
-            if (profile.GpuSamples <= 0 || baseline.GpuSamples <= 0)
-            {
-                return ", GPU unavailable";
-            }
-            double delta = profile.AverageGpuFrameMilliseconds -
-                baseline.AverageGpuFrameMilliseconds;
-            return ", GPU " + FormatSigned(delta) + " ms";
-        }
-
-        private static string FormatSigned(double value)
-        {
-            return value >= 0.0
-                ? "+" + value.ToString("0.00")
-                : value.ToString("0.00");
-        }
-
         private void DrawCommonControls()
         {
             GUILayout.Label(_screenshotStatus);
+            bool reportEnabled = GUI.enabled;
+            GUI.enabled = CreateIssueReport != null && !(IssueReportBusy?.Invoke() ?? false);
+            if (GUILayout.Button("Generate issue report ZIP (F10)", GUILayout.Height(28f)))
+                CreateIssueReport();
+            GUI.enabled = reportEnabled;
             GUILayout.BeginHorizontal();
             bool previousEnabled = GUI.enabled;
             GUI.enabled = !_screenshotRequested;
-            if (GUILayout.Button("Capture screenshot (F10)", GUILayout.Height(28f)))
+            if (GUILayout.Button("Screenshot (Shift+F10)", GUILayout.Height(28f)))
             {
                 RequestScreenshot();
             }
@@ -2041,16 +1304,6 @@ namespace ReduxBetterAA.Diagnostics
                 0.0f,
                 Mathf.Max(0.0f, Screen.height - _windowRect.height)
             );
-        }
-
-        private static float DrawParameter(
-            string label,
-            float value,
-            float minimum,
-            float maximum)
-        {
-            GUILayout.Label(label + ": " + value.ToString("0.000"));
-            return GUILayout.HorizontalSlider(value, minimum, maximum);
         }
 
         private void AttachSelected()
@@ -2474,12 +1727,12 @@ namespace ReduxBetterAA.Diagnostics
             GetConfiguredMotionInversion(out invertX, out invertY, out backend);
             bool sanitizedInvertX = true;
             bool sanitizedInvertY = true;
-            if (backend == BackendSelection.NvidiaDlaa && _dlaaConfig != null)
+            if (backend == BackendSelection.NvidiaDlaa && _backendPanel.DlaaConfig != null)
             {
                 sanitizedInvertX = invertX;
                 sanitizedInvertY = invertY;
             }
-            else if (backend == BackendSelection.AmdFsr2 && _fsr2Config != null)
+            else if (backend == BackendSelection.AmdFsr2 && _backendPanel.Fsr2Config != null)
             {
                 sanitizedInvertX = invertX;
                 sanitizedInvertY = invertY;
@@ -2517,18 +1770,18 @@ namespace ReduxBetterAA.Diagnostics
         {
             invertX = true;
             invertY = true;
-            backend = _requestedBackend == null
+            backend = _backendPanel.RequestedBackend == null
                 ? BackendSelection.Off
-                : _requestedBackend();
-            if (backend == BackendSelection.NvidiaDlaa && _dlaaConfig != null)
+                : _backendPanel.RequestedBackend();
+            if (backend == BackendSelection.NvidiaDlaa && _backendPanel.DlaaConfig != null)
             {
-                DlaaConfig config = _dlaaConfig();
+                DlaaConfig config = _backendPanel.DlaaConfig();
                 invertX = config.InvertMotionX;
                 invertY = config.InvertMotionY;
             }
-            else if (backend == BackendSelection.AmdFsr2 && _fsr2Config != null)
+            else if (backend == BackendSelection.AmdFsr2 && _backendPanel.Fsr2Config != null)
             {
-                Fsr2Config config = _fsr2Config();
+                Fsr2Config config = _backendPanel.Fsr2Config();
                 invertX = config.InvertMotionX;
                 invertY = config.InvertMotionY;
             }

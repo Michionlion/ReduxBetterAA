@@ -42,8 +42,8 @@ namespace ReduxBetterAA.Backends
         private PostProcessLayer.Antialiasing _originalSharedMode;
         private DepthTextureMode _originalResolveDepthMode;
         private DepthTextureMode _originalSharedDepthMode;
-        private ProjectionState _resolveProjection;
-        private ProjectionState _sharedProjection;
+        private CameraProjectionState _resolveProjection;
+        private CameraProjectionState _sharedProjection;
         private uint _frameIndex;
         private Vector2 _jitterPixels;
         private int _resourceWidth;
@@ -60,16 +60,6 @@ namespace ReduxBetterAA.Backends
         private bool _contextUsesVendorAutoExposure;
         private bool _usingPpv2Exposure;
         private float _effectivePreExposure = 1.0f;
-
-        private struct ProjectionState
-        {
-            public bool Applied;
-            public int AppliedFrame;
-            public Camera Camera;
-            public Matrix4x4 Projection;
-            public Matrix4x4 NonJitteredProjection;
-            public bool TransparentJitter;
-        }
 
         public AmdFsr2Backend(
             ReduxLogger logger,
@@ -387,8 +377,8 @@ namespace ReduxBetterAA.Backends
         {
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
-            RestoreProjection(ref _resolveProjection);
-            RestoreProjection(ref _sharedProjection);
+            _resolveProjection.Restore();
+            _sharedProjection.Restore();
 
             if (_hook != null)
             {
@@ -589,7 +579,7 @@ namespace ReduxBetterAA.Backends
                         _config.SequenceLength
                     )
                     : Vector2.zero;
-                ProjectionState projectionState = camera == _sharedJitterCamera
+                CameraProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
                     : _resolveProjection;
                 _motionVectorSanitizer.CaptureCamera(
@@ -605,62 +595,18 @@ namespace ReduxBetterAA.Backends
         {
             if (camera == _resolveCamera)
             {
-                RestoreProjection(ref _resolveProjection);
+                _resolveProjection.Restore();
             }
             if (camera == _sharedJitterCamera)
             {
-                RestoreProjection(ref _sharedProjection);
+                _sharedProjection.Restore();
             }
         }
 
-        private void ApplyJitter(Camera camera, ref ProjectionState state)
+        private void ApplyJitter(Camera camera, ref CameraProjectionState state)
         {
-            if (state.Applied)
-            {
-                if (state.AppliedFrame == Time.frameCount)
-                {
-                    return;
-                }
-
-                // onPostRender can be skipped when Unity aborts a camera render.
-                // Never carry that frame's projection jitter into a later frame.
-                RestoreProjection(ref state);
-            }
-            Vector2 jitter = SharedJitterSequence.GetCustomOffset(
-                _frameIndex,
-                _config.JitterSpread,
-                _config.SequenceLength
-            );
-            state.Applied = true;
-            state.AppliedFrame = Time.frameCount;
-            state.Camera = camera;
-            state.Projection = camera.projectionMatrix;
-            state.NonJitteredProjection = camera.nonJitteredProjectionMatrix;
-            state.TransparentJitter =
-                camera.useJitteredProjectionMatrixForTransparentRendering;
-            camera.nonJitteredProjectionMatrix = state.Projection;
-            camera.projectionMatrix = camera.orthographic
-                ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
-                : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
-            camera.useJitteredProjectionMatrixForTransparentRendering = false;
-        }
-
-        private static void RestoreProjection(ref ProjectionState state)
-        {
-            if (!state.Applied)
-            {
-                return;
-            }
-            if (state.Camera != null)
-            {
-                state.Camera.projectionMatrix = state.Projection;
-                state.Camera.nonJitteredProjectionMatrix = state.NonJitteredProjection;
-                state.Camera.useJitteredProjectionMatrixForTransparentRendering =
-                    state.TransparentJitter;
-            }
-            state.Applied = false;
-            state.AppliedFrame = -1;
-            state.Camera = null;
+            state.Apply(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
         }
 
         private void FailRuntime(string reason)
