@@ -51,6 +51,7 @@ namespace ReduxBetterAA.Backends
         private bool _resourceSrgb;
         private bool _historyResetPending;
         private bool _projectionJitterSupported;
+        private bool _jitterTransparentRendering;
         private bool _active;
         private bool _disposed;
         private bool _runtimeFailureLatched;
@@ -204,6 +205,7 @@ namespace ReduxBetterAA.Backends
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
             _projectionJitterSupported = cameras.ProjectionJitterSupported;
+            _jitterTransparentRendering = cameras.JitterTransparentRendering;
             _resolveState.Capture(_resolveCamera, _resolveLayer);
             _sharedState.Capture(
                 _sharedJitterCamera != _resolveCamera ? _sharedJitterCamera : null,
@@ -378,6 +380,7 @@ namespace ReduxBetterAA.Backends
             _sharedJitterCamera = null;
             _sharedJitterLayer = null;
             _projectionJitterSupported = false;
+            _jitterTransparentRendering = false;
             _jitterPixels = Vector2.zero;
             _historyResetPending = false;
             _motionVectorSanitizer.ResetCameraHistory();
@@ -547,7 +550,8 @@ namespace ReduxBetterAA.Backends
         private void ApplyJitter(Camera camera, ref CameraProjectionState state)
         {
             state.Apply(camera, SharedJitterSequence.GetCustomOffset(
-                _frameIndex, _config.JitterSpread, _config.SequenceLength));
+                _frameIndex, _config.JitterSpread, _config.SequenceLength),
+                jitterTransparentRendering: _jitterTransparentRendering);
         }
 
         private void FailRuntime(string reason)

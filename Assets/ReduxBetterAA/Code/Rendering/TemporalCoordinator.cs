@@ -172,6 +172,8 @@ namespace ReduxBetterAA.Rendering
                 : _cameras.SharedJitterCamera.name;
         public bool ProjectionJitterSupported =>
             _cameras != null && _cameras.ProjectionJitterSupported;
+        public bool JitterTransparentRendering =>
+            _cameras != null && _cameras.JitterTransparentRendering;
         public bool MapViewAaEnabled => _mapViewAaEnabled;
         public bool MapViewAaOverrideActive => !_mapViewAaEnabled &&
             _requestedBackend != BackendSelection.Off &&

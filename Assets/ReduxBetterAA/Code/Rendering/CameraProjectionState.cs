@@ -12,11 +12,13 @@ namespace ReduxBetterAA.Rendering
         private Matrix4x4 _nonJitteredProjection;
         private Matrix4x4 _appliedProjection;
         private bool _transparentJitter;
+        private bool _appliedTransparentJitter;
         private bool _applied;
         private int _appliedFrame;
 
         public void Apply(Camera camera, Vector2 jitter,
-            System.Func<Camera, Vector2, Matrix4x4> jitterFunction = null)
+            System.Func<Camera, Vector2, Matrix4x4> jitterFunction = null,
+            bool jitterTransparentRendering = false)
         {
             if (_applied)
             {
@@ -35,7 +37,8 @@ namespace ReduxBetterAA.Rendering
                 ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
                 : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
             _appliedProjection = camera.projectionMatrix;
-            camera.useJitteredProjectionMatrixForTransparentRendering = false;
+            _appliedTransparentJitter = jitterTransparentRendering;
+            camera.useJitteredProjectionMatrixForTransparentRendering = _appliedTransparentJitter;
         }
 
         public void Restore()
@@ -47,7 +50,7 @@ namespace ReduxBetterAA.Rendering
                 if (_camera.projectionMatrix == _appliedProjection) _camera.projectionMatrix = Projection;
                 if (_camera.nonJitteredProjectionMatrix == Projection)
                     _camera.nonJitteredProjectionMatrix = _nonJitteredProjection;
-                if (!_camera.useJitteredProjectionMatrixForTransparentRendering)
+                if (_camera.useJitteredProjectionMatrixForTransparentRendering == _appliedTransparentJitter)
                     _camera.useJitteredProjectionMatrixForTransparentRendering = _transparentJitter;
             }
             _applied = false;
