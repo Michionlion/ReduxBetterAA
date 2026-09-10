@@ -26,7 +26,7 @@ native contexts and foliage repair; unloading restores captured settings only
 where another owner has not changed them.
 
 Sharpness is shared across reconstructing modes; zero disables it. TAA stability
-controls stationary history. DLAA defaults to M. Foliage motion repair and
+controls stationary history. DLAA defaults to K. Foliage motion repair and
 map-view AA are independent persistent switches. Advanced controls are
 session-only and available in **F10**.
 
