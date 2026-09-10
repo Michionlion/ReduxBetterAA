@@ -96,12 +96,12 @@ namespace ReduxBetterAA
             _dlaaPresetEntry = SWConfiguration.Bind(
                 "Anti-Aliasing",
                 "DLAA preset",
-                "M",
+                "K",
                 "Select the NVIDIA DLAA model. F is a deprecated legacy model " +
                 "retained for comparison. J can reduce ghosting but may flicker " +
                 "more. K prioritizes image quality and fine detail. L is sharper " +
-                "and more stable but costs more. M is Redux Better AA's default " +
-                "with a balanced quality and stability profile.",
+                "and more stable but costs more. M is a newer balanced quality and " +
+                "stability alternative.",
                 new ListConstraint<string>(DlaaPresetChoices)
             );
             _foliageMotionRepairEntry = SWConfiguration.Bind(
@@ -481,7 +481,7 @@ namespace ReduxBetterAA
                     config.Sharpness,
                     config.PreExposure,
                     config.AutoExposure,
-                    DlaaPreset.M,
+                    DlaaPreset.K,
                     config.AllowSupersampling
                 );
             }
@@ -701,7 +701,7 @@ namespace ReduxBetterAA
                 case "M":
                     return DlaaPreset.M;
                 default:
-                    return DlaaPreset.M;
+                    return DlaaPreset.K;
             }
         }
 
