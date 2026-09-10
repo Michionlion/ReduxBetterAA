@@ -367,7 +367,7 @@ namespace ReduxBetterAA.Rendering
                    camera.isActiveAndEnabled;
         }
 
-        private static string ReadGameState()
+        internal static string ReadGameState()
         {
             GameManager manager = GameManager.Instance;
             if (manager == null || manager.Game == null ||

@@ -1,187 +1,83 @@
-using ReduxBetterAA.Configuration;
 using ReduxBetterAA.Rendering;
 using UnityEngine.Rendering.PostProcessing;
 
 namespace ReduxBetterAA.Backends
 {
-    /// <summary>
-    /// Owns one of the spatial anti-aliasing effects already shipped in the
-    /// game's PPv2 runtime.  This backend deliberately does not add jitter or
-    /// history; it only selects the requested spatial effect on the final scene
-    /// layer and prevents a second effect on the shared camera layer.
-    /// </summary>
     internal sealed class Ppv2SpatialAaBackend : ITemporalBackend
     {
         private readonly string _id;
         private readonly PostProcessLayer.Antialiasing _mode;
         private readonly bool _fastMode;
-
-        private PostProcessLayer _resolveLayer;
-        private PostProcessLayer _sharedLayer;
-        private PostProcessLayer.Antialiasing _originalResolveMode;
-        private PostProcessLayer.Antialiasing _originalSharedMode;
-        private bool _originalFastMode;
-        private bool _originalKeepAlpha;
-        private SubpixelMorphologicalAntialiasing.Quality _originalSmaaQuality;
-        private bool _createdFxaaSettings;
-        private bool _createdSmaaSettings;
-        private bool _active;
-
-        public Ppv2SpatialAaBackend(
-            string id,
-            PostProcessLayer.Antialiasing mode,
-            bool fastMode)
-        {
-            _id = id;
-            _mode = mode;
-            _fastMode = fastMode;
-        }
-
+        private SceneCameraState _resolve, _shared;
+        private PostProcessLayer _layer;
+        private FastApproximateAntialiasing _fxaa;
+        private SubpixelMorphologicalAntialiasing _smaa;
+        private bool _originalFast, _createdSettings;
+        private SubpixelMorphologicalAntialiasing.Quality _originalQuality;
+        public Ppv2SpatialAaBackend(string id, PostProcessLayer.Antialiasing mode, bool fastMode)
+        { _id = id; _mode = mode; _fastMode = fastMode; }
         public string Id => _id;
-        public bool Active => _active;
-
-        public bool ProbeSupport(
-            TemporalCameraSet cameras,
-            out string unsupportedReason)
+        public bool Active { get; private set; }
+        public bool ProbeSupport(TemporalCameraSet cameras, out string reason)
         {
-            if (cameras == null ||
-                cameras.SceneKind == TemporalSceneKind.Unsupported)
-            {
-                unsupportedReason =
-                    "the active game state has no supported scene output";
-                return false;
-            }
-            if (cameras.ResolveCamera == null ||
-                cameras.ResolveLayer == null)
-            {
-                unsupportedReason =
-                    "the final scene camera or PostProcessLayer is unavailable";
-                return false;
-            }
-            if (!cameras.ResolveCamera.isActiveAndEnabled ||
-                !cameras.ResolveLayer.enabled)
-            {
-                unsupportedReason =
-                    "the final scene camera or PostProcessLayer is disabled";
-                return false;
-            }
-            if (_mode == PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing &&
+            reason = string.Empty;
+            if (cameras == null || cameras.SceneKind == TemporalSceneKind.Unsupported ||
+                cameras.ResolveCamera == null || cameras.ResolveLayer == null ||
+                !cameras.ResolveCamera.isActiveAndEnabled || !cameras.ResolveLayer.enabled)
+                reason = "No enabled scene camera and PostProcessLayer";
+            else if (_mode == PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing &&
                 !new SubpixelMorphologicalAntialiasing().IsSupported())
-            {
-                unsupportedReason =
-                    "PPv2 SMAA reports unsupported stereo capabilities";
-                return false;
-            }
-
-            unsupportedReason = string.Empty;
-            return true;
+                reason = "PPv2 SMAA reports unsupported stereo capabilities";
+            return reason.Length == 0;
         }
-
-        public bool Configure(
-            TemporalCameraSet cameras,
-            out string failureReason)
+        public bool Configure(TemporalCameraSet cameras, out string reason)
         {
             Deactivate();
-            if (!ProbeSupport(cameras, out failureReason))
+            if (!ProbeSupport(cameras, out reason)) return false;
+            _layer = cameras.ResolveLayer;
+            _resolve.Capture(null, _layer, _mode, false);
+            if (cameras.SharedJitterLayer != _layer)
+                _shared.Capture(null, cameras.SharedJitterLayer, requestDepth: false);
+            if (_mode == PostProcessLayer.Antialiasing.FastApproximateAntialiasing)
             {
-                return false;
+                _createdSettings = _layer.fastApproximateAntialiasing == null;
+                _fxaa = _layer.fastApproximateAntialiasing ?? new FastApproximateAntialiasing();
+                _layer.fastApproximateAntialiasing = _fxaa;
+                _originalFast = _fxaa.fastMode;
+                _fxaa.fastMode = _fastMode;
             }
-
-            _resolveLayer = cameras.ResolveLayer;
-            _sharedLayer = cameras.SharedJitterLayer;
-            _originalResolveMode = _resolveLayer.antialiasingMode;
-
-            if (_resolveLayer.fastApproximateAntialiasing == null)
+            else
             {
-                _createdFxaaSettings = true;
-                _resolveLayer.fastApproximateAntialiasing =
-                    new FastApproximateAntialiasing();
+                _createdSettings = _layer.subpixelMorphologicalAntialiasing == null;
+                _smaa = _layer.subpixelMorphologicalAntialiasing ?? new SubpixelMorphologicalAntialiasing();
+                _layer.subpixelMorphologicalAntialiasing = _smaa;
+                _originalQuality = _smaa.quality;
+                _smaa.quality = SubpixelMorphologicalAntialiasing.Quality.High;
             }
-            _originalFastMode =
-                _resolveLayer.fastApproximateAntialiasing.fastMode;
-            _originalKeepAlpha =
-                _resolveLayer.fastApproximateAntialiasing.keepAlpha;
-
-            if (_resolveLayer.subpixelMorphologicalAntialiasing == null)
-            {
-                _createdSmaaSettings = true;
-                _resolveLayer.subpixelMorphologicalAntialiasing =
-                    new SubpixelMorphologicalAntialiasing();
-            }
-            _originalSmaaQuality =
-                _resolveLayer.subpixelMorphologicalAntialiasing.quality;
-
-            if (_sharedLayer != null && _sharedLayer != _resolveLayer)
-            {
-                _originalSharedMode = _sharedLayer.antialiasingMode;
-                _sharedLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _sharedLayer.ResetHistory();
-            }
-
-            _resolveLayer.fastApproximateAntialiasing.fastMode = _fastMode;
-            // The game's existing High spatial choice is the PPv2 FXAA
-            // quality variant.  SMAA is an additional PPv2 effect and uses its
-            // shipped high-quality preset, matching the package default.
-            _resolveLayer.subpixelMorphologicalAntialiasing.quality =
-                SubpixelMorphologicalAntialiasing.Quality.High;
-            _resolveLayer.antialiasingMode = _mode;
-            _resolveLayer.ResetHistory();
-            _active = true;
+            Active = true;
             return true;
         }
-
-        public void Tick(uint frameIndex)
-        {
-        }
-
-        public void ResetHistory(HistoryResetReason reason)
-        {
-            // Spatial AA has no temporal history to reset.
-        }
-
+        public void Tick(uint frameIndex) { }
+        public void ResetHistory(HistoryResetReason reason) { }
         public void Deactivate()
         {
-            if (_resolveLayer != null)
+            if (_layer != null)
             {
-                _resolveLayer.antialiasingMode = _originalResolveMode;
-                if (_resolveLayer.fastApproximateAntialiasing != null)
+                if (_fxaa != null && ReferenceEquals(_layer.fastApproximateAntialiasing, _fxaa) && _fxaa.fastMode == _fastMode)
                 {
-                    _resolveLayer.fastApproximateAntialiasing.fastMode =
-                        _originalFastMode;
-                    _resolveLayer.fastApproximateAntialiasing.keepAlpha =
-                        _originalKeepAlpha;
+                    _fxaa.fastMode = _originalFast;
+                    if (_createdSettings) _layer.fastApproximateAntialiasing = null;
                 }
-                if (_resolveLayer.subpixelMorphologicalAntialiasing != null)
+                if (_smaa != null && ReferenceEquals(_layer.subpixelMorphologicalAntialiasing, _smaa) &&
+                    _smaa.quality == SubpixelMorphologicalAntialiasing.Quality.High)
                 {
-                    _resolveLayer.subpixelMorphologicalAntialiasing.quality =
-                        _originalSmaaQuality;
-                }
-                _resolveLayer.ResetHistory();
-                if (_createdFxaaSettings)
-                {
-                    _resolveLayer.fastApproximateAntialiasing = null;
-                }
-                if (_createdSmaaSettings)
-                {
-                    _resolveLayer.subpixelMorphologicalAntialiasing = null;
+                    _smaa.quality = _originalQuality;
+                    if (_createdSettings) _layer.subpixelMorphologicalAntialiasing = null;
                 }
             }
-            if (_sharedLayer != null && _sharedLayer != _resolveLayer)
-            {
-                _sharedLayer.antialiasingMode = _originalSharedMode;
-                _sharedLayer.ResetHistory();
-            }
-
-            _resolveLayer = null;
-            _sharedLayer = null;
-            _createdFxaaSettings = false;
-            _createdSmaaSettings = false;
-            _active = false;
+            _shared.Restore(); _resolve.Restore();
+            _layer = null; _fxaa = null; _smaa = null; _createdSettings = false; Active = false;
         }
-
-        public void Dispose()
-        {
-            Deactivate();
-        }
+        public void Dispose() => Deactivate();
     }
 }

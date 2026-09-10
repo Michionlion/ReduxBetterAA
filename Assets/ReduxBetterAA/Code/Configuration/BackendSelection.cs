@@ -15,7 +15,8 @@ namespace ReduxBetterAA.Configuration
         Ppv2Taa = 4,
         CustomTaa = 5,
         NvidiaDlaa = 6,
-        AmdFsr2 = 7
+        AmdFsr2 = 7,
+        Supersampling = 8
     }
 
     internal readonly struct TemporalBackendConfig

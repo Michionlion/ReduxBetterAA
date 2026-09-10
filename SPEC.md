@@ -7,6 +7,40 @@
 
 ## 1. Executive summary
 
+### Unified AA ownership (2026-09-10)
+
+Better AA owns the user-facing AA mode and supersampling scale. Supersampling
+uses Redux's public presenter at 125–200% per dimension with scene AA disabled;
+all other modes use 100%. Both stock graphics selectors are disabled navigation
+hints to the mod settings. The stock saved render-scale profile is not overwritten.
+This explicitly supersedes earlier independent-render-scale requirements.
+Retain Redux's existing scene scope: main-menu and map views use Off fallback
+when no supersampled target exists, preserving the requested flight mode/scale.
+
+Off releases temporal targets, hooks, jitter, native contexts and the vegetation
+shader override. It selects an unfiltered native scene, not the prior stock AA
+setting. Unload restores previous state only where the value still belongs to
+Better AA. No continuous conflict arbitration or per-frame settings enforcement
+is permitted; distinguishable external ownership changes must be preserved.
+
+Runtime integration is limited to scene AA, rendering inputs and presentation.
+There are no Rigidbody interpolation controls, stock cloud observers, transition
+guards or cloud-specific captures. Historical diagnostic schemas are superseded
+by capability schema 24 and motion-sign schema 4.
+
+### Live visual comparison (diagnostic requirement, 2026-09-10)
+
+F10 opens a draggable, non-modal AA menu with an AA dropdown, a live Compare
+page, and diagnostics. Comparison renders the same current scene twice per frame
+with independent AA histories, then displays the left half of A and right half
+of B before native UI. Both selectors include Off and base supersampling;
+supersampling is independently adjustable from 100 to 400 percent per dimension,
+bounded by the graphics device texture limit. This diagnostic may be expensive
+and must not be used for performance measurements. Closing the menu leaves the
+comparison running; stopping it or changing scenes restores normal rendering.
+The two temporal outputs are never chained. Normal saved AA/render-scale settings
+are preserved, and backend failures stop comparison rather than mislabel fallback.
+
 KSP2 currently exhibits objectionable spatial aliasing and temporal shimmer, especially on thin vessel geometry, terrain edges, planetary silhouettes, and detailed surfaces. Redux already provides supersampling, but supersampling scales rendering cost rapidly and cannot provide the temporal stability of a motion-aware reconstruction algorithm.
 
 This project will establish a backend-neutral temporal rendering layer in five phases:
@@ -678,6 +712,38 @@ The mask lowers history contribution. It must not indiscriminately erase tempora
 Provide optional mild sharpening after resolve. Avoid dark halos and excessive noise. Sharpening must be disabled or adjusted when the output is subsequently reconstructed by another backend.
 
 ### 11.5 Debug modes
+
+#### Pixel quality and cost regression evidence (Phase 3)
+
+Use a separate developer-only quality suite, leaving the compact DLAA visual
+suite unchanged. Capture same-frame scene input/output before UI for Custom,
+FSR2 Native AA and DLAA M at native scale, shared sharpness zero and a fixed
+paused fixture/camera path. Record consecutive stationary and settle frames,
+sampled pan poses, effective backend, dimensions, frame IDs and binary hashes.
+Report pixel errors and temporal variation without treating another backend as
+ground truth. Reject nonfinite pixels, fallback, mismatched dimensions and
+nonconsecutive sequences. Compare shader changes against deterministic analytic
+fixtures and a frozen baseline; keep capture IO outside timing windows. Record
+three separate warm-up/measurement runs per backend. Whole-frame GPU timing and
+resolve CPU submission must remain distinct from isolated GPU pass timing.
+Preserve settings and remove the temporary test adapter after the run.
+
+For shimmer investigations, additionally capture every frame of a fixed-step
+still/pan/settle sequence using normal production rendering, the user's .24
+sharpness and native pixel crops. Compare both runs to one shared supersampled
+reference; separate stationary variation from motion residual changes. Require
+spatial-detail and analytic moving-fence checks alongside temporal metrics so
+blur cannot be selected as a stability improvement. Capture sparse reactivity,
+history-weight, depth-rejection and raw-motion diagnostics. Keep ablation sweeps
+optional and follow capture with separate allocation/timing windows.
+
+For moving thin-geometry work, freeze the improved stationary shader as the
+new baseline. Record consecutive source color, depth, sanitized motion and
+jitter for repeatable shader replay; validate replay against the player output
+away from crop boundaries before using it to select candidates. Measure moving
+reference error and temporal residuals together, including thin-line retention,
+disocclusion and stop/reversal response. Confirm selected changes in a fresh
+normal-renderer capture with unchanged DLAA/FSR controls and separate profiling.
 
 - current color
 - history color

@@ -6,7 +6,6 @@ using ReduxBetterAA.Rendering;
 using ReduxLib.Logging;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using ReduxLogger = ReduxLib.Logging.ILogger;
@@ -67,18 +66,10 @@ namespace ReduxBetterAA.Diagnostics
             "Motion: Camera.previousViewProjectionMatrix reconstruction",
             "Motion: Sign Reference Orientation Audit"
         };
-        private static readonly string[] PanelTabs =
-            {
-                "Off",
-                "FXAA Low",
-                "FXAA High",
-                "SMAA",
-                "PPv2",
-                "Custom",
-                "DLAA",
-                "FSR2 AA",
-                "Buffers"
-            };
+        private static readonly string[] PanelTabs = { "AA", "Compare", "Diagnostics" };
+        private int _page;
+        private bool _modeOpen, _advancedOpen, _performanceOpen;
+        internal AaComparison Comparison;
         private static readonly BufferDebugView[] MotionDiagnosticBurstViews =
         {
             BufferDebugView.MotionVectorsRaw,
@@ -194,13 +185,10 @@ namespace ReduxBetterAA.Diagnostics
         private Rect _windowRect = new Rect(24f, 60f, 620f, 760f);
         private Vector2 _panelContentScroll;
         private Vector2 _cameraScroll;
-        private Vector2 _bufferScroll;
         private readonly GUI.WindowFunction _drawWindow;
         private bool _cursorStateCaptured;
         private CursorLockMode _previousCursorLockMode;
         private bool _previousCursorVisible;
-        private EventSystem _suppressedEventSystem;
-        private bool _eventSystemWasEnabled;
         private Func<Texture> _sanitizedMotionTexture;
         private Func<Texture> _motionCorruptionTexture;
         private Func<Vector2> _currentJitterNormalized;
@@ -211,13 +199,7 @@ namespace ReduxBetterAA.Diagnostics
         private Func<bool> _motionSanitizerEnabled;
         private Action<bool> _setMotionSanitizerEnabled;
         private Func<string> _motionSanitizerStatus;
-        private Func<bool> _physicsInterpolationEnabled;
-        private Action<bool> _setPhysicsInterpolationEnabled;
-        private Func<string> _physicsInterpolationStatus;
-        private Action _refreshPhysicsInterpolation;
         private BackendSettingsPanel _backendPanel = new BackendSettingsPanel();
-        private int _panelTab;
-        private BackendSelection _lastObservedBackend = (BackendSelection)(-1);
         private Matrix4x4 _currentViewProjection;
         private Matrix4x4 _currentInverseViewProjection;
         private Matrix4x4 _previousViewProjection;
@@ -286,6 +268,12 @@ namespace ReduxBetterAA.Diagnostics
                 _originalMotionVectorShaderMode = GraphicsSettings.GetShaderMode(
                     BuiltinShaderType.MotionVectors
                 );
+                if (_originalMotionVectorShaderMode == BuiltinShaderMode.UseCustom &&
+                    !(VegetationMotionCompatibility.Current?.OwnsShader(_originalMotionVectorShader) ?? false))
+                {
+                    reason = "Another owner supplies the motion-vector shader";
+                    return false;
+                }
                 _motionVectorPassProbeActive = true;
             }
             _motionVectorPassProbeMode = mode;
@@ -313,14 +301,12 @@ namespace ReduxBetterAA.Diagnostics
             {
                 return;
             }
-            GraphicsSettings.SetCustomShader(
-                BuiltinShaderType.MotionVectors,
-                _originalMotionVectorShader
-            );
-            GraphicsSettings.SetShaderMode(
-                BuiltinShaderType.MotionVectors,
-                _originalMotionVectorShaderMode
-            );
+            if (GraphicsSettings.GetCustomShader(BuiltinShaderType.MotionVectors) == _motionVectorPassProbeShader &&
+                GraphicsSettings.GetShaderMode(BuiltinShaderType.MotionVectors) == BuiltinShaderMode.UseCustom)
+            {
+                GraphicsSettings.SetCustomShader(BuiltinShaderType.MotionVectors, _originalMotionVectorShader);
+                GraphicsSettings.SetShaderMode(BuiltinShaderType.MotionVectors, _originalMotionVectorShaderMode);
+            }
             Shader.SetGlobalInt(MotionVectorPassProbeModeProperty, 0);
             _motionVectorPassProbeActive = false;
             _motionVectorPassProbeMode = 0;
@@ -340,18 +326,6 @@ namespace ReduxBetterAA.Diagnostics
                 _panelOpen = false;
                 RestorePanelInputState();
             };
-        }
-
-        public void SetMotionCadenceControls(
-            Func<bool> interpolationEnabled,
-            Action<bool> setInterpolationEnabled,
-            Func<string> interpolationStatus,
-            Action refreshInterpolation)
-        {
-            _physicsInterpolationEnabled = interpolationEnabled;
-            _setPhysicsInterpolationEnabled = setInterpolationEnabled;
-            _physicsInterpolationStatus = interpolationStatus;
-            _refreshPhysicsInterpolation = refreshInterpolation;
         }
 
         public void SetMotionSanitizerDiagnostics(
@@ -451,7 +425,7 @@ namespace ReduxBetterAA.Diagnostics
                 return false;
             }
 
-            bool buffersSelected = _panelTab == PanelTabs.Length - 1;
+            bool buffersSelected = _page == PanelTabs.Length - 1;
             if (!_cameraRefreshRequested &&
                 (!buffersSelected || now < _nextCameraRefresh))
             {
@@ -597,7 +571,7 @@ namespace ReduxBetterAA.Diagnostics
             GetCameraDimensions(camera, out sourceWidth, out sourceHeight);
             _pendingStatisticsReport = new MotionVectorStatisticsReport
             {
-                schemaVersion = 3,
+                schemaVersion = 4,
                 capturedUtc = DateTime.UtcNow.ToString("O"),
                 screenshotFile = screenshotFileName,
                 view = CurrentViewName,
@@ -612,17 +586,6 @@ namespace ReduxBetterAA.Diagnostics
                 fixedUpdateHz = Time.fixedDeltaTime > 0.0f
                     ? 1.0f / Time.fixedDeltaTime
                     : 0.0f,
-                experimentalRenderInterpolationEnabled =
-                    KspPhysicsRenderInterpolation.Current != null &&
-                    KspPhysicsRenderInterpolation.Current.Enabled,
-                interpolatedKspPhysicsBodies =
-                    KspPhysicsRenderInterpolation.Current == null
-                        ? 0
-                        : KspPhysicsRenderInterpolation.Current.TrackedBodyCount,
-                interpolationStatus =
-                    KspPhysicsRenderInterpolation.Current == null
-                        ? "Unavailable"
-                        : KspPhysicsRenderInterpolation.Current.Status,
                 samplingNote =
                     "Uniform point-sampled diagnostic grid; coverage counts approximate screen area. " +
                     "The 16 anchors match the same-frame corruption classifier."
@@ -778,7 +741,7 @@ namespace ReduxBetterAA.Diagnostics
                 float maximumWidth = Mathf.Max(260f, Screen.width - 16f);
                 float maximumHeight = Mathf.Max(300f, Screen.height - 16f);
                 _windowRect.width = Mathf.Min(460f, maximumWidth);
-                _windowRect.height = Mathf.Min(760f, maximumHeight);
+                _windowRect.height = Mathf.Min(640f, maximumHeight);
                 ClampWindowToScreen();
                 _windowRect = GUI.Window(
                     WindowId,
@@ -862,10 +825,6 @@ namespace ReduxBetterAA.Diagnostics
             _backendPanel = null;
             CreateIssueReport = null;
             IssueReportBusy = null;
-            _physicsInterpolationEnabled = null;
-            _setPhysicsInterpolationEnabled = null;
-            _physicsInterpolationStatus = null;
-            _refreshPhysicsInterpolation = null;
             _sanitizedMotionTexture = null;
             _motionCorruptionTexture = null;
             _currentJitterNormalized = null;
@@ -896,96 +855,43 @@ namespace ReduxBetterAA.Diagnostics
             GUI.color = new Color(0.07f, 0.08f, 0.1f, 1f);
             GUI.DrawTexture(new Rect(0f, 20f, _windowRect.width, _windowRect.height - 20f), Texture2D.whiteTexture);
             GUI.color = previousColor;
-            BackendSelection requested = _backendPanel.RequestedBackend == null
-                ? BackendSelection.Off
-                : _backendPanel.RequestedBackend();
-            if (requested != _lastObservedBackend)
+            _page = GUILayout.Toolbar(_page, PanelTabs, GUILayout.Height(28));
+            _panelContentScroll = GUILayout.BeginScrollView(_panelContentScroll,
+                GUILayout.Height(Mathf.Max(120f, _windowRect.height - 140f)));
+            if (_page == 1)
             {
-                _panelTab = (int)requested;
-                _panelContentScroll = Vector2.zero;
-                _lastObservedBackend = requested;
+                Comparison?.DrawControls();
             }
-
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = _backendPanel.SetRequestedBackend != null;
-            int selectedTab = GUILayout.Toolbar(
-                _panelTab,
-                PanelTabs,
-                GUILayout.Height(28f)
-            );
-            GUI.enabled = previousEnabled;
-            if (selectedTab != _panelTab)
-            {
-                _panelTab = selectedTab;
-                _panelContentScroll = Vector2.zero;
-                if (selectedTab == PanelTabs.Length - 1)
-                {
-                    _cameraRefreshRequested = true;
-                }
-                if (selectedTab >= (int)BackendSelection.Off &&
-                    selectedTab <= (int)BackendSelection.AmdFsr2 &&
-                    _backendPanel.SetRequestedBackend != null)
-                {
-                    BackendSelection selectedBackend =
-                        (BackendSelection)selectedTab;
-                    _lastObservedBackend = selectedBackend;
-                    _backendPanel.SetRequestedBackend(selectedBackend);
-                }
-            }
-
-            float contentHeight = Mathf.Max(120f, _windowRect.height - 177f);
-            _panelContentScroll = GUILayout.BeginScrollView(
-                _panelContentScroll,
-                GUILayout.Height(contentHeight)
-            );
-            GUILayout.Label("AA mode and settings");
-            GUILayout.Label(
-                _backendPanel.TemporalStatus == null
-                    ? "Unavailable"
-                    : _backendPanel.TemporalStatus()
-            );
-            _backendPanel.DrawMapViewAaControl();
-            GUILayout.Space(8f);
-            if (_panelTab == 0)
-            {
-                BackendSettingsPanel.DrawOffTab();
-            }
-            else if (_panelTab == 1)
-            {
-                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.FxaaLow);
-            }
-            else if (_panelTab == 2)
-            {
-                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.FxaaHigh);
-            }
-            else if (_panelTab == 3)
-            {
-                BackendSettingsPanel.DrawSpatialAaTab(BackendSelection.Smaa);
-            }
-            else if (_panelTab == 4)
-            {
-                _backendPanel.DrawPpv2Tab();
-            }
-            else if (_panelTab == 5)
-            {
-                _backendPanel.DrawCustomTab();
-            }
-            else if (_panelTab == 6)
-            {
-                _backendPanel.DrawDlaaTab();
-            }
-            else if (_panelTab == 7)
-            {
-                _backendPanel.DrawFsr2Tab();
-            }
-            else
+            else if (_page == 2)
             {
                 DrawBufferTab();
             }
-            if (_panelTab >= (int)BackendSelection.Off &&
-                _panelTab <= (int)BackendSelection.AmdFsr2)
+            else
             {
-                _backendPanel.DrawPerformanceProfile((BackendSelection)_panelTab);
+                BackendSelection requested = _backendPanel.RequestedBackend?.Invoke() ?? BackendSelection.Off;
+                bool enabled = GUI.enabled;
+                GUI.enabled = _backendPanel.SetRequestedBackend != null && !(Comparison?.Busy ?? false);
+                int selected = DebugMenu.Dropdown("Mode", (int)requested, DebugMenu.Modes, ref _modeOpen);
+                if (selected != (int)requested) _backendPanel.SetRequestedBackend((BackendSelection)selected);
+                GUI.enabled = enabled;
+                GUILayout.Label(_backendPanel.TemporalStatus?.Invoke() ?? "Unavailable");
+                _backendPanel.DrawBasic((BackendSelection)selected);
+                GUILayout.Space(8);
+                if (GUILayout.Button((_advancedOpen ? "▼" : "▶") + " Advanced settings")) _advancedOpen = !_advancedOpen;
+                if (_advancedOpen) {
+                    switch ((BackendSelection)selected) {
+                        case BackendSelection.Ppv2Taa: _backendPanel.DrawPpv2Tab(); break;
+                        case BackendSelection.CustomTaa: _backendPanel.DrawCustomTab(); break;
+                        case BackendSelection.NvidiaDlaa: _backendPanel.DrawDlaaTab(); break;
+                        case BackendSelection.AmdFsr2: _backendPanel.DrawFsr2Tab(); break;
+                        default: GUILayout.Label("No advanced settings for this mode."); break;
+                    }
+                }
+                if (GUILayout.Button((_performanceOpen ? "▼" : "▶") + " Performance")) _performanceOpen = !_performanceOpen;
+                if (_performanceOpen) {
+                    if (Comparison?.Busy ?? false) GUILayout.Label("Stop comparison before measuring performance.");
+                    else _backendPanel.DrawPerformanceProfile((BackendSelection)selected);
+                }
             }
             GUILayout.EndScrollView();
             DrawCommonControls();
@@ -994,10 +900,6 @@ namespace ReduxBetterAA.Diagnostics
 
         private void DrawBufferTab()
         {
-            _bufferScroll = GUILayout.BeginScrollView(
-                _bufferScroll,
-                GUILayout.Height(500f)
-            );
             DrawMotionInputControls();
             GUILayout.Space(10f);
             bool previousBurstEnabled = GUI.enabled;
@@ -1138,60 +1040,6 @@ namespace ReduxBetterAA.Diagnostics
             GUILayout.EndScrollView();
 
             GUILayout.Space(8f);
-            GUILayout.Label("Physics-motion cadence experiment");
-            float fixedDeltaTime = Time.fixedDeltaTime;
-            GUILayout.Label(
-                "Game fixed step: " + (fixedDeltaTime * 1000.0f).ToString("0.###") +
-                " ms (" + (fixedDeltaTime > 0.0f
-                    ? 1.0f / fixedDeltaTime
-                    : 0.0f).ToString("0.##") + " Hz)."
-            );
-            GUILayout.Label(
-                "At high render FPS, stock physics poses can remain quiet for " +
-                "several frames and then jump on a fixed update. This experiment " +
-                "interpolates the rendered KSP physics poses, so color, depth, " +
-                "and motion vectors remain matched. It does not blur vectors alone."
-            );
-
-            bool interpolationEnabled = _physicsInterpolationEnabled != null &&
-                _physicsInterpolationEnabled();
-            bool previousInterpolationEnabled = GUI.enabled;
-            GUI.enabled = _setPhysicsInterpolationEnabled != null;
-            Color previousInterpolationColor = GUI.backgroundColor;
-            if (interpolationEnabled)
-            {
-                GUI.backgroundColor = Color.cyan;
-            }
-            if (GUILayout.Button(
-                    interpolationEnabled
-                        ? "KSP physics interpolation: ON (experimental)"
-                        : "KSP physics interpolation: OFF (experimental)",
-                    GUILayout.Height(28f)))
-            {
-                _setPhysicsInterpolationEnabled(!interpolationEnabled);
-            }
-            GUI.backgroundColor = previousInterpolationColor;
-            GUI.enabled = previousInterpolationEnabled;
-            GUILayout.Label(
-                _physicsInterpolationStatus == null
-                    ? "Interpolation controls are unavailable."
-                    : _physicsInterpolationStatus()
-            );
-
-            previousInterpolationEnabled = GUI.enabled;
-            GUI.enabled = interpolationEnabled &&
-                _refreshPhysicsInterpolation != null;
-            if (GUILayout.Button("Refresh active physics bodies", GUILayout.Height(24f)))
-            {
-                _refreshPhysicsInterpolation();
-            }
-            GUI.enabled = previousInterpolationEnabled;
-            GUILayout.Label(
-                "Disabled by default. Compare launch, docking/staging, time warp, " +
-                "floating-origin changes, and landing before treating it as production-safe. " +
-                "Unity interpolation may add about one fixed step of visual latency."
-            );
-            GUILayout.EndScrollView();
         }
 
         private void DrawMotionInputControls()
@@ -1267,29 +1115,16 @@ namespace ReduxBetterAA.Diagnostics
 
         private void DrawCommonControls()
         {
-            GUILayout.Label(_screenshotStatus);
-            bool reportEnabled = GUI.enabled;
-            GUI.enabled = CreateIssueReport != null && !(IssueReportBusy?.Invoke() ?? false);
-            if (GUILayout.Button("Generate issue report ZIP (F10)", GUILayout.Height(28f)))
-                CreateIssueReport();
-            GUI.enabled = reportEnabled;
             GUILayout.BeginHorizontal();
-            bool previousEnabled = GUI.enabled;
+            bool enabled = GUI.enabled;
+            GUI.enabled = CreateIssueReport != null && !(IssueReportBusy?.Invoke() ?? false) && !(Comparison?.Busy ?? false);
+            if (GUILayout.Button("Issue ZIP", GUILayout.Height(28))) CreateIssueReport();
             GUI.enabled = !_screenshotRequested;
-            if (GUILayout.Button("Screenshot (Shift+F10)", GUILayout.Height(28f)))
-            {
-                RequestScreenshot();
-            }
-            GUI.enabled = previousEnabled;
-            if (GUILayout.Button("Write report", GUILayout.Height(28f)))
-            {
-                _reportRequested = true;
-            }
+            if (GUILayout.Button("Screenshot", GUILayout.Height(28))) RequestScreenshot();
+            GUI.enabled = enabled;
+            if (GUILayout.Button("Close", GUILayout.Height(28))) TogglePanel();
             GUILayout.EndHorizontal();
-            if (GUILayout.Button("Close panel (Ctrl+F10)", GUILayout.Height(28f)))
-            {
-                TogglePanel();
-            }
+            GUILayout.Label("F10 menu · Shift+F10 screenshot · Drag title to move");
         }
 
         private void ClampWindowToScreen()
@@ -2166,7 +2001,6 @@ namespace ReduxBetterAA.Diagnostics
                 _cursorStateCaptured = true;
             }
 
-            SuppressCurrentEventSystem();
             UnlockCursor();
         }
 
@@ -2178,52 +2012,17 @@ namespace ReduxBetterAA.Diagnostics
 
         private void MaintainPanelInputState()
         {
-            SuppressCurrentEventSystem();
             UnlockCursor();
-        }
-
-        private void SuppressCurrentEventSystem()
-        {
-            EventSystem current = EventSystem.current;
-            if (current == _suppressedEventSystem)
-            {
-                if (_suppressedEventSystem != null)
-                {
-                    _suppressedEventSystem.enabled = false;
-                }
-                return;
-            }
-
-            RestoreEventSystemState();
-            if (current == null)
-            {
-                return;
-            }
-
-            _suppressedEventSystem = current;
-            _eventSystemWasEnabled = current.enabled;
-            current.enabled = false;
         }
 
         private void RestorePanelInputState()
         {
-            RestoreEventSystemState();
             if (_cursorStateCaptured)
             {
                 Cursor.lockState = _previousCursorLockMode;
                 Cursor.visible = _previousCursorVisible;
                 _cursorStateCaptured = false;
             }
-        }
-
-        private void RestoreEventSystemState()
-        {
-            if (_suppressedEventSystem != null)
-            {
-                _suppressedEventSystem.enabled = _eventSystemWasEnabled;
-            }
-            _suppressedEventSystem = null;
-            _eventSystemWasEnabled = false;
         }
 
         private void OnShaderLoaded(AsyncOperationHandle<Shader> operation)
@@ -2326,7 +2125,7 @@ namespace ReduxBetterAA.Diagnostics
             _overlayText = camera == null
                 ? "Redux Better AA Phase 1 | " + _view + " | no camera"
                 : "Redux Better AA Phase 1 | " + _view + " | " + camera.name +
-                  " | Ctrl+F10 panel | F10 capture";
+                  " | F10 AA menu | Shift+F10 capture";
         }
 
         private void LogState()
@@ -2369,9 +2168,6 @@ namespace ReduxBetterAA.Diagnostics
         public float outlierThresholdPixels;
         public float fixedDeltaTimeMilliseconds;
         public float fixedUpdateHz;
-        public bool experimentalRenderInterpolationEnabled;
-        public int interpolatedKspPhysicsBodies;
-        public string interpolationStatus;
         public int sampleCount;
         public int finiteMotionCount;
         public int invalidMotionCount;

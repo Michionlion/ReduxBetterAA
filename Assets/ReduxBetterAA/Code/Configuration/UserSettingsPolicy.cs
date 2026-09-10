@@ -7,6 +7,7 @@ namespace ReduxBetterAA.Configuration
     internal static class UserSettingsPolicy
     {
         public const string ModeOff = "Off";
+        public const string ModeSupersampling = "Supersampling";
         public const string ModeFxaaLow = "FXAA Low";
         public const string ModeFxaaHigh = "FXAA High";
         public const string ModeSmaa = "SMAA";
@@ -21,7 +22,7 @@ namespace ReduxBetterAA.Configuration
             bool dlaaSelectable,
             bool fsr2Selectable)
         {
-            string[] choices = new string[5 +
+            string[] choices = new string[6 +
                 (dlaaSelectable ? 1 : 0) +
                 (fsr2Selectable ? 1 : 0)];
             int index = 0;
@@ -30,6 +31,7 @@ namespace ReduxBetterAA.Configuration
             choices[index++] = ModeFxaaHigh;
             choices[index++] = ModeSmaa;
             choices[index++] = ModeTaa;
+            choices[index++] = ModeSupersampling;
             if (dlaaSelectable && fsr2Selectable)
             {
                 choices[index++] = ModeDlaa;
@@ -57,6 +59,8 @@ namespace ReduxBetterAA.Configuration
             switch (current)
             {
                 case BackendSelection.Off:
+                    return BackendSelection.Supersampling;
+                case BackendSelection.Supersampling:
                     return BackendSelection.FxaaLow;
                 case BackendSelection.FxaaLow:
                     return BackendSelection.FxaaHigh;
@@ -95,7 +99,7 @@ namespace ReduxBetterAA.Configuration
             {
                 return fsr2Selectable ? ModeFsr2 : ModeOff;
             }
-            if (value == ModeOff || value == ModeFxaaLow ||
+            if (value == ModeOff || value == ModeSupersampling || value == ModeFxaaLow ||
                 value == ModeFxaaHigh || value == ModeSmaa ||
                 value == ModeTaa)
             {
@@ -122,6 +126,7 @@ namespace ReduxBetterAA.Configuration
                 dlaaSelectable,
                 fsr2Selectable
             );
+            if (normalized == ModeSupersampling) return BackendSelection.Supersampling;
             if (normalized == ModeFxaaLow)
             {
                 return BackendSelection.FxaaLow;

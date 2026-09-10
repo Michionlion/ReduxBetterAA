@@ -11,8 +11,12 @@ namespace ReduxBetterAA.Rendering
         private PostProcessLayer _layer;
         private DepthTextureMode _depthMode;
         private PostProcessLayer.Antialiasing _aaMode;
+        private PostProcessLayer.Antialiasing _appliedAa;
+        private DepthTextureMode _appliedDepth;
 
-        public void Capture(Camera camera, PostProcessLayer layer)
+        public void Capture(Camera camera, PostProcessLayer layer,
+            PostProcessLayer.Antialiasing mode = PostProcessLayer.Antialiasing.None,
+            bool requestDepth = true)
         {
             Restore();
             _camera = camera;
@@ -20,24 +24,27 @@ namespace ReduxBetterAA.Rendering
             if (_camera != null)
             {
                 _depthMode = _camera.depthTextureMode;
-                _camera.depthTextureMode |= DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
+                _appliedDepth = requestDepth ? _depthMode | DepthTextureMode.Depth | DepthTextureMode.MotionVectors : _depthMode;
+                _camera.depthTextureMode = _appliedDepth;
             }
             if (_layer != null)
             {
                 _aaMode = _layer.antialiasingMode;
-                _layer.antialiasingMode = PostProcessLayer.Antialiasing.None;
+                _appliedAa = mode;
+                _layer.antialiasingMode = mode;
                 _layer.ResetHistory();
             }
         }
 
         public void Restore()
         {
-            if (_layer != null)
+            if (_layer != null && _layer.antialiasingMode == _appliedAa)
             {
                 _layer.antialiasingMode = _aaMode;
                 _layer.ResetHistory();
             }
-            if (_camera != null)
+            if (_camera != null && _camera.depthTextureMode ==
+                _appliedDepth)
                 _camera.depthTextureMode = _depthMode;
             _camera = null;
             _layer = null;

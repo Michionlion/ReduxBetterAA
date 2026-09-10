@@ -106,3 +106,9 @@ ksp2.catalog
 /Artifacts/visual-*/
 /Artifacts/visual-*.zip
 /Artifacts/beta-review.html
+/Artifacts/quality-*/
+/Artifacts/quality-*.zip
+__pycache__/
+
+/Artifacts/comparison-deployment-backup/
+/Artifacts/ownership-*/

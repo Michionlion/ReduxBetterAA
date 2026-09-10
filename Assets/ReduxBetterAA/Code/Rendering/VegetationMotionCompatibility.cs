@@ -39,7 +39,7 @@ namespace ReduxBetterAA.Rendering
         private Shader _repairShader;
         private Shader _originalMotionVectorShader;
         private BuiltinShaderMode _originalMotionVectorShaderMode;
-        private bool _enabled = DefaultEnabled;
+        private bool _enabled;
         private bool _patchInstalled;
         private bool _repairShaderInstalled;
         private bool _diagnosticMotionVectorOverrideActive;
@@ -62,6 +62,7 @@ namespace ReduxBetterAA.Rendering
         }
 
         public bool Enabled => _enabled;
+        internal bool OwnsShader(Shader shader) => shader != null && shader == _repairShader;
         public bool Available => _patchInstalled && RepairShaderReady &&
             !_customShaderConflict && !_runtimeFailed;
         public long ReroutedCalls => _reroutedCalls;
@@ -432,7 +433,9 @@ namespace ReduxBetterAA.Rendering
             _repairShader.isSupported;
 
         private bool MotionShaderSupportsReroute =>
-            _diagnosticMotionVectorOverrideActive || _repairShaderInstalled;
+            _diagnosticMotionVectorOverrideActive || (_repairShaderInstalled &&
+                GraphicsSettings.GetShaderMode(BuiltinShaderType.MotionVectors) == BuiltinShaderMode.UseCustom &&
+                GraphicsSettings.GetCustomShader(BuiltinShaderType.MotionVectors) == _repairShader);
 
         private void OnRepairShaderLoaded(
             AsyncOperationHandle<Shader> operation)

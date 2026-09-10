@@ -91,7 +91,7 @@ namespace ReduxBetterAA.Rendering
         }
 
         private readonly Result[] _results =
-            new Result[(int)BackendSelection.AmdFsr2 + 1];
+            new Result[(int)BackendSelection.Supersampling + 1];
         private readonly FrameTiming[] _frameTimings = new FrameTiming[1];
         private BackendSelection _runningMode;
         private long _pendingResolveTicks;
@@ -99,7 +99,7 @@ namespace ReduxBetterAA.Rendering
 
         public void Start(BackendSelection mode)
         {
-            if (mode < BackendSelection.Off || mode > BackendSelection.AmdFsr2)
+            if (mode < BackendSelection.Off || mode > BackendSelection.Supersampling)
             {
                 return;
             }
@@ -128,7 +128,7 @@ namespace ReduxBetterAA.Rendering
 
         public void Invalidate(BackendSelection mode)
         {
-            if (mode < BackendSelection.Off || mode > BackendSelection.AmdFsr2)
+            if (mode < BackendSelection.Off || mode > BackendSelection.Supersampling)
             {
                 return;
             }
@@ -254,7 +254,7 @@ namespace ReduxBetterAA.Rendering
 
         public PerformanceProfileSnapshot GetSnapshot(BackendSelection mode)
         {
-            if (mode < BackendSelection.Off || mode > BackendSelection.AmdFsr2)
+            if (mode < BackendSelection.Off || mode > BackendSelection.Supersampling)
             {
                 mode = BackendSelection.Off;
             }

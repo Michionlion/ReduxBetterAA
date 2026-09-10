@@ -143,12 +143,6 @@ namespace ReduxBetterAA.Diagnostics
                     foreach (object owner in coordinator.CaptureBufferOwners())
                         CaptureOwnedTextures(owner, owner.GetType().Name);
                 }
-                Component cloud = _camera.GetComponent("VolumeCloudRenderer");
-                if (cloud != null)
-                    CaptureOwnedTextures(cloud, "cloud");
-                else
-                    _writer.Capture("cloud", null, 0, "Resolve camera has no stock VolumeCloudRenderer");
-                WriteCapabilityReport();
             }
             catch (Exception exception) { RecordFailure("Output capture", exception); }
         }
@@ -168,8 +162,6 @@ namespace ReduxBetterAA.Diagnostics
                     int preview = name.IndexOf("motion", StringComparison.OrdinalIgnoreCase) >= 0 ? 2 :
                         name.IndexOf("depth", StringComparison.OrdinalIgnoreCase) >= 0 ? 3 : 0;
                     _writer.Capture(name, texture, preview);
-                    if (prefix == "cloud" && texture != null)
-                        _writer.Capture(name + "-alpha", texture, 4);
                 }
                 catch (Exception exception) { RecordFailure(name, exception); }
             }

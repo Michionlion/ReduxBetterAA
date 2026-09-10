@@ -1,91 +1,37 @@
-using ReduxBetterAA.Configuration;
 using ReduxBetterAA.Rendering;
-using UnityEngine.Rendering.PostProcessing;
 
 namespace ReduxBetterAA.Backends
 {
+    // Off suppresses scene AA, but allocates no temporal targets and adds no depth flags.
     internal sealed class DisabledBackend : ITemporalBackend
     {
-        private PostProcessLayer _resolveLayer;
-        private PostProcessLayer _sharedLayer;
-        private PostProcessLayer.Antialiasing _originalResolveMode;
-        private PostProcessLayer.Antialiasing _originalSharedMode;
-        private bool _configured;
-
+        private SceneCameraState _resolve, _shared;
         public string Id => "Off";
         public bool Active => false;
-
-        public bool ProbeSupport(TemporalCameraSet cameras, out string unsupportedReason)
+        public bool ProbeSupport(TemporalCameraSet cameras, out string reason)
         {
-            unsupportedReason = string.Empty;
+            reason = string.Empty;
             return true;
         }
-
-        public bool Configure(TemporalCameraSet cameras, out string failureReason)
+        public bool Configure(TemporalCameraSet cameras, out string reason)
         {
             Deactivate();
-            if (cameras != null &&
-                cameras.SceneKind != TemporalSceneKind.Unsupported &&
-                cameras.ResolveLayer == null &&
-                cameras.SharedJitterLayer == null)
+            reason = string.Empty;
+            if (cameras == null) return true;
+            if (cameras.SceneKind != TemporalSceneKind.Unsupported &&
+                cameras.ResolveLayer == null && cameras.SharedJitterLayer == null)
             {
-                failureReason =
-                    "the supported scene has not exposed a PostProcessLayer yet";
+                reason = "The supported scene has not exposed a PostProcessLayer yet";
                 return false;
             }
-            _resolveLayer = cameras == null ? null : cameras.ResolveLayer;
-            _sharedLayer = cameras == null ? null : cameras.SharedJitterLayer;
-            if (_resolveLayer != null)
-            {
-                _originalResolveMode = _resolveLayer.antialiasingMode;
-                _resolveLayer.antialiasingMode =
-                    PostProcessLayer.Antialiasing.None;
-                _resolveLayer.ResetHistory();
-            }
-            if (_sharedLayer != null && _sharedLayer != _resolveLayer)
-            {
-                _originalSharedMode = _sharedLayer.antialiasingMode;
-                _sharedLayer.antialiasingMode =
-                    PostProcessLayer.Antialiasing.None;
-                _sharedLayer.ResetHistory();
-            }
-            _configured = true;
-            failureReason = string.Empty;
+            _resolve.Capture(null, cameras.ResolveLayer, requestDepth: false);
+            if (cameras.SharedJitterLayer != cameras.ResolveLayer)
+                _shared.Capture(null, cameras.SharedJitterLayer, requestDepth: false);
             return true;
         }
-
-        public void Tick(uint frameIndex)
-        {
-        }
-
-        public void ResetHistory(HistoryResetReason reason)
-        {
-        }
-
-        public void Deactivate()
-        {
-            if (!_configured)
-            {
-                return;
-            }
-            if (_resolveLayer != null)
-            {
-                _resolveLayer.antialiasingMode = _originalResolveMode;
-                _resolveLayer.ResetHistory();
-            }
-            if (_sharedLayer != null && _sharedLayer != _resolveLayer)
-            {
-                _sharedLayer.antialiasingMode = _originalSharedMode;
-                _sharedLayer.ResetHistory();
-            }
-            _resolveLayer = null;
-            _sharedLayer = null;
-            _configured = false;
-        }
-
-        public void Dispose()
-        {
-            Deactivate();
-        }
+        public void Tick(uint frameIndex) { }
+        public void ResetHistory(HistoryResetReason reason) { }
+        public void Deactivate() { _shared.Restore(); _resolve.Restore(); }
+        public void Dispose() => Deactivate();
     }
 }

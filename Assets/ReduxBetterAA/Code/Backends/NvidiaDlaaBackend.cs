@@ -1,5 +1,4 @@
 using System;
-using KSP.VolumeCloud;
 using ReduxBetterAA.Backends.Nvidia;
 using ReduxBetterAA.Configuration;
 using ReduxBetterAA.Rendering;
@@ -60,11 +59,6 @@ namespace ReduxBetterAA.Backends
         private bool _contextUsesVendorAutoExposure;
         private bool _usingPpv2Exposure;
         private float _effectivePreExposure = 1.0f;
-        private VolumeCloudRenderer _cloudRenderer;
-        // Disabled by maintainer request: stock TUS can remain enabled indefinitely,
-        // so the former guard silently removed AA throughout ordinary flight.
-        private readonly CloudTemporalGuard _cloudGuard = new CloudTemporalGuard(enableSuspension: false);
-
         public NvidiaDlaaBackend(
             ReduxLogger logger,
             Action<string> runtimeFailure,
@@ -81,7 +75,8 @@ namespace ReduxBetterAA.Backends
         }
 
         public string Id => "NVIDIA DLAA";
-        public bool Active => _active;
+        internal bool RenderEnabled = true;
+        public bool Active => _active && RenderEnabled;
         public bool ManagedSurfaceAvailable { get; private set; }
         public bool ContextCreated => _api.ContextCreated;
         public uint DeviceVersion => _api.DeviceVersion;
@@ -101,21 +96,10 @@ namespace ReduxBetterAA.Backends
                 ? "NVIDIA auto exposure"
                 : "manual pre-exposure");
         public float EffectivePreExposure => _effectivePreExposure;
-        public bool CloudCompatibilityBypassActive =>
-            _cloudGuard.BypassActive;
-        public int CloudSettleFramesRemaining =>
-            _cloudGuard.SettleFramesRemaining;
-        public uint CloudResizeCount => _cloudGuard.ResizeCount;
-        public int CloudRenderWidth => _cloudGuard.Width;
-        public int CloudRenderHeight => _cloudGuard.Height;
         public Vector2 CurrentJitterNormalized =>
             _resourceWidth > 0 && _resourceHeight > 0
-                ? new Vector2(
-                    _jitterPixels.x / _resourceWidth,
-                    _jitterPixels.y / _resourceHeight
-                )
+                ? new Vector2(_jitterPixels.x / _resourceWidth, _jitterPixels.y / _resourceHeight)
                 : Vector2.zero;
-
         public void Initialize()
         {
             string reason;
@@ -216,8 +200,6 @@ namespace ReduxBetterAA.Backends
             }
 
             _resolveCamera = cameras.ResolveCamera;
-            _cloudRenderer = _resolveCamera.GetComponent<VolumeCloudRenderer>();
-            _cloudGuard.Clear();
             _resolveLayer = cameras.ResolveLayer;
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
@@ -252,24 +234,6 @@ namespace ReduxBetterAA.Backends
             _motionVectorSanitizer.ResetCameraHistory();
         }
 
-        internal void NotifyCloudRenderResolution(
-            VolumeCloudRenderer renderer,
-            int width,
-            int height,
-            bool temporalUpscalingActive)
-        {
-            if (!_active || renderer == null ||
-                !ReferenceEquals(renderer, _cloudRenderer) ||
-                width <= 0 || height <= 0)
-            {
-                return;
-            }
-
-            if (_cloudGuard.Observe(width, height, temporalUpscalingActive,
-                    _resolveCamera.pixelWidth, _resolveCamera.pixelHeight))
-                _historyResetPending = true;
-        }
-
         public void Render(RenderTexture source, RenderTexture destination)
         {
             long start = _performanceProfiler.BeginResolve(
@@ -295,12 +259,6 @@ namespace ReduxBetterAA.Backends
                 Graphics.Blit(source, destination);
                 return;
             }
-            if (_cloudGuard.BypassActive)
-            {
-                Graphics.Blit(source, destination);
-                return;
-            }
-
             try
             {
                 bool usePpv2Exposure = false;
@@ -416,8 +374,6 @@ namespace ReduxBetterAA.Backends
                 _commandBuffer = null;
             }
             _resolveCamera = null;
-            _cloudRenderer = null;
-            _cloudGuard.Clear();
             _resolveLayer = null;
             _sharedJitterCamera = null;
             _sharedJitterLayer = null;
@@ -541,24 +497,23 @@ namespace ReduxBetterAA.Backends
 
         private void OnCameraPreCull(Camera camera)
         {
-            if (!_active || camera == null)
+            if (!Active || camera == null)
             {
                 return;
             }
-            bool bypassingResolve = _cloudGuard.BypassActive;
-            if (!bypassingResolve && _projectionJitterSupported &&
+            if (_projectionJitterSupported &&
                 camera == _sharedJitterCamera)
             {
                 ApplyJitter(camera, ref _sharedProjection);
             }
             if (camera == _resolveCamera)
             {
-                if (!bypassingResolve && _projectionJitterSupported &&
+                if (_projectionJitterSupported &&
                     camera != _sharedJitterCamera)
                 {
                     ApplyJitter(camera, ref _resolveProjection);
                 }
-                _jitterPixels = !bypassingResolve && _projectionJitterSupported
+                _jitterPixels = _projectionJitterSupported
                     ? SharedJitterSequence.GetCustomOffset(
                         _frameIndex,
                         _config.JitterSpread,

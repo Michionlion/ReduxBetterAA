@@ -34,6 +34,7 @@ namespace ReduxBetterAA
             { "F", "J", "K", "L", "M" };
 
         private IConfigEntry _modeEntry;
+        private IConfigEntry _supersamplingEntry;
         private IConfigEntry _sharpnessEntry;
         private IConfigEntry _taaStabilityEntry;
         private IConfigEntry _dlaaPresetEntry;
@@ -51,7 +52,6 @@ namespace ReduxBetterAA
         private Phase1ProbeService _probeService;
         private TemporalCoordinator _temporalCoordinator;
         private VegetationMotionCompatibility _vegetationMotionCompatibility;
-        private KspPhysicsRenderInterpolation _physicsRenderInterpolation;
         private Harmony _harmony;
 
         public override void OnPreInitialized()
@@ -83,6 +83,11 @@ namespace ReduxBetterAA
                 "Native AA. " +
                 "Zero disables sharpening."
             );
+            _supersamplingEntry = SWConfiguration.Bind(
+                "Anti-Aliasing", "Supersampling scale", 150,
+                "Scene resolution per dimension when Supersampling is selected. UI stays native. " +
+                "200% renders four times as many pixels; other AA modes use 100%.",
+                new ListConstraint<int>(new[] { 125, 150, 175, 200 }));
             _taaStabilityEntry = BindFloat(
                 "Anti-Aliasing", "TAA stability", 0.93f, 0.0f, 0.99f, 100,
                 "Controls stationary TAA history retention. Higher values reduce " +
@@ -117,7 +122,7 @@ namespace ReduxBetterAA
             );
 
             _hotkeysEntry = SWConfiguration.Bind("Diagnostics", "Enable diagnostic hotkeys", true,
-                "F10 generates an issue-report ZIP; Ctrl+F10 opens the panel; Shift+F10 takes a screenshot.");
+                "F10 opens the AA menu; Issue ZIP captures a report; Shift+F10 takes a screenshot.");
             _cycleKeyEntry = SWConfiguration.Bind("Diagnostics", "Cycle AA mode key", "None",
                 "Optional mode-cycle key. Disabled by default to avoid Steam's F12 screenshot shortcut.",
                 new ListConstraint<string>(new[] { "None", "F6", "F7", "F9", "F11", "F12" }));
@@ -137,7 +142,7 @@ namespace ReduxBetterAA
             RegisterSettingsCallbacks();
 
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Config] Six user-facing anti-aliasing settings " +
+                "[ReduxBetterAA/Config] User-facing anti-aliasing settings " +
                 "loaded; DLAA selectable=" + _dlaaSelectable + " (" +
                 dlaaReason + "); FSR2 selectable=" + _fsr2Selectable + " (" +
                 fsr2Reason + ")."
@@ -182,12 +187,6 @@ namespace ReduxBetterAA
 
             ApplyPersistentSettings();
 
-            _physicsRenderInterpolation = new KspPhysicsRenderInterpolation(
-                SWLogger,
-                OnMotionInputChanged
-            );
-            KspPhysicsRenderInterpolation.Current = _physicsRenderInterpolation;
-            _physicsRenderInterpolation.Initialize();
             _probeService.SetTemporalControls(new BackendSettingsPanel
             {
                 TemporalStatus = () => _temporalCoordinator.Status,
@@ -216,13 +215,13 @@ namespace ReduxBetterAA
                 ResetTemporalHistory = _temporalCoordinator.RequestHistoryReset,
                 MapViewAaEnabled = () => _temporalCoordinator.MapViewAaEnabled,
                 SetMapViewAaEnabled = SetMapViewAaEnabled,
+                Sharpness = () => (float)_sharpnessEntry.Value,
+                SetSharpness = value => _sharpnessEntry.Value = value,
+                SetStability = value => _taaStabilityEntry.Value = value,
+                SetDlaaPreset = value => _dlaaPresetEntry.Value = value,
+                SupersamplingPercent = () => (int)_supersamplingEntry.Value,
+                SetSupersamplingPercent = value => _supersamplingEntry.Value = value,
             });
-            _probeService.SetMotionCadenceControls(
-                () => _physicsRenderInterpolation.Enabled,
-                SetPhysicsRenderInterpolation,
-                () => _physicsRenderInterpolation.Status,
-                RefreshPhysicsRenderInterpolation
-            );
             _probeService.SetMotionSanitizerDiagnostics(
                 () => _temporalCoordinator.MotionVectorSanitizedTexture,
                 () => _temporalCoordinator.MotionVectorCorruptionTexture,
@@ -249,7 +248,7 @@ namespace ReduxBetterAA
         {
             _probeService.MarkDirty(ProbeDirtyReason.ModsInitialized);
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Probe] Controls: Ctrl+F10 panel; F10 issue ZIP; Shift+F10 screenshot; optional cycle key in settings; Ctrl+Alt+F8 report."
+                "[ReduxBetterAA/Probe] Controls: F10 AA menu; Issue ZIP button; Shift+F10 screenshot; optional cycle key in settings; Ctrl+Alt+F8 report."
             );
         }
 
@@ -259,7 +258,6 @@ namespace ReduxBetterAA
             {
                 CycleRequestedBackendAndPersist();
             }
-            _physicsRenderInterpolation?.Tick();
             _temporalCoordinator?.Tick();
             _probeService?.Tick();
         }
@@ -271,18 +269,11 @@ namespace ReduxBetterAA
 
         private void OnDestroy()
         {
-            if (ReferenceEquals(
-                    KspPhysicsRenderInterpolation.Current,
-                    _physicsRenderInterpolation))
-            {
-                KspPhysicsRenderInterpolation.Current = null;
-            }
-            _physicsRenderInterpolation?.Dispose();
-            _physicsRenderInterpolation = null;
-
-            // Restore the diagnostic motion shader before releasing the
-            // production vegetation override it may have captured.
-            _probeService?.RestoreMotionVectorPassProbe();
+            // Comparison claims the same cameras after the normal coordinator.
+            // Unwind diagnostics first, then normal rendering, then global state.
+            if (ReferenceEquals(Phase1ProbeService.Current, _probeService)) Phase1ProbeService.Current = null;
+            _probeService?.Dispose();
+            _probeService = null;
 
             if (ReferenceEquals(
                     VegetationMotionCompatibility.Current,
@@ -300,24 +291,18 @@ namespace ReduxBetterAA
             _temporalCoordinator?.Dispose();
             _temporalCoordinator = null;
 
-            if (ReferenceEquals(Phase1ProbeService.Current, _probeService))
-            {
-                Phase1ProbeService.Current = null;
-            }
-
-            _probeService?.Dispose();
-            _probeService = null;
+            Patches.StockAntialiasingControlPatch.Restore();
 
             if (_harmony != null)
             {
                 _harmony.UnpatchAll(_harmony.Id);
             }
             _harmony = null;
-            if (_ownsMsaa)
+            if (_ownsMsaa && QualitySettings.antiAliasing == 0)
             {
                 QualitySettings.antiAliasing = _originalMsaaSamples;
-                _ownsMsaa = false;
             }
+            _ownsMsaa = false;
         }
 
         private void OnMotionInputChanged()
@@ -326,20 +311,12 @@ namespace ReduxBetterAA
             _probeService?.MarkDirty(ProbeDirtyReason.MotionInputChanged);
         }
 
-        private void RefreshPhysicsRenderInterpolation()
-        {
-            _physicsRenderInterpolation?.RefreshNow();
-        }
-
-        private void SetPhysicsRenderInterpolation(bool enabled)
-        {
-            _physicsRenderInterpolation?.SetEnabled(enabled);
-        }
-
         private void SetVegetationMotionRepairEnabled(bool enabled)
         {
+            if (_temporalCoordinator != null) _temporalCoordinator.VegetationRepairRequested = enabled;
             bool changed = _vegetationMotionCompatibility != null &&
-                _vegetationMotionCompatibility.SetEnabled(enabled);
+                _vegetationMotionCompatibility.SetEnabled(enabled && _temporalCoordinator != null &&
+                    _temporalCoordinator.Active && _temporalCoordinator.SelectedBackend != "Supersampling");
             Persist(_foliageMotionRepairEntry, enabled);
             if (changed)
             {
@@ -378,6 +355,7 @@ namespace ReduxBetterAA
 
         private void RegisterSettingsCallbacks()
         {
+            _supersamplingEntry.RegisterCallback(OnPersistentSettingChanged);
             _modeEntry.RegisterCallback(OnPersistentSettingChanged);
             _sharpnessEntry.RegisterCallback(OnPersistentSettingChanged);
             _taaStabilityEntry.RegisterCallback(OnPersistentSettingChanged);
@@ -408,6 +386,7 @@ namespace ReduxBetterAA
             }
 
             float sharpness = (float)_sharpnessEntry.Value;
+            _temporalCoordinator.SetSupersamplingPercent((int)_supersamplingEntry.Value);
             TemporalBackendConfig ppv2 = _temporalCoordinator.Ppv2Config;
             _temporalCoordinator.SetPpv2Config(new TemporalBackendConfig(
                 ppv2.JitterSpread,
@@ -677,6 +656,9 @@ namespace ReduxBetterAA
         {
             switch (backend)
             {
+                case BackendSelection.Supersampling:
+                    label = UserSettingsPolicy.ModeSupersampling;
+                    return true;
                 case BackendSelection.FxaaLow:
                     label = ModeFxaaLow;
                     return true;

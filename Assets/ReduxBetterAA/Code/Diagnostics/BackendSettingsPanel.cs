@@ -36,9 +36,46 @@ namespace ReduxBetterAA.Diagnostics
         internal Action ResetTemporalHistory;
         internal Func<bool> MapViewAaEnabled;
         internal Action<bool> SetMapViewAaEnabled;
-        private Vector2 _customScroll;
-        private Vector2 _dlaaScroll;
-        private Vector2 _fsr2Scroll;
+        internal Func<float> Sharpness;
+        internal Action<float> SetSharpness;
+        internal Action<float> SetStability;
+        internal Action<string> SetDlaaPreset;
+        internal Func<int> SupersamplingPercent;
+        internal Action<int> SetSupersamplingPercent;
+        private bool _scaleOpen;
+        private static readonly string[] ScaleLabels = { "125%", "150%", "175%", "200%" };
+        private bool _presetOpen;
+
+        internal void DrawBasic(BackendSelection mode)
+        {
+            if (mode >= BackendSelection.CustomTaa && mode <= BackendSelection.AmdFsr2 && Sharpness != null) {
+                float value = Sharpness();
+                float next = DrawParameter("Sharpness", value, 0, 1);
+                if (next != value) SetSharpness(next);
+            }
+            if (mode == BackendSelection.CustomTaa && CustomConfig != null) {
+                float value = CustomConfig().StationaryHistory;
+                float next = DrawParameter("Stability", value, 0, .99f);
+                if (next != value) SetStability(next);
+            }
+            if (mode == BackendSelection.NvidiaDlaa && DlaaConfig != null) {
+                int index = Array.IndexOf(DlaaPresetLabels, DlaaConfig().Preset.ToString());
+                int next = DebugMenu.Dropdown("Model", Mathf.Max(0, index), DlaaPresetLabels, ref _presetOpen);
+                if (next != index) SetDlaaPreset(DlaaPresetLabels[next]);
+            }
+            bool map = MapViewAaEnabled == null || MapViewAaEnabled();
+            if (mode == BackendSelection.Supersampling && SupersamplingPercent != null)
+            {
+                int index = Mathf.Clamp((SupersamplingPercent() - 125) / 25, 0, 3);
+                int next = DebugMenu.Dropdown("Scene scale", index, ScaleLabels, ref _scaleOpen);
+                if (next != index) SetSupersamplingPercent?.Invoke(125 + next * 25);
+                GUILayout.Label("UI stays native. 200% renders four times the pixels.");
+            }
+            bool nextMap = GUILayout.Toggle(map, "Enable AA in map view");
+            if (nextMap != map) SetMapViewAaEnabled?.Invoke(nextMap);
+            if (mode == BackendSelection.Off) GUILayout.Label("Scene AA is disabled.");
+            if (mode >= BackendSelection.FxaaLow && mode <= BackendSelection.Smaa) DrawSpatialAaTab(mode);
+        }
         private static readonly string[] DlaaPresetLabels =
             { "F", "J", "K", "L", "M" };
         private static readonly string[] CustomDebugLabels =
@@ -200,10 +237,6 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             }
 
-            _customScroll = GUILayout.BeginScrollView(
-                _customScroll,
-                GUILayout.Height(370f)
-            );
             CustomTaaConfig config = CustomConfig();
             float jitterSpread = DrawParameter(
                 "Jitter spread", config.JitterSpread, 0.1f, 1.5f
@@ -270,7 +303,6 @@ namespace ReduxBetterAA.Diagnostics
             {
                 SetCustomConfig(updated);
             }
-            GUILayout.EndScrollView();
 
             long bytes = CustomMemoryBytes == null ? 0 : CustomMemoryBytes();
             GUILayout.Label(
@@ -322,10 +354,6 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             }
 
-            _dlaaScroll = GUILayout.BeginScrollView(
-                _dlaaScroll,
-                GUILayout.Height(330f)
-            );
             DlaaConfig config = DlaaConfig();
             float jitterSpread = DrawParameter(
                 "Jitter spread", config.JitterSpread, 0.1f, 1.5f
@@ -355,10 +383,6 @@ namespace ReduxBetterAA.Diagnostics
                 config.InvertMotionY,
                 " Invert motion-vector Y in sanitizer"
             );
-            bool allowSupersampling = GUILayout.Toggle(
-                config.AllowSupersampling,
-                " Allow Redux supersampling above 100%"
-            );
 
             GUILayout.Space(6f);
             GUILayout.Label("DLAA preset hint");
@@ -377,14 +401,13 @@ namespace ReduxBetterAA.Diagnostics
                 invertMotionX,
                 invertMotionY,
                 DlaaPresetFromIndex(presetIndex),
-                allowSupersampling,
+                false,
                 preferPpv2Exposure
             );
             if (!config.ValuesEqual(in updated))
             {
                 SetDlaaConfig(updated);
             }
-            GUILayout.EndScrollView();
 
             long bytes = DlaaMemoryBytes == null ? 0 : DlaaMemoryBytes();
             GUILayout.Label(
@@ -400,9 +423,8 @@ namespace ReduxBetterAA.Diagnostics
                 "orient its optional status indicator. A same-frame detector " +
                 "replaces screen-wide corruption. Coherent camera pans may exceed " +
                 "256 px; invalid, unverified >256 px, or >96 px disagreement uses a " +
-                "<=256 px camera fallback. The " +
-                "supersampling option runs equal-size DLAA on Redux's larger " +
-                "scene buffer before Redux downsamples it."
+                "<=256 px camera fallback. Select the separate Supersampling mode " +
+                "to render above native resolution."
             );
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
@@ -471,10 +493,6 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             }
 
-            _fsr2Scroll = GUILayout.BeginScrollView(
-                _fsr2Scroll,
-                GUILayout.Height(330f)
-            );
             Fsr2Config config = Fsr2Config();
             float jitterSpread = DrawParameter(
                 "Jitter spread", config.JitterSpread, 0.1f, 1.5f
@@ -519,7 +537,6 @@ namespace ReduxBetterAA.Diagnostics
             {
                 SetFsr2Config(updated);
             }
-            GUILayout.EndScrollView();
 
             long bytes = Fsr2MemoryBytes == null ? 0 : Fsr2MemoryBytes();
             GUILayout.Label(

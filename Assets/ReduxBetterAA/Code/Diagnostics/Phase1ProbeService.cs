@@ -66,7 +66,7 @@ namespace ReduxBetterAA.Diagnostics
         internal int TemporalInputCaptureCount => _issueReports?.TemporalInputCaptureCount ?? 0;
         internal void SetPanelVisible(bool visible) => _visualizer.SetPanelVisible(visible);
         internal bool RequestIssueReport() => !_visualizer.CaptureBusy && _resumePanelAtFrame < 0 &&
-            _issueReports != null && _issueReports.Request();
+            _issueReports != null && !(_visualizer.Comparison?.Busy ?? false) && _issueReports.Request();
 
         internal void InitializeIssueReports(MonoBehaviour host)
         {
@@ -80,6 +80,8 @@ namespace ReduxBetterAA.Diagnostics
                 if (suspended) _visualizer.SuspendPanelForScreenshot();
                 else _visualizer.ResumePanelAfterScreenshot();
             });
+            _visualizer.Comparison = host.gameObject.AddComponent<AaComparison>();
+            _visualizer.Comparison.Initialize(_logger);
             _visualizer.CreateIssueReport = RequestIssueReport;
             _visualizer.IssueReportBusy = () => IssueReportBusy;
         }
@@ -136,7 +138,7 @@ namespace ReduxBetterAA.Diagnostics
                     }
                     else if (!DiagnosticHotkeys.AnyModifierDown())
                     {
-                        RequestIssueReport();
+                        _visualizer.TogglePanel();
                     }
                 }
                 if (DiagnosticHotkeys.ControlDown() && DiagnosticHotkeys.AltDown() && !DiagnosticHotkeys.ShiftDown() && Input.GetKeyDown(KeyCode.F8))
@@ -212,20 +214,6 @@ namespace ReduxBetterAA.Diagnostics
             _visualizer.SetTemporalControls(panel);
         }
 
-        public void SetMotionCadenceControls(
-            Func<bool> interpolationEnabled,
-            Action<bool> setInterpolationEnabled,
-            Func<string> interpolationStatus,
-            Action refreshInterpolation)
-        {
-            _visualizer.SetMotionCadenceControls(
-                interpolationEnabled,
-                setInterpolationEnabled,
-                interpolationStatus,
-                refreshInterpolation
-            );
-        }
-
         public void SetMotionSanitizerDiagnostics(
             Func<Texture> sanitizedMotion,
             Func<Texture> corruptionFlag,
@@ -268,6 +256,8 @@ namespace ReduxBetterAA.Diagnostics
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+            _visualizer.Comparison?.Stop();
+            if (_visualizer.Comparison != null) UnityEngine.Object.Destroy(_visualizer.Comparison);
             _issueReports?.Dispose();
             _visualizer.Dispose();
         }
@@ -325,7 +315,7 @@ namespace ReduxBetterAA.Diagnostics
                 _capabilities = VendorCapabilityProbe.Capture(_probeVendorRuntime);
             return new Phase1Report
             {
-                schemaVersion = 23,
+                schemaVersion = 24,
                 frame = Time.frameCount,
                 capturedUtc = DateTime.UtcNow.ToString("O"),
                 captureReason = "IssueReport",
@@ -333,9 +323,7 @@ namespace ReduxBetterAA.Diagnostics
                 capabilities = _capabilities,
                 cameraGraph = discovery.Graph,
                 evidence = CapabilityReportBuilder.BuildEvidence(discovery.Graph),
-                motionCadence = CapabilityReportBuilder.CaptureMotionCadence(),
                 motionSignDiagnostic = _visualizer.CaptureMotionSignDiagnostic(),
-                cloud = CloudDiagnosticCapture.CaptureRecord(camera),
                 temporal = CapabilityReportBuilder.CaptureTemporalBackend()
             };
         }
@@ -376,7 +364,6 @@ namespace ReduxBetterAA.Diagnostics
                     _screenshotSequence.ToString("D3") + "-" +
                     view + "-" + camera + ".png";
                 string path = Path.Combine(screenshotDirectory, fileName);
-                string captureBaseName = Path.GetFileNameWithoutExtension(fileName);
                 string statisticsFileName =
                     Path.GetFileNameWithoutExtension(fileName) + "-motion-stats.json";
                 string statisticsPath = Path.Combine(
@@ -398,32 +385,20 @@ namespace ReduxBetterAA.Diagnostics
 
                 _visualizer.SuspendPanelForScreenshot();
                 ScreenCapture.CaptureScreenshot(path);
-                string cloudCaptureStatus;
-                int cloudCaptureCount = CloudDiagnosticCapture.CaptureTextures(
-                    _visualizer.SelectedCameraForDiagnostics,
-                    screenshotDirectory,
-                    captureBaseName,
-                    out cloudCaptureStatus
-                );
                 _resumePanelAtFrame = Time.frameCount + 2;
-                string cloudStatusSuffix = cloudCaptureCount > 0
-                    ? "; cloud source images: " + cloudCaptureCount
-                    : "; cloud source images unavailable: " + cloudCaptureStatus;
                 _visualizer.SetScreenshotStatus(
                     statisticsArmed
-                        ? "Screenshot + motion statistics queued: " + fileName +
-                          cloudStatusSuffix
+                        ? "Screenshot + motion statistics queued: " + fileName
                         : statisticsExpected
                             ? "Screenshot queued; statistics unavailable: " +
-                              statisticsUnavailableReason + cloudStatusSuffix
-                            : "Screenshot queued: " + fileName + cloudStatusSuffix
+                              statisticsUnavailableReason
+                            : "Screenshot queued: " + fileName
                 );
                 _logger.LogInfo(
                     "[ReduxBetterAA/Capture] Screenshot queued at " + path +
                     (statisticsArmed
                         ? "; motion statistics will be written to " + statisticsPath
-                        : string.Empty) +
-                    "; cloud diagnostics: " + cloudCaptureStatus
+                        : string.Empty)
                 );
             }
             catch (Exception exception)

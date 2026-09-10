@@ -6,6 +6,11 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
         _HistoryTex ("Previous resolved color", 2D) = "black" {}
         _HistoryDepthTex ("Previous linear depth", 2D) = "white" {}
         _ReduxBetterAAMotionVectors ("Sanitized motion vectors", 2D) = "black" {}
+        _SamplingNoiseMotionLimit ("Sampling-noise motion limit (pixels/frame)", Float) = 0.25
+        _CurrentFilterSharpness ("Current reconstruction filter sharpness", Float) = 3
+        _HistoryFilterSharpness ("History cubic filter sharpness", Float) = 0.75
+        _MovingSamplingNoise ("Moving sampling variance allowance", Float) = 0.3
+        _SubpixelMotionRange ("Subpixel response fraction of motion range", Float) = 0.5
     }
 
     SubShader
@@ -32,6 +37,11 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
         float _DepthEdgeStability;
         float _VarianceGamma;
         float _ReactiveScale;
+        float _SamplingNoiseMotionLimit;
+        float _CurrentFilterSharpness;
+        float _HistoryFilterSharpness;
+        float _MovingSamplingNoise;
+        float _SubpixelMotionRange;
         float _Sharpening;
         float _NoDepthHistory;
         float _HistoryValid;
@@ -137,18 +147,17 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
 
         float BestHistoryDepthDifference(float2 previousUv, float currentDepth)
         {
-            // Sample exact texel centers so a bilinear depth history cannot invent
-            // an intermediate surface at a silhouette. The nearest matching depth
-            // in this one-pixel footprint tolerates subpixel jitter without reaching
-            // far enough to preserve a broad disocclusion trail.
+            // Only the four texels covering this bilinear footprint may validate
+            // depth. An unrelated surface one texel behind it must not rescue
+            // disoccluded color. Point-center reads never invent intermediate depth.
             float2 texel = _SourceDimensions.zw;
             float2 basePosition = floor(previousUv * _SourceDimensions.xy - 0.5);
             float bestDifference = 1e20;
             [unroll]
-            for (int y = -1; y <= 1; y++)
+            for (int y = 0; y <= 1; y++)
             {
                 [unroll]
-                for (int x = -1; x <= 1; x++)
+                for (int x = 0; x <= 1; x++)
                 {
                     float2 sampleUv = clamp(
                         (basePosition + float2(x, y) + 0.5) * texel,
@@ -168,7 +177,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             return bestDifference;
         }
 
-        float4 SampleHistoryCatmullRom(float2 uv)
+        float4 SampleHistoryBicubic(float2 uv)
         {
             float2 textureSize = _SourceDimensions.xy;
             float2 texelSize = _SourceDimensions.zw;
@@ -177,28 +186,39 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             float2 fraction = position - basePosition;
             float2 fraction2 = fraction * fraction;
             float2 fraction3 = fraction2 * fraction;
+            float sharpness = _HistoryFilterSharpness;
 
             float4 weightsX = float4(
-                -0.5 * fraction.x + fraction2.x - 0.5 * fraction3.x,
-                1.0 - 2.5 * fraction2.x + 1.5 * fraction3.x,
-                0.5 * fraction.x + 2.0 * fraction2.x - 1.5 * fraction3.x,
-                -0.5 * fraction2.x + 0.5 * fraction3.x
+                -sharpness * fraction.x + 2.0 * sharpness * fraction2.x - sharpness * fraction3.x,
+                1.0 + (sharpness - 3.0) * fraction2.x + (2.0 - sharpness) * fraction3.x,
+                sharpness * fraction.x + (3.0 - 2.0 * sharpness) * fraction2.x + (sharpness - 2.0) * fraction3.x,
+                -sharpness * fraction2.x + sharpness * fraction3.x
             );
             float4 weightsY = float4(
-                -0.5 * fraction.y + fraction2.y - 0.5 * fraction3.y,
-                1.0 - 2.5 * fraction2.y + 1.5 * fraction3.y,
-                0.5 * fraction.y + 2.0 * fraction2.y - 1.5 * fraction3.y,
-                -0.5 * fraction2.y + 0.5 * fraction3.y
+                -sharpness * fraction.y + 2.0 * sharpness * fraction2.y - sharpness * fraction3.y,
+                1.0 + (sharpness - 3.0) * fraction2.y + (2.0 - sharpness) * fraction3.y,
+                sharpness * fraction.y + (3.0 - 2.0 * sharpness) * fraction2.y + (sharpness - 2.0) * fraction3.y,
+                -sharpness * fraction2.y + sharpness * fraction3.y
             );
 
+            // The middle two cubic weights are positive. Combine them with
+            // hardware bilinear interpolation; retain the negative outer lobes.
+            // A slightly sharper cubic retains moving thin detail through repeated
+            // reprojection. 0.5 reproduces Catmull-Rom; clipping limits overshoot.
+            float3 combinedX = float3(weightsX.x, weightsX.y + weightsX.z, weightsX.w);
+            float3 combinedY = float3(weightsY.x, weightsY.y + weightsY.z, weightsY.w);
+            float3 positionsX = basePosition.x + float3(-0.5,
+                0.5 + weightsX.z / combinedX.y, 2.5);
+            float3 positionsY = basePosition.y + float3(-0.5,
+                0.5 + weightsY.z / combinedY.y, 2.5);
             float4 result = 0.0;
             [unroll]
-            for (int y = 0; y < 4; y++)
+            for (int y = 0; y < 3; y++)
             {
                 [unroll]
-                for (int x = 0; x < 4; x++)
+                for (int x = 0; x < 3; x++)
                 {
-                    float2 samplePosition = basePosition + float2(x - 1, y - 1) + 0.5;
+                    float2 samplePosition = float2(positionsX[x], positionsY[y]);
                     float2 sampleUv = clamp(
                         samplePosition * texelSize,
                         texelSize * 0.5,
@@ -207,7 +227,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                     result += tex2Dlod(
                         _HistoryTex,
                         float4(sampleUv, 0.0, 0.0)
-                    ) * weightsX[x] * weightsY[y];
+                    ) * combinedX[x] * combinedY[y];
                 }
             }
             return result;
@@ -229,9 +249,15 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
 
         TemporalEvaluation EvaluateTemporal(float2 inputUv)
         {
-            TemporalEvaluation evaluation;
+            TemporalEvaluation evaluation = (TemporalEvaluation)0;
             float2 uv = ResolveUv(inputUv);
             float2 currentUv = saturate(uv - _Jitter);
+            evaluation.current = tex2D(_MainTex, currentUv);
+            evaluation.resolved = evaluation.current;
+            // A reset must not read uninitialized history. NaN * 0 is still NaN.
+            [branch]
+            if (_HistoryValid < 0.5)
+                return evaluation;
             // Color is de-jittered by sampling the rasterized source at
             // currentUv. Depth and motion must come from the same source-space
             // location; otherwise every Halton sample moves a silhouette across
@@ -255,6 +281,12 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             float surfaceLuminanceSquaredMean = 0.0;
             float surfaceSampleCount = 0.0;
             float localDepthEdge = 0.0;
+            // Bilinear unjittering changes filter width with each sample phase.
+            // Reconstruct a consistent footprint from the same nine neighborhood
+            // reads, at raster centers, instead of filtering every tap separately.
+            float2 rasterCenter = (floor(currentUv * _SourceDimensions.xy) + 0.5) * _SourceDimensions.zw;
+            float3 reconstructed = 0.0;
+            float reconstructionWeight = 0.0;
             [unroll]
             for (int y = -1; y <= 1; y++)
             {
@@ -262,7 +294,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 for (int x = -1; x <= 1; x++)
                 {
                     float2 offset = float2(x, y) * _SourceDimensions.zw;
-                    float2 depthUv = saturate(currentUv + offset);
+                    float2 depthUv = saturate(rasterCenter + offset);
                     float candidateRawDepth = SAMPLE_DEPTH_TEXTURE(
                         _CameraDepthTexture,
                         depthUv
@@ -280,8 +312,12 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
 
                     float3 sampleYCoCg = RgbToYCoCg(tex2D(
                         _MainTex,
-                        saturate(currentUv + offset)
+                        saturate(rasterCenter + offset)
                     ).rgb);
+                    float2 distance = (rasterCenter + offset - currentUv) * _SourceDimensions.xy;
+                    float weight = exp2(-_CurrentFilterSharpness * dot(distance, distance));
+                    reconstructed += sampleYCoCg * weight;
+                    reconstructionWeight += weight;
                     allMinimum = min(allMinimum, sampleYCoCg);
                     allMaximum = max(allMaximum, sampleYCoCg);
                     allLuminanceMean += sampleYCoCg.x;
@@ -306,6 +342,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 }
             }
 
+            evaluation.current.rgb = YCoCgToRgb(reconstructed / reconstructionWeight);
             float edgeBlend = saturate(_DepthEdgeStability * localDepthEdge);
             float2 motion = tex2D(_ReduxBetterAAMotionVectors, motionUv).rg;
             bool invalidMotion = MotionIsInvalid(motion);
@@ -345,9 +382,12 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                              step(previousUv.x, 1.0) * step(previousUv.y, 1.0);
             previousUv = saturate(previousUv);
 
-            evaluation.current = tex2D(_MainTex, currentUv);
             evaluation.history = tex2D(_HistoryTex, uv);
-            evaluation.reprojected = SampleHistoryCatmullRom(previousUv);
+            evaluation.reprojected = SampleHistoryBicubic(previousUv);
+            [branch]
+            if (any(evaluation.reprojected != evaluation.reprojected) ||
+                any(abs(evaluation.reprojected) > 1e19))
+                return evaluation;
 
             allLuminanceMean /= 9.0;
             allLuminanceSquaredMean /= 9.0;
@@ -433,9 +473,10 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             evaluation.depthRejected = 1.0 - depthAccepted;
             evaluation.depthEdge = localDepthEdge;
 
-            float motionFactor = saturate(
-                motionPixels / max(_MotionResponsePixels, 0.0001)
-            );
+            float motionFactor = saturate(motionPixels / max(_MotionResponsePixels, 0.0001));
+            // Refresh subpixel-moving detail faster, but retain the established
+            // history response for large displacements (especially terrain).
+            motionFactor += motionFactor * saturate(1.0 - motionFactor / max(_SubpixelMotionRange, 0.0001));
             float validMotion = invalidMotion
                 ? 0.0
                 : 1.0 - step(_MaximumMotionPixels, motionPixels);
@@ -448,7 +489,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             baseWeight = lerp(
                 baseWeight,
                 max(baseWeight, _StationaryHistory),
-                edgeBlend
+                edgeBlend * (1.0 - motionFactor)
             );
 
             float currentLuminance = Luminance(evaluation.current.rgb);
@@ -457,9 +498,18 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 evaluation.clampedHistory.rgb,
                 edgeBlend
             ));
-            evaluation.reactive = saturate(
-                abs(currentLuminance - historyLuminance) * _ReactiveScale
-            );
+            // A jittered thin edge can change brightness without any scene change.
+            // Allow full local variation near rest and a smaller amount in motion.
+            // Faster motion response and the reconstruction filters retain detail
+            // without treating all thin-edge coverage changes as new lighting.
+            // Uniform lighting/emission changes have no spatial variance and keep
+            // their original reactive response, even with a stationary camera.
+            float samplingVariation = _VarianceGamma * sigma *
+                (1.0 - smoothstep(0.0, max(_SamplingNoiseMotionLimit, 0.0001), motionPixels));
+            samplingVariation = max(samplingVariation, _MovingSamplingNoise * sigma);
+            evaluation.reactive = saturate(max(0.0,
+                abs(currentLuminance - historyLuminance) - samplingVariation
+            ) * _ReactiveScale);
             evaluation.historyWeight = baseWeight * inBounds * validMotion *
                 depthAccepted * (1.0 - evaluation.reactive) * _HistoryValid;
             evaluation.resolved = lerp(
@@ -468,6 +518,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 evaluation.historyWeight
             );
             evaluation.resolved.rgb = max(evaluation.resolved.rgb, 0.0);
+            evaluation.resolved.a = evaluation.current.a;
             return evaluation;
         }
 
@@ -491,13 +542,14 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             float2 uv = ResolveUv(input.uv);
             float2 texel = _SourceDimensions.zw;
             float4 center = tex2D(_MainTex, uv);
-            float4 neighbors =
-                tex2D(_MainTex, saturate(uv + float2(texel.x, 0.0))) +
-                tex2D(_MainTex, saturate(uv - float2(texel.x, 0.0))) +
-                tex2D(_MainTex, saturate(uv + float2(0.0, texel.y))) +
-                tex2D(_MainTex, saturate(uv - float2(0.0, texel.y)));
-            float4 result = center + (center - neighbors * 0.25) * _Sharpening;
-            return float4(max(result.rgb, 0.0), center.a);
+            float3 north = tex2D(_MainTex, saturate(uv + float2(0.0, texel.y))).rgb;
+            float3 south = tex2D(_MainTex, saturate(uv - float2(0.0, texel.y))).rgb;
+            float3 east = tex2D(_MainTex, saturate(uv + float2(texel.x, 0.0))).rgb;
+            float3 west = tex2D(_MainTex, saturate(uv - float2(texel.x, 0.0))).rgb;
+            float3 result = center.rgb + (center.rgb - (north + south + east + west) * 0.25) * _Sharpening;
+            float3 low = min(center.rgb, min(min(north, south), min(east, west)));
+            float3 high = max(center.rgb, max(max(north, south), max(east, west)));
+            return float4(max(clamp(result, low, high), 0.0), center.a);
         }
 
         float4 FragDebug(v2f_img input) : SV_Target
