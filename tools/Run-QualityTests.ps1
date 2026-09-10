@@ -4,7 +4,10 @@ param(
     [string] $HarnessRoot = (Join-Path $PSScriptRoot '..\..\ReduxTestHarness'),
     [string] $UnityRoot = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1',
     [string] $Label = 'comparison',
+    [string] $ArtifactRoot,
     [switch] $LiveComparison,
+    [switch] $Menu,
+    [switch] $MenuIsolation,
     [switch] $VideoComparison,
     [switch] $Shimmer,
     [switch] $ShimmerSweep,
@@ -22,10 +25,14 @@ if (Get-Process KSP2_x64 -ErrorAction SilentlyContinue) { throw 'Close KSP2 befo
 if ($Label -notmatch '^[a-zA-Z0-9_-]+$') { throw 'Use a simple alphanumeric run label.' }
 & (Join-Path $HarnessRoot 'scripts\install-mod.ps1') -GameRoot $GameRoot -UnityRoot $UnityRoot
 if ($LASTEXITCODE -ne 0) { throw 'Harness installation failed.' }
-$run = Join-Path $repo ('Artifacts\quality-' + $Label + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+if (!$ArtifactRoot) { $ArtifactRoot = Join-Path $repo 'Artifacts' }
+$run = Join-Path ([IO.Path]::GetFullPath($ArtifactRoot)) ('quality-' + $Label + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Force -Path $run | Out-Null
 $managed = Join-Path $GameRoot 'KSP2_x64_Data\Managed'
 $mod = Join-Path $GameRoot 'mods\ReduxBetterAA\ReduxBetterAA.dll'
+$settingsPath = Join-Path (Split-Path $mod) 'ReduxBetterAA-config.json'
+$settingsBackup = Join-Path $run 'settings-before.json'
+if (Test-Path -LiteralPath $settingsPath) { Copy-Item -LiteralPath $settingsPath -Destination $settingsBackup }
 $refs = @('0Harmony.dll','Assembly-CSharp.dll','MoonSharp.Interpreter.dll','ReduxLib.dll','SpaceWarp2.dll',
     'Unity.Collections.dll','UnityEngine.UI.dll','UnityEngine.ImageConversionModule.dll','netstandard.dll','UnityEngine.dll','UnityEngine.CoreModule.dll','UnityEngine.JSONSerializeModule.dll','Unity.Postprocessing.Runtime.dll') |
     ForEach-Object { Join-Path $managed $_ }
@@ -46,7 +53,8 @@ if (Test-Path -LiteralPath $install) { Copy-Item -LiteralPath $install -Destinat
 New-Item -ItemType Directory -Force -Path $install | Out-Null
 Copy-Item -LiteralPath $dll -Destination $install
 Copy-Item -LiteralPath (Join-Path $repo 'Tests\Visual\swinfo.json') -Destination $install
-$scriptPath = Join-Path $repo $(if ($Shimmer) { 'tests\Quality\shimmer.lua' } elseif ($VideoComparison) { 'tests\Quality\comparison-videos.lua' } elseif ($LiveComparison) { 'tests\Quality\live-comparison.lua' } else { 'tests\Quality\native-aa.lua' })
+$scriptPath = Join-Path $repo $(if ($MenuIsolation) { 'tests\Quality\menu-isolation.lua' } elseif ($Menu) { 'tests\Quality\menu.lua' } elseif ($Shimmer) { 'tests\Quality\shimmer.lua' } elseif ($VideoComparison) { 'tests\Quality\comparison-videos.lua' } elseif ($LiveComparison) { 'tests\Quality\live-comparison.lua' } else { 'tests\Quality\native-aa.lua' })
+$priorIsolation = $env:RBAA_MENU_ISOLATION
 $prior = $env:RBAA_QUALITY_OUTPUT
 $priorEncoder = $env:RBAA_VISUAL_FFMPEG
 $priorSweep = $env:RBAA_SHIMMER_SWEEP
@@ -54,6 +62,7 @@ $priorReplay = $env:RBAA_SHIMMER_REPLAY
 $priorJitterSweep = $env:RBAA_SHIMMER_JITTER_SWEEP
 $priorShimmerPath = $env:RBAA_SHIMMER_PATH
 try {
+    $env:RBAA_MENU_ISOLATION = $(if ($MenuIsolation) { '1' } else { '0' })
     $env:RBAA_SHIMMER_PATH = $ShimmerPath
     $env:RBAA_SHIMMER_JITTER_SWEEP = $(if ($ShimmerJitterSweep) { '1' } else { '0' })
     $env:RBAA_SHIMMER_REPLAY = $(if ($ShimmerReplay) { '1' } else { '0' })
@@ -64,6 +73,7 @@ try {
         -Launch -GameRoot $GameRoot -Timeout 1200 -ResponseTimeoutSeconds 120 -Results (Join-Path $run 'harness')
     $result = $LASTEXITCODE
 } finally {
+    $env:RBAA_MENU_ISOLATION = $priorIsolation
     $env:RBAA_SHIMMER_PATH = $priorShimmerPath
     $env:RBAA_SHIMMER_JITTER_SWEEP = $priorJitterSweep
     $env:RBAA_SHIMMER_REPLAY = $priorReplay
@@ -73,6 +83,9 @@ try {
     foreach ($p in @(Get-Process KSP2_x64 -ErrorAction SilentlyContinue)) {
         if (-not $p.WaitForExit(30000)) { throw "Game still running; adapter retained at $install" }
     }
+    # Preserve the exact pre-test file even if the player terminates during a
+    # capture or a setting callback persists after the Lua restoration.
+    if (Test-Path -LiteralPath $settingsBackup) { Copy-Item -LiteralPath $settingsBackup -Destination $settingsPath -Force }
     # Only remove the exact two files installed by this runner; no recursive deletion.
     Remove-Item -LiteralPath (Join-Path $install 'ReduxBetterAA.VisualTests.dll'),(Join-Path $install 'swinfo.json') -ErrorAction SilentlyContinue
     if (Test-Path -LiteralPath $backup) { Copy-Item -Path (Join-Path $backup '*') -Destination $install -Recurse -Force }
@@ -86,11 +99,12 @@ $catalog=Join-Path (Split-Path $mod) 'addressables\catalog.json'
     shimmerReplay=[bool]$ShimmerReplay;
     shimmerJitterSweep=[bool]$ShimmerJitterSweep;
     shimmerPath=$ShimmerPath;
+    menu=[bool]$Menu; menuIsolation=[bool]$MenuIsolation;
     scriptSha256=(Get-FileHash -LiteralPath $scriptPath).Hash;
     capture=$(if ($Shimmer) { '128 consecutive fixed-step normal-renderer frames per arm; native linear RGBA16F structure and terrain crops; sparse same-frame input and rejection/reactivity/history diagnostics' } elseif ($VideoComparison) { 'Continuous fixed-step 60 FPS comparison frames; lossless RGB; same camera path; no performance measurement' } elseif ($LiveComparison) { 'Live pre-UI A/B output previews, finite-pixel and temporal-state checks; no performance measurements' } else { 'same-frame pre-UI input/output; linear RGBA16F; no readbacks during timing' }) } |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'run.json') -Encoding utf8
 Write-Host "Quality artifacts: $run"
 if ($result -ne 0) { throw "Quality suite failed; inspect $run" }
-if ($LiveComparison -or $VideoComparison -or $Shimmer) { return }
+if ($Menu -or $MenuIsolation -or $LiveComparison -or $VideoComparison -or $Shimmer) { return }
 & python (Join-Path $repo 'tools\analyze-aa-quality.py') $run
 if ($LASTEXITCODE -ne 0) { throw 'Pixel analysis failed.' }

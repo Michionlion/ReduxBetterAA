@@ -7,6 +7,17 @@
 
 ## 1. Executive summary
 
+### Main-menu AA investigation (2026-09-10)
+
+The main menu must apply the selected DLAA, Custom TAA or FSR2 Native AA to
+the visible 3D scene before UI composition. Establish actual camera execution,
+source coverage and same-frame input/output differences on the current player;
+an active backend flag is insufficient. Investigate coherent temporal sampling
+before accepting spatial-only AA as the final solution. Preserve flight/map
+policies, one resolve per scene output, saved choices and deterministic teardown.
+If full temporal sampling remains unsupported, document the observed blocker
+and validate a pre-UI spatial fallback without silently relabelling it as TAA.
+
 ### Unified AA ownership (2026-09-10)
 
 Better AA owns the user-facing AA mode and supersampling scale. Supersampling
@@ -14,7 +25,7 @@ uses Redux's public presenter at 125–200% per dimension with scene AA disabled
 all other modes use 100%. Both stock graphics selectors are disabled navigation
 hints to the mod settings. The stock saved render-scale profile is not overwritten.
 This explicitly supersedes earlier independent-render-scale requirements.
-Retain Redux's existing scene scope: main-menu and map views use Off fallback
+Supersampling retains Redux's existing scene scope: main-menu and map views use Off fallback
 when no supersampled target exists, preserving the requested flight mode/scale.
 
 Off releases temporal targets, hooks, jitter, native contexts and the vegetation

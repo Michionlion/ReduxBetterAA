@@ -2,6 +2,10 @@
 
 ## Status
 
+The main-menu portion is superseded by [decision 0042](0042-main-menu-coherent-raster-jitter.md):
+matching transparent/opaque projection jitter fixes the reproduced menu patches.
+The map policy below remains unchanged.
+
 Accepted for 0.5.25 after deterministic TestHarness isolation on Redux
 0.2.8.5.103184, Unity 6000.4.1f1, Direct3D 11, and an NVIDIA GeForce RTX
 5070 Ti at 2560x1440.

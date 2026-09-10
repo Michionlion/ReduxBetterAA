@@ -41,7 +41,9 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = "the final scene camera or PostProcessLayer is unavailable";
                 return false;
             }
-            if (!cameras.ProjectionJitterSupported)
+            // PPv2 owns its resolve-camera projection and forces transparent
+            // jitter off. Keep its engineering-only menu path unavailable.
+            if (!cameras.ProjectionJitterSupported || cameras.JitterTransparentRendering)
             {
                 unsupportedReason =
                     "the active scene output does not render coherently with PPv2 projection jitter";

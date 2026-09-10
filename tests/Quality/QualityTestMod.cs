@@ -28,6 +28,33 @@ namespace ReduxBetterAAVisualTests
         private static RenderTexture _output;
         private static Texture2D _readback;
         private static QualityReferenceHook _reference;
+        private static bool _menuJitter;
+        private static bool _menuTransparentEnabled;
+        private float _originalTimeScale;
+        private int _originalWidth, _originalHeight;
+        private Camera[] _menuCameras;
+        private RenderTexture[] _menuTargets;
+        private RenderTexture _menuReferenceTarget;
+        private static readonly System.Collections.Generic.HashSet<Camera> _transparentClaims = new System.Collections.Generic.HashSet<Camera>();
+        private static void MenuTransparent(Camera camera)
+        {
+            if (!_menuJitter) return;
+            if (camera.name != "Camera.Scaled" && camera.name != "Skybox") return;
+            camera.useJitteredProjectionMatrixForTransparentRendering = _menuTransparentEnabled;
+            _transparentClaims.Add(camera);
+        }
+        private static void RestoreMenuTransparent(CameraProjectionState __instance)
+        {
+            var camera = (Camera)typeof(CameraProjectionState).GetField("_camera", BindingFlags.Instance|BindingFlags.NonPublic).GetValue(__instance);
+            if (camera != null && _transparentClaims.Remove(camera)) camera.useJitteredProjectionMatrixForTransparentRendering =
+                (bool)typeof(CameraProjectionState).GetField("_appliedTransparentJitter", BindingFlags.Instance|BindingFlags.NonPublic).GetValue(__instance);
+        }
+        private static bool MenuJitter(TemporalCameraSet __instance, ref bool __result)
+        {
+            if (__instance.SceneKind != TemporalSceneKind.MainMenu) return true;
+            __result = _menuJitter;
+            return false;
+        }
         private static readonly double[] CpuSamples = new double[240], FrameSamples = new double[240];
         private static readonly Func<long> AllocatedBytes = (Func<long>)Delegate.CreateDelegate(typeof(Func<long>),
             typeof(GC).GetMethod("GetAllocatedBytesForCurrentThread", BindingFlags.Public | BindingFlags.Static));
@@ -49,6 +76,8 @@ namespace ReduxBetterAAVisualTests
         public override void OnInitialized()
         {
             _mod = UnityEngine.Object.FindAnyObjectByType<ReduxBetterAAMod>();
+            _originalTimeScale = Time.timeScale;
+            _originalWidth = Screen.width; _originalHeight = Screen.height;
             _directory = Environment.GetEnvironmentVariable("RBAA_QUALITY_OUTPUT");
             if (string.IsNullOrEmpty(_directory)) throw new InvalidOperationException("Missing RBAA_QUALITY_OUTPUT");
             Directory.CreateDirectory(_directory);
@@ -56,6 +85,12 @@ namespace ReduxBetterAAVisualTests
             _patch.Patch(typeof(TemporalRenderHook).GetMethod("Render", BindingFlags.Instance | BindingFlags.NonPublic),
                 prefix: new HarmonyMethod(typeof(QualityTestMod), nameof(Before)),
                 postfix: new HarmonyMethod(typeof(QualityTestMod), nameof(After)));
+            if (Environment.GetEnvironmentVariable("RBAA_MENU_ISOLATION") == "1") {
+                _patch.Patch(typeof(TemporalCameraSet).GetProperty("ProjectionJitterSupported").GetGetMethod(),
+                    prefix: new HarmonyMethod(typeof(QualityTestMod), nameof(MenuJitter)));
+                _patch.Patch(typeof(CameraProjectionState).GetMethod("Apply"), postfix: new HarmonyMethod(typeof(QualityTestMod), nameof(MenuTransparent)));
+                _patch.Patch(typeof(CameraProjectionState).GetMethod("Restore"), prefix: new HarmonyMethod(typeof(QualityTestMod), nameof(RestoreMenuTransparent)));
+            }
             _registration = TestApiRegistry.Register("ReduxBetterAA.Quality", (script, api) =>
             {
                 Bind(api, "settings", (c, a) => {
@@ -188,6 +223,48 @@ namespace ReduxBetterAAVisualTests
                     return DynValue.NewTable(t);
                 });
                 Bind(api, "selected", (c, a) => DynValue.NewString(TemporalCoordinator.Current.SelectedBackend));
+                Bind(api, "menu_jitter", (c,a) => { _menuJitter = a[0].Boolean; _menuTransparentEnabled = a.Count > 1 && a[1].Boolean; return DynValue.Nil; });
+                Bind(api, "menu_freeze", (c,a) => { Time.timeScale = a[0].Boolean ? 0 : _originalTimeScale; return DynValue.Nil; });
+                Bind(api, "menu_reference", (c,a) => { MenuReference((int)a[0].Number); return DynValue.Nil; });
+                Bind(api, "menu_reference_stop", (c,a) => { StopMenuReference(); return DynValue.Nil; });
+                Bind(api, "menu_resize", (c,a) => {
+                    Screen.SetResolution(a.Count == 0 ? _originalWidth : (int)a[0].Number,
+                        a.Count == 0 ? _originalHeight : (int)a[1].Number, Screen.fullScreenMode);
+                    return DynValue.Nil;
+                });
+                Bind(api, "return_menu", (c,a) => DynValue.NewBoolean(KSP.Game.GameManager.Instance.ShutdownGame()));
+                Bind(api, "menu_renderers", (c,a) => {
+                    var t = new Table(script);
+                    int i=0;
+                    foreach(var renderer in Resources.FindObjectsOfTypeAll<Renderer>()) {
+                        if (!renderer.enabled || !renderer.gameObject.activeInHierarchy || !renderer.gameObject.scene.IsValid()) continue;
+                        string materials="";
+                        foreach (var material in renderer.sharedMaterials) if(material != null) materials += material.shader.name + " | ";
+                        t.Set(++i, DynValue.NewString(renderer.name + "; layer=" + LayerMask.LayerToName(renderer.gameObject.layer) +
+                            "; motion=" + renderer.motionVectorGenerationMode + "; " + materials));
+                    }
+                    return DynValue.NewTable(t);
+                });
+                Bind(api, "menu_snapshot", (c, a) => {
+                    var t = new Table(script);
+                    var coordinator = TemporalCoordinator.Current;
+                    t.Set("selected", DynValue.NewString(coordinator.SelectedBackend));
+                    t.Set("status", DynValue.NewString(coordinator.Status));
+                    t.Set("camera", DynValue.NewString(coordinator.ResolveCameraName));
+                    t.Set("jitter", DynValue.NewBoolean(coordinator.ProjectionJitterSupported));
+                    t.Set("transparent_jitter", DynValue.NewBoolean(coordinator.JitterTransparentRendering));
+                    t.Set("active", DynValue.NewBoolean(coordinator.Active));
+                    t.Set("width", DynValue.NewNumber(Screen.width));
+                    t.Set("height", DynValue.NewNumber(Screen.height));
+                    t.Set("owned_bytes", DynValue.NewNumber(coordinator.CustomEstimatedMemoryBytes + coordinator.DlaaEstimatedMemoryBytes + coordinator.Fsr2EstimatedMemoryBytes));
+                    foreach (Camera camera in Camera.allCameras) {
+                        var layer = camera.GetComponent<UnityEngine.Rendering.PostProcessing.PostProcessLayer>();
+                        t.Set(camera.name, DynValue.NewString("mask=" + camera.cullingMask + "; depth=" + camera.depth +
+                            "; target=" + camera.targetTexture + "; layer=" + (layer == null ? "absent" :
+                            "enabled=" + layer.enabled + "; aa=" + layer.antialiasingMode + "; finalBlit=" + layer.finalBlitToCameraTarget)));
+                    }
+                    return DynValue.NewTable(t);
+                });
                 Bind(api, "reference", (c, a) => {
                     if (TemporalCoordinator.Current.SelectedBackend != "Off") throw new InvalidOperationException("Reference requires Off");
                     foreach (Camera camera in Camera.allCameras) if (camera.name == "FlightCameraPhysics_Main") {
@@ -303,6 +380,29 @@ namespace ReduxBetterAAVisualTests
         }
 
         private static string Name(string kind) => _label + "-" + _index.ToString("D3") + "-" + kind + ".rgba16f";
+        private void MenuReference(int scale)
+        {
+            StopMenuReference();
+            var graph = TemporalCameraDiscovery.Discover();
+            if (graph.SceneKind != TemporalSceneKind.MainMenu || graph.ResolveCamera == null) throw new InvalidOperationException("Menu camera missing");
+            if (scale < 1 || scale > 2) throw new ArgumentOutOfRangeException(nameof(scale));
+            if (scale > 1) {
+                if (TemporalCoordinator.Current.SelectedBackend != "Off") throw new InvalidOperationException("Supersampled reference requires Off");
+                _menuCameras = new[] {graph.SharedJitterCamera, graph.ResolveCamera};
+                _menuTargets = new RenderTexture[_menuCameras.Length];
+                _menuReferenceTarget = new RenderTexture(Screen.width*scale,Screen.height*scale,24,RenderTextureFormat.ARGBHalf) {name="Menu test reference"};
+                if (!_menuReferenceTarget.Create()) throw new InvalidOperationException("Reference allocation failed");
+                for(int i=0;i<_menuCameras.Length;i++) { _menuTargets[i]=_menuCameras[i].targetTexture; _menuCameras[i].targetTexture=_menuReferenceTarget; }
+            }
+            _reference = graph.ResolveCamera.gameObject.AddComponent<QualityReferenceHook>();
+        }
+        private void StopMenuReference()
+        {
+            if (_reference != null) { Destroy(_reference); _reference=null; }
+            if (_menuCameras != null) for(int i=0;i<_menuCameras.Length;i++) if (_menuCameras[i] != null) _menuCameras[i].targetTexture=_menuTargets[i];
+            _menuCameras=null; _menuTargets=null;
+            if(_menuReferenceTarget != null) { _menuReferenceTarget.Release(); Destroy(_menuReferenceTarget); _menuReferenceTarget=null; }
+        }
         private static double Percentile(double[] values, double quantile) {
             var copy = (double[])values.Clone(); Array.Sort(copy);
             return copy[(int)Math.Ceiling(quantile * copy.Length) - 1];
@@ -322,7 +422,7 @@ namespace ReduxBetterAAVisualTests
             if (_output != null) { _output.Release(); Destroy(_output); _output = null; }
             if (_readback != null) { Destroy(_readback); _readback = null; }
         }
-        private void OnDestroy() { if (_video != null) Destroy(_video); _registration?.Dispose(); _patch?.UnpatchAll("ReduxBetterAA.QualityTests"); _remaining = 0; if (_reference != null) Destroy(_reference); Release(); }
+        private void OnDestroy() { StopMenuReference(); Time.timeScale = _originalTimeScale; if (_video != null) Destroy(_video); _registration?.Dispose(); _patch?.UnpatchAll("ReduxBetterAA.QualityTests"); _remaining = 0; Release(); }
     }
 
     // Off has no temporal hook. Attach a test-only late image effect to the same

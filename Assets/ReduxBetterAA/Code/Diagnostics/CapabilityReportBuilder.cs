@@ -90,6 +90,7 @@ namespace ReduxBetterAA.Diagnostics
                 sharedJitterCamera = coordinator.SharedJitterCameraName,
                 projectionJitterSupported =
                     coordinator.ProjectionJitterSupported,
+                jitterTransparentRendering = coordinator.JitterTransparentRendering,
                 mapViewAaEnabled = coordinator.MapViewAaEnabled,
                 mapViewAaOverrideActive =
                     coordinator.MapViewAaOverrideActive,

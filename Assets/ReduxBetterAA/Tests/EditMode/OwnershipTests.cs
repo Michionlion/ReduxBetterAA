@@ -11,6 +11,70 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class OwnershipTests
     {
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void TransparentJitterRestoresItsOriginalValue(bool original, bool applied)
+        {
+            var go = new GameObject("menu-projection-owner");
+            var camera = go.AddComponent<Camera>();
+            var owner = new CameraProjectionState();
+            try
+            {
+                camera.useJitteredProjectionMatrixForTransparentRendering = original;
+                var projection = camera.projectionMatrix;
+                owner.Apply(camera, new Vector2(.25f, -.25f), jitterTransparentRendering: applied);
+                Assert.That(camera.useJitteredProjectionMatrixForTransparentRendering, Is.EqualTo(applied));
+                var jittered = camera.projectionMatrix;
+                owner.Apply(camera, new Vector2(.25f, -.25f), jitterTransparentRendering: applied);
+                Assert.That(camera.projectionMatrix, Is.EqualTo(jittered), "Duplicate callbacks must not jitter twice");
+                owner.Restore(); owner.Restore();
+                Assert.That(camera.projectionMatrix, Is.EqualTo(projection));
+                Assert.That(camera.useJitteredProjectionMatrixForTransparentRendering, Is.EqualTo(original));
+
+                owner.Apply(camera, Vector2.zero, jitterTransparentRendering: applied);
+                camera.useJitteredProjectionMatrixForTransparentRendering = !applied;
+                owner.Restore();
+                Assert.That(camera.useJitteredProjectionMatrixForTransparentRendering, Is.EqualTo(!applied),
+                    "Preserve a distinguishable external transparency claim");
+            }
+            finally { owner.Restore(); Object.DestroyImmediate(go); }
+        }
+
+        [Test]
+        public void MenuJitterRequiresTheMatchingPreUiStack()
+        {
+            var scene = new GameObject("Camera.Scaled");
+            var sky = new GameObject("Skybox");
+            var target = new RenderTexture(32, 32, 0);
+            try
+            {
+                var camera = scene.AddComponent<Camera>();
+                var background = sky.AddComponent<Camera>();
+                camera.clearFlags = CameraClearFlags.Depth;
+                camera.depth = -1; background.depth = -3;
+                var graph = new TemporalCameraSet { SceneKind = TemporalSceneKind.MainMenu,
+                    ResolveCamera = camera, SharedJitterCamera = background };
+                Assert.That(graph.ProjectionJitterSupported && graph.JitterTransparentRendering, Is.True);
+                background.targetTexture = target;
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+                background.targetTexture = null;
+                background.enabled = false;
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+                background.enabled = true;
+                camera.name = "FlowCamera";
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+                camera.name = "Camera.Scaled";
+                graph.SceneKind = TemporalSceneKind.Map;
+                Assert.That(graph.ProjectionJitterSupported || graph.JitterTransparentRendering, Is.False);
+                graph.SceneKind = TemporalSceneKind.Flight;
+                Assert.That(graph.ProjectionJitterSupported, Is.True);
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+            }
+            finally { Object.DestroyImmediate(scene); Object.DestroyImmediate(sky); Object.DestroyImmediate(target); }
+        }
+
         [Test]
         public void CameraCleanupPreservesAnExternalOwnersChanges()
         {

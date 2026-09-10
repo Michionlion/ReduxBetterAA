@@ -18,7 +18,8 @@ Modes are Off, Supersampling, FXAA Low, FXAA High, SMAA, TAA, and hardware/runti
 NVIDIA DLAA and FSR 2 Native AA. A missing vendor runtime hides its mode.
 Supersampling uses Redux's presenter at 125–200% per dimension with UI kept native.
 All other modes render at 100%. Both stock graphics selectors direct users here.
-The main menu and map have no stock supersampled scene target: the choice is
+The main menu supports TAA, DLAA and FSR2 with full temporal sampling, as well
+as FXAA/SMAA. The main menu and map have no stock supersampled scene target: the Supersampling choice is
 saved there with Off fallback until a supported game view is active.
 The stock saved render scale is preserved. Off releases temporal targets, jitter,
 native contexts and foliage repair; unloading restores captured settings only
@@ -134,10 +135,14 @@ receipt. It does not download binaries or include Redux.
 - [Previous implementation history](docs/history-through-0.5.28.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.md)
 
-Known limitations: map/menu reconstruction uses zero projection jitter; PPv2 is
+Known limitations: map reconstruction uses zero projection jitter; unrecognized
+menu camera stacks retain the conservative zero-jitter path. PPv2 is
 an engineering comparison only. Foliage repair is tied to the exact
 Unity version above. FSR2 requires native 100% render scale. These modes do not
 implement DLSS Super Resolution, Frame Generation or Ray Reconstruction.
 
 Current panning improvements and review clips are documented in
 [moving-geometry results](docs/taa-moving-stability-results-20260910.md).
+
+Main-menu rendering and verification are documented in
+[the menu AA investigation](docs/decisions/0042-main-menu-coherent-raster-jitter.md).

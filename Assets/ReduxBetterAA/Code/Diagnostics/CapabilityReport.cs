@@ -123,6 +123,7 @@ namespace ReduxBetterAA.Diagnostics
         public string resolveCamera;
         public string sharedJitterCamera;
         public bool projectionJitterSupported;
+        public bool jitterTransparentRendering;
         public bool mapViewAaEnabled;
         public bool mapViewAaOverrideActive;
         public string status;
