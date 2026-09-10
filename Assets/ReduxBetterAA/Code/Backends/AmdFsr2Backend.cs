@@ -15,7 +15,7 @@ namespace ReduxBetterAA.Backends
     /// Experimental native-resolution FSR2 AA backend using Unity's managed AMD
     /// module. It does not alter Redux render scale or include UI in history.
     /// </summary>
-    internal sealed class AmdFsr2Backend : ITemporalBackend
+    internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve
     {
         private static readonly int CameraDepthTexture =
             Shader.PropertyToID("_CameraDepthTexture");
@@ -35,13 +35,11 @@ namespace ReduxBetterAA.Backends
         private PostProcessLayer _resolveLayer;
         private Camera _sharedJitterCamera;
         private PostProcessLayer _sharedJitterLayer;
-        private AmdFsr2RenderHook _hook;
+        private TemporalRenderHook _hook;
+        private SceneCameraState _resolveState;
+        private SceneCameraState _sharedState;
         private CommandBuffer _commandBuffer;
         private RenderTexture _output;
-        private PostProcessLayer.Antialiasing _originalResolveMode;
-        private PostProcessLayer.Antialiasing _originalSharedMode;
-        private DepthTextureMode _originalResolveDepthMode;
-        private DepthTextureMode _originalSharedDepthMode;
         private CameraProjectionState _resolveProjection;
         private CameraProjectionState _sharedProjection;
         private uint _frameIndex;
@@ -198,36 +196,16 @@ namespace ReduxBetterAA.Backends
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
             _projectionJitterSupported = cameras.ProjectionJitterSupported;
-            _originalResolveDepthMode = _resolveCamera.depthTextureMode;
-            if (_resolveLayer != null)
-            {
-                _originalResolveMode = _resolveLayer.antialiasingMode;
-                _resolveLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _resolveLayer.ResetHistory();
-            }
-            _resolveCamera.depthTextureMode |=
-                DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _originalSharedMode = _sharedJitterLayer.antialiasingMode;
-                _sharedJitterLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _sharedJitterLayer.ResetHistory();
-            }
-            if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
-            {
-                _originalSharedDepthMode = _sharedJitterCamera.depthTextureMode;
-                _sharedJitterCamera.depthTextureMode |=
-                    DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-            }
+            _resolveState.Capture(_resolveCamera, _resolveLayer);
+            _sharedState.Capture(
+                _sharedJitterCamera != _resolveCamera ? _sharedJitterCamera : null,
+                _sharedJitterLayer != _resolveLayer ? _sharedJitterLayer : null);
 
             _commandBuffer = new CommandBuffer
             {
                 name = "Redux Better AA AMD FSR2 Native AA"
             };
-            _hook = _resolveCamera.gameObject.AddComponent<AmdFsr2RenderHook>();
-            _hook.hideFlags = HideFlags.HideAndDontSave;
-            _hook.Owner = this;
+            _hook = TemporalRenderHook.Attach(_resolveCamera, this);
             _exposureReader.Configure(_resolveLayer);
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
@@ -306,13 +284,13 @@ namespace ReduxBetterAA.Backends
                 Texture motionVectors = Shader.GetGlobalTexture(
                     CameraMotionVectorsTexture
                 );
-                if (!TextureMatches(depth, source.width, source.height))
+                if (!TemporalTextures.Matches(depth, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
                     FailRuntime("camera depth does not match the FSR2 color input");
                     return;
                 }
-                if (!TextureMatches(motionVectors, source.width, source.height))
+                if (!TemporalTextures.Matches(motionVectors, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
                     FailRuntime("camera motion vectors do not match the FSR2 color input");
@@ -380,31 +358,9 @@ namespace ReduxBetterAA.Backends
             _resolveProjection.Restore();
             _sharedProjection.Restore();
 
-            if (_hook != null)
-            {
-                _hook.enabled = false;
-                _hook.Owner = null;
-                UnityEngine.Object.Destroy(_hook);
-                _hook = null;
-            }
-            if (_resolveLayer != null)
-            {
-                _resolveLayer.antialiasingMode = _originalResolveMode;
-                _resolveLayer.ResetHistory();
-            }
-            if (_resolveCamera != null)
-            {
-                _resolveCamera.depthTextureMode = _originalResolveDepthMode;
-            }
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _sharedJitterLayer.antialiasingMode = _originalSharedMode;
-                _sharedJitterLayer.ResetHistory();
-            }
-            if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
-            {
-                _sharedJitterCamera.depthTextureMode = _originalSharedDepthMode;
-            }
+            TemporalRenderHook.Detach(ref _hook);
+            _sharedState.Restore();
+            _resolveState.Restore();
 
             ReleaseResources();
             if (_commandBuffer != null)
@@ -442,7 +398,7 @@ namespace ReduxBetterAA.Backends
             RenderTexture source,
             bool useVendorAutoExposure)
         {
-            if (_output != null &&
+            if (TemporalTextures.IsCreated(_output) && _api.ContextCreated &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceGraphicsFormat == source.graphicsFormat &&
@@ -474,7 +430,7 @@ namespace ReduxBetterAA.Backends
             _output.Create();
             if (!_output.IsCreated())
             {
-                DestroyOutput();
+                TemporalTextures.Release(ref _output);
                 _lastFailure = "FSR2 output texture creation failed";
                 return false;
             }
@@ -483,7 +439,7 @@ namespace ReduxBetterAA.Backends
             _resourceHeight = source.height;
             _resourceGraphicsFormat = source.graphicsFormat;
             _resourceSrgb = source.sRGB;
-            bool hdr = IsHdrFormat(source.format);
+            bool hdr = TemporalTextures.IsHdr(source.format);
             string reason;
             if (!_api.TryCreateContext(
                     _commandBuffer,
@@ -493,7 +449,7 @@ namespace ReduxBetterAA.Backends
                     useVendorAutoExposure,
                     out reason))
             {
-                DestroyOutput();
+                TemporalTextures.Release(ref _output);
                 _lastFailure = "FSR2 context creation failed: " + reason;
                 return false;
             }
@@ -513,21 +469,8 @@ namespace ReduxBetterAA.Backends
             return true;
         }
 
-        internal static RenderTextureDescriptor BuildOutputDescriptor(
-            RenderTextureDescriptor sourceDescriptor)
-        {
-            sourceDescriptor.depthBufferBits = 0;
-            sourceDescriptor.msaaSamples = 1;
-            sourceDescriptor.bindMS = false;
-            sourceDescriptor.graphicsFormat = GraphicsFormatUtility.GetLinearFormat(
-                sourceDescriptor.graphicsFormat
-            );
-            sourceDescriptor.enableRandomWrite = true;
-            sourceDescriptor.useMipMap = false;
-            sourceDescriptor.autoGenerateMips = false;
-            sourceDescriptor.useDynamicScale = false;
-            return sourceDescriptor;
-        }
+        internal static RenderTextureDescriptor BuildOutputDescriptor(RenderTextureDescriptor source) =>
+            TemporalTextures.VendorOutputDescriptor(source);
 
         private void ReleaseResources()
         {
@@ -535,24 +478,13 @@ namespace ReduxBetterAA.Backends
             {
                 _api.DestroyContext(_commandBuffer);
             }
-            DestroyOutput();
+            TemporalTextures.Release(ref _output);
             _resourceWidth = 0;
             _resourceHeight = 0;
             _resourceGraphicsFormat = GraphicsFormat.None;
             _estimatedMemoryBytes = 0;
             _contextUsesVendorAutoExposure = false;
             _usingPpv2Exposure = false;
-        }
-
-        private void DestroyOutput()
-        {
-            if (_output == null)
-            {
-                return;
-            }
-            _output.Release();
-            UnityEngine.Object.Destroy(_output);
-            _output = null;
         }
 
         private void OnCameraPreCull(Camera camera)
@@ -625,19 +557,6 @@ namespace ReduxBetterAA.Backends
                 _lastFailure + "."
             );
             _runtimeFailure?.Invoke(_lastFailure);
-        }
-
-        private static bool TextureMatches(Texture texture, int width, int height)
-        {
-            return texture != null && texture.width == width && texture.height == height;
-        }
-
-        private static bool IsHdrFormat(RenderTextureFormat format)
-        {
-            return format == RenderTextureFormat.ARGBHalf ||
-                   format == RenderTextureFormat.ARGBFloat ||
-                   format == RenderTextureFormat.RGB111110Float ||
-                   format == RenderTextureFormat.DefaultHDR;
         }
 
         private static int EstimateColorBytes(RenderTextureFormat format)

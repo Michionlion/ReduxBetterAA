@@ -11,7 +11,7 @@ local function capture(label)
     Test.report.value("buffers-" .. label, beta.snapshot().report_zip)
     Test.report.value(label .. "-after", beta.snapshot())
     if before.selected == "NVIDIA DLAA" then
-        Test.assert.greater(beta.snapshot().true_dlaa_input_captures, before.true_dlaa_input_captures,
+        Test.assert.greater(beta.snapshot().temporal_input_captures, before.temporal_input_captures,
             "True DLAA input captured")
     end
 end

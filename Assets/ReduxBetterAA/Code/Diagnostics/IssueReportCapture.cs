@@ -25,7 +25,8 @@ namespace ReduxBetterAA.Diagnostics
         private AsyncOperationHandle<Shader> _shader;
         private Material _material;
         private Camera _camera;
-        private IssueInputCaptureHook _inputHook;
+        private TemporalRenderHook _resolveHook;
+        private bool _expectsTemporalInput;
         private IssueOutputCaptureHook _outputHook;
         private IssueReportManifest _manifest;
         private BufferImageWriter _writer;
@@ -36,6 +37,7 @@ namespace ReduxBetterAA.Diagnostics
         private bool _disposed;
 
         internal bool Busy => _manifest != null;
+        internal int TemporalInputCaptureCount { get; private set; }
         internal string LastZipPath { get; private set; }
         internal string Status { get; private set; } = "No issue report generated this session.";
 
@@ -72,9 +74,16 @@ namespace ReduxBetterAA.Diagnostics
                 WriteCapabilityReport();
                 if (_camera != null && _camera.isActiveAndEnabled)
                 {
-                    _inputHook = _camera.gameObject.AddComponent<IssueInputCaptureHook>();
-                    _inputHook.hideFlags = HideFlags.HideAndDontSave;
-                    _inputHook.Owner = this;
+                    // Destroy is deferred; a disabled hook from a previous mode can
+                    // still be the first component until the end of this frame.
+                    _resolveHook = null;
+                    foreach (var hook in _camera.GetComponents<TemporalRenderHook>())
+                        if (hook.enabled && hook.Owner != null && hook.Owner.Active)
+                            _resolveHook = hook;
+                    _expectsTemporalInput = _resolveHook != null;
+                    _manifest.inputStage = _expectsTemporalInput ? "before-temporal-resolve" : "after-ppv2";
+                    if (_expectsTemporalInput)
+                        _resolveHook.CaptureInput = CaptureInput;
                     _outputHook = _camera.gameObject.AddComponent<IssueOutputCaptureHook>();
                     _outputHook.hideFlags = HideFlags.HideAndDontSave;
                     _outputHook.Owner = this;
@@ -104,6 +113,7 @@ namespace ReduxBetterAA.Diagnostics
             try
             {
                 _manifest.inputFrame = Time.frameCount;
+                if (_expectsTemporalInput) TemporalInputCaptureCount++;
                 _writer.Capture("scene-input", source);
                 // Do not enable missing flags just to obtain a nicer diagnostic.
                 // A global texture without a request on this camera can belong to another camera.
@@ -123,6 +133,8 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             try
             {
+                if (!_expectsTemporalInput)
+                    CaptureInput(source);
                 _manifest.outputFrame = Time.frameCount;
                 _writer.Capture("scene-output", source);
                 TemporalCoordinator coordinator = TemporalCoordinator.Current;
@@ -263,9 +275,9 @@ namespace ReduxBetterAA.Diagnostics
 
         private void Detach()
         {
-            if (_inputHook != null) { _inputHook.Owner = null; _inputHook.enabled = false; UnityEngine.Object.Destroy(_inputHook); }
+            if (_resolveHook != null) _resolveHook.CaptureInput = null;
             if (_outputHook != null) { _outputHook.Owner = null; _outputHook.enabled = false; UnityEngine.Object.Destroy(_outputHook); }
-            _inputHook = null;
+            _resolveHook = null;
             _outputHook = null;
         }
 

@@ -26,8 +26,6 @@ namespace ReduxBetterAAVisualTests
         private object _settingsInfo;
         private SampledVideo _video;
         private Harmony _captureHarmony;
-        private static Action<RenderTexture> _pendingDlaaInput;
-        private static int _dlaaInputCaptures;
         private static bool _suppressCloudGuard;
         private static readonly string[] SettingFields =
         {
@@ -38,13 +36,8 @@ namespace ReduxBetterAAVisualTests
         public override void OnInitialized()
         {
             _mod = UnityEngine.Object.FindAnyObjectByType<ReduxBetterAAMod>();
-            // OnRenderImage follows component order, not DefaultExecutionOrder.
-            // The report's appended input hook is after DLAA. Capture the real
-            // source at Render entry for this test-only validation adapter.
-            _captureHarmony = new Harmony("ReduxBetterAA.VisualTests.ResolveInput");
+            _captureHarmony = new Harmony("ReduxBetterAA.VisualTests.CloudIsolation");
             Type dlaaType = typeof(TemporalCoordinator).Assembly.GetType("ReduxBetterAA.Backends.NvidiaDlaaBackend", true);
-            _captureHarmony.Patch(dlaaType.GetMethod("Render", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public),
-                prefix: new HarmonyMethod(typeof(VisualTestMod).GetMethod(nameof(CaptureDlaaInput), BindingFlags.Static | BindingFlags.NonPublic)));
             _captureHarmony.Patch(dlaaType.GetMethod("NotifyCloudRenderResolution", BindingFlags.Instance | BindingFlags.NonPublic),
                 prefix: new HarmonyMethod(typeof(VisualTestMod).GetMethod(nameof(AllowCloudObservation), BindingFlags.Static | BindingFlags.NonPublic)));
             _registration = TestApiRegistry.Register("ReduxBetterAA.Beta", (script, api) =>
@@ -89,20 +82,35 @@ namespace ReduxBetterAAVisualTests
                     result.Set("sharpness", DynValue.NewNumber(coordinator.CustomConfig.Sharpening));
                     result.Set("stability", DynValue.NewNumber(coordinator.CustomConfig.StationaryHistory));
                     result.Set("map_override", DynValue.NewBoolean(coordinator.MapViewAaOverrideActive));
-                    result.Set("true_dlaa_input_captures", DynValue.NewNumber(_dlaaInputCaptures));
+                    result.Set("temporal_input_captures", DynValue.NewNumber(Phase1ProbeService.Current.TemporalInputCaptureCount));
                     result.Set("test_cloud_guard_suppressed", DynValue.NewBoolean(_suppressCloudGuard));
+                    int targets = 0, lost = 0;
+                    foreach (object owner in coordinator.CaptureBufferOwners())
+                        foreach (FieldInfo field in owner.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+                            if (field.FieldType == typeof(RenderTexture) && field.GetValue(owner) is RenderTexture texture)
+                            {
+                                targets++;
+                                if (!texture.IsCreated()) lost++;
+                            }
+                    result.Set("owned_targets", DynValue.NewNumber(targets));
+                    result.Set("lost_targets", DynValue.NewNumber(lost));
                     return DynValue.NewTable(result);
                 });
                 Bind(api, "report", (context, args) =>
                 {
-                    bool accepted = Phase1ProbeService.Current.RequestIssueReport();
-                    if (accepted && TemporalCoordinator.Current.SelectedBackend == "NVIDIA DLAA")
-                    {
-                        object reports = typeof(Phase1ProbeService).GetField("_issueReports", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(Phase1ProbeService.Current);
-                        _pendingDlaaInput = (Action<RenderTexture>)Delegate.CreateDelegate(typeof(Action<RenderTexture>), reports,
-                            reports.GetType().GetMethod("CaptureInput", BindingFlags.Instance | BindingFlags.NonPublic));
-                    }
-                    return DynValue.NewBoolean(accepted);
+                    return DynValue.NewBoolean(Phase1ProbeService.Current.RequestIssueReport());
+                });
+                Bind(api, "release_owned_targets", (context, args) =>
+                {
+                    int count = 0;
+                    foreach (object owner in TemporalCoordinator.Current.CaptureBufferOwners())
+                        foreach (FieldInfo field in owner.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+                            if (field.FieldType == typeof(RenderTexture) && field.GetValue(owner) is RenderTexture texture && texture.IsCreated())
+                            {
+                                texture.Release();
+                                count++;
+                            }
+                    return DynValue.NewNumber(count);
                 });
                 Bind(api, "panel", (context, args) =>
                 {
@@ -210,23 +218,13 @@ namespace ReduxBetterAAVisualTests
             table.Set(name, TestApiRegistry.Callback("BetterAA.Beta." + name, call));
         }
 
-        private static void CaptureDlaaInput(RenderTexture source)
-        {
-            Action<RenderTexture> capture = _pendingDlaaInput;
-            if (capture == null) return;
-            _pendingDlaaInput = null;
-            capture(source);
-            _dlaaInputCaptures++;
-        }
-
         private static bool AllowCloudObservation() => !_suppressCloudGuard;
 
         private void OnDestroy()
         {
             _video?.Dispose();
             _registration?.Dispose();
-            _captureHarmony?.UnpatchAll("ReduxBetterAA.VisualTests.ResolveInput");
-            _pendingDlaaInput = null;
+            _captureHarmony?.UnpatchAll("ReduxBetterAA.VisualTests.CloudIsolation");
             _suppressCloudGuard = false;
         }
     }

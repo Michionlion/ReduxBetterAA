@@ -1228,7 +1228,20 @@ Phase 5 must additionally answer:
 14. What texture LOD bias policy is appropriate at each DLSS mode?
 15. Is fixed resolution sufficient for the first release, or is dynamic resolution required?
 
-## 24. References
+## 24. Maintenance invariants for the current native-AA implementation
+
+Decision 0036 preserves the existing experimental phases and rendering algorithms.
+Shared camera ownership must restore exact depth and PPv2 state, including after
+partial setup failure. Resource reuse requires live GPU storage for every owned
+target, not just matching dimensions. Recreating lost history or vendor output
+must invalidate the corresponding history/context.
+
+Issue reports must identify their actual input stage. Pre-temporal input is
+observed at scene-resolve entry; component execution-order attributes do not
+establish image-effect ordering. Off/spatial/PPv2 captures remain explicitly after
+PPv2. Diagnostic failure must leave ordinary scene forwarding operational.
+
+## 25. References
 
 Primary project references:
 

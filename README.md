@@ -93,6 +93,7 @@ receipt. It does not download binaries or include Redux.
 - [Architecture and requirements](SPEC.md)
 - [Beta review and remaining acceptance work](docs/beta-review.md)
 - [Maintenance decision](docs/decisions/0034-beta-diagnostics-and-maintenance.md)
+- [Current maintenance review](docs/maintenance-review.md)
 - [Previous implementation history](docs/history-through-0.5.28.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.md)
 

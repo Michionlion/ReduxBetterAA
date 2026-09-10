@@ -104,4 +104,5 @@ ksp2.catalog
 /TestResults*.xml
 /BuildArtifacts/
 /Artifacts/visual-*/
+/Artifacts/visual-*.zip
 /Artifacts/beta-review.html

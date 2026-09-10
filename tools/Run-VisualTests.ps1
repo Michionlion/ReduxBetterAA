@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu', 'Flight', 'All')] [string] $Scene = 'All',
+    [ValidateSet('Menu', 'Flight', 'All', 'Maintenance')] [string] $Scene = 'All',
     [string] $GameRoot = 'G:\SteamLibrary\steamapps\common\Kerbal Space Program 2',
     [string] $HarnessRoot = (Join-Path $PSScriptRoot '..\..\ReduxTestHarness'),
     [string] $UnityRoot = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1',
@@ -11,7 +11,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $GameRoot = [IO.Path]::GetFullPath($GameRoot)
-$encoder = if ($Scene -ne 'Menu') { Get-Command $Ffmpeg -CommandType Application -ErrorAction Stop } else { $null }
+$encoder = if ($Scene -in @('Flight', 'All')) { Get-Command $Ffmpeg -CommandType Application -ErrorAction Stop } else { $null }
 if (Get-Process KSP2_x64 -ErrorAction SilentlyContinue) { throw 'Close KSP2 before installing the visual-test adapter.' }
 $managed = Join-Path $GameRoot 'KSP2_x64_Data\Managed'
 $mod = Join-Path $GameRoot 'mods\ReduxBetterAA\ReduxBetterAA.dll'
@@ -51,6 +51,7 @@ $scripts = switch ($Scene) {
     'Menu' { 'menu-settings' }
     'Flight' { 'flight-motion' }
     'All' { 'menu-settings'; 'flight-motion' }
+    'Maintenance' { 'maintenance' }
 }
 $priorEncoder = $env:RBAA_VISUAL_FFMPEG
 $priorVideo = $env:RBAA_VISUAL_VIDEO
@@ -86,16 +87,16 @@ if ($encoder) {
 }
 & (Join-Path $PSScriptRoot 'Build-VisualGallery.ps1') -Directory $run -Ffmpeg $Ffmpeg
 $images = @(Get-ChildItem -LiteralPath $run -Recurse -Filter '*.png' -File)
-$expectedImages = switch ($Scene) { 'Menu' { 3 }; 'Flight' { 7 }; 'All' { 10 } }
+$expectedImages = switch ($Scene) { 'Menu' { 3 }; 'Flight' { 7 }; 'All' { 10 }; 'Maintenance' { 11 } }
 if ($images.Count -ne $expectedImages) { throw "Expected $expectedImages screenshots; found $($images.Count). See $run" }
 @{
-    suite = 'native-settings-dlaa'; scene = $Scene; screenshots = $images.Count
+    suite = $Scene; scene = $Scene; screenshots = $images.Count
     videos = @($(if ($encoder) { 'videos/dlaa-pan.mp4' }))
     videoBytes = $videoBytes; videoEncoding = $videoEncoding
     modSha256 = (Get-FileHash -LiteralPath $mod -Algorithm SHA256).Hash
     sourceCommit = (& git -C $repo rev-parse HEAD)
     sourceHasChanges = [bool](& git -C $repo status --porcelain)
-    note = 'DLAA M only. Native settings controls, settled flight/map stills and a six-second 30 FPS sampled camera-pan video when Flight is included. No debug-panel captures, buffer dumps or performance claims.'
+    note = if ($Scene -eq 'Maintenance') { 'All public modes, resource recovery, repeated switches, map override; report ZIP paths are recorded in the harness report. No performance claim.' } else { 'DLAA M only. Native settings controls, settled flight/map stills and a six-second 30 FPS sampled camera-pan video when Flight is included. No performance claim.' }
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'capture.json') -Encoding utf8
 $zip = "$run.zip"
 Compress-Archive -LiteralPath $run -DestinationPath $zip -CompressionLevel Optimal

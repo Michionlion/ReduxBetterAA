@@ -124,7 +124,7 @@ namespace ReduxBetterAA.Rendering
 
         private bool EnsureResources(int width, int height)
         {
-            if (_mask != null && _width == width && _height == height)
+            if (TemporalTextures.IsCreated(_mask) && _width == width && _height == height)
             {
                 return true;
             }

@@ -62,13 +62,20 @@ Heavy buffer investigations remain separate opt-in scripts, described below.
 
 ## Issue ZIP checks
 
-For DLAA comparisons, use `tests/Visual/dlaa-noaa-buffers.lua` with the current
-test adapter. Its Harmony prefix captures the real input at the DLAA backend
-entry and reports `true_dlaa_input_captures`. The production report's appended
-input hook runs after DLAA: `DefaultExecutionOrder` does not reorder the
-camera's image-effect component stack. Its input/output equality is therefore
-not evidence of a no-op resolve. The adapter correction is test-only; ordinary
-production issue reports still have this limitation. The guard-isolation script
+Run `pwsh -NoProfile -File tools/Run-VisualTests.ps1 -Scene Maintenance` for the
+broader native-AA lifecycle check. It requires both vendor runtimes and produces
+11 screenshots across all public modes and recovered TAA/DLAA/FSR2 outputs. It
+also exercises three mode-switch cycles, map-AA overrides and four production
+issue reports. ZIP paths are recorded in the harness report; the heavy reports
+remain in the mod diagnostics folder and are not duplicated into the gallery.
+FFmpeg is not required for this selection. Original settings are restored.
+
+Schema 2 reports capture actual input at the shared scene-resolve hook.
+`inputStage` is `before-temporal-resolve` for Custom TAA/DLAA/FSR2, `after-ppv2`
+for the other modes, or `unavailable` without a camera. The adapter reports
+`temporal_input_captures` and no longer patches DLAA input. Old schema 1 reports
+have an ordering limitation: their appended input hook ran after AA, so equal
+input/output cannot demonstrate a no-op resolve. The guard-isolation script
 also labels any temporary suppression as `TEST-ONLY`; such a capture is not a
 production fix or a cloud-quality acceptance test.
 

@@ -10,6 +10,8 @@ try {
     $reader = [IO.StreamReader]::new($entry.Open())
     try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
     if ($manifest.status -notin @('complete', 'partial')) { throw 'Report is not finalized.' }
+    if ($manifest.schemaVersion -ge 2 -and $manifest.inputStage -notin
+        @('before-temporal-resolve', 'after-ppv2', 'unavailable')) { throw 'Invalid input capture stage.' }
     if ($manifest.status -eq 'complete' -and
         ($manifest.inputFrame -lt 0 -or $manifest.inputFrame -ne $manifest.outputFrame -or
          $manifest.outputFrame -ne $manifest.screenshotFrame)) { throw 'Complete report has inconsistent frames.' }

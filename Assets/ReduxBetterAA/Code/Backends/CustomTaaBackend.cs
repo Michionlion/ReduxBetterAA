@@ -10,7 +10,7 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 
 namespace ReduxBetterAA.Backends
 {
-    internal sealed class CustomTaaBackend : ITemporalBackend
+    internal sealed class CustomTaaBackend : ITemporalBackend, ISceneResolve
     {
         private const string ShaderAddress =
             "Assets/ReduxBetterAA/Shaders/CustomTaa.shader";
@@ -69,12 +69,9 @@ namespace ReduxBetterAA.Backends
         private PostProcessLayer _resolveLayer;
         private Camera _sharedJitterCamera;
         private PostProcessLayer _sharedJitterLayer;
-        private CustomTaaRenderHook _hook;
-
-        private PostProcessLayer.Antialiasing _originalResolveMode;
-        private PostProcessLayer.Antialiasing _originalSharedMode;
-        private DepthTextureMode _originalResolveDepthMode;
-        private DepthTextureMode _originalSharedDepthMode;
+        private TemporalRenderHook _hook;
+        private SceneCameraState _resolveState;
+        private SceneCameraState _sharedState;
 
         private RenderTexture _historyColorA;
         private RenderTexture _historyColorB;
@@ -198,28 +195,10 @@ namespace ReduxBetterAA.Backends
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
             _projectionJitterSupported = cameras.ProjectionJitterSupported;
-            _originalResolveDepthMode = _resolveCamera.depthTextureMode;
-            if (_resolveLayer != null)
-            {
-                _originalResolveMode = _resolveLayer.antialiasingMode;
-                _resolveLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _resolveLayer.ResetHistory();
-            }
-            _resolveCamera.depthTextureMode |=
-                DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _originalSharedMode = _sharedJitterLayer.antialiasingMode;
-                _sharedJitterLayer.antialiasingMode = PostProcessLayer.Antialiasing.None;
-                _sharedJitterLayer.ResetHistory();
-            }
-            if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
-            {
-                _originalSharedDepthMode = _sharedJitterCamera.depthTextureMode;
-                _sharedJitterCamera.depthTextureMode |=
-                    DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
-            }
+            _resolveState.Capture(_resolveCamera, _resolveLayer);
+            _sharedState.Capture(
+                _sharedJitterCamera != _resolveCamera ? _sharedJitterCamera : null,
+                _sharedJitterLayer != _resolveLayer ? _sharedJitterLayer : null);
 
             if (_material == null)
             {
@@ -231,9 +210,7 @@ namespace ReduxBetterAA.Backends
             }
             ApplyMaterialConfig();
 
-            _hook = _resolveCamera.gameObject.AddComponent<CustomTaaRenderHook>();
-            _hook.hideFlags = HideFlags.HideAndDontSave;
-            _hook.Owner = this;
+            _hook = TemporalRenderHook.Attach(_resolveCamera, this);
 
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
@@ -301,8 +278,8 @@ namespace ReduxBetterAA.Backends
             Texture depth = Shader.GetGlobalTexture(CameraDepthTexture);
             Texture rawMotion = Shader.GetGlobalTexture(CameraMotionVectorsTexture);
             Texture sanitizedMotion;
-            if (!TextureMatches(depth, source.width, source.height) ||
-                !TextureMatches(rawMotion, source.width, source.height) ||
+            if (!TemporalTextures.Matches(depth, source.width, source.height) ||
+                !TemporalTextures.Matches(rawMotion, source.width, source.height) ||
                 !_motionVectorSanitizer.TrySanitize(
                     rawMotion,
                     depth,
@@ -380,31 +357,9 @@ namespace ReduxBetterAA.Backends
             _resolveProjection.Restore();
             _sharedProjection.Restore();
 
-            if (_hook != null)
-            {
-                _hook.enabled = false;
-                _hook.Owner = null;
-                UnityEngine.Object.Destroy(_hook);
-                _hook = null;
-            }
-            if (_resolveLayer != null)
-            {
-                _resolveLayer.antialiasingMode = _originalResolveMode;
-                _resolveLayer.ResetHistory();
-            }
-            if (_resolveCamera != null)
-            {
-                _resolveCamera.depthTextureMode = _originalResolveDepthMode;
-            }
-            if (_sharedJitterLayer != null && _sharedJitterLayer != _resolveLayer)
-            {
-                _sharedJitterLayer.antialiasingMode = _originalSharedMode;
-                _sharedJitterLayer.ResetHistory();
-            }
-            if (_sharedJitterCamera != null && _sharedJitterCamera != _resolveCamera)
-            {
-                _sharedJitterCamera.depthTextureMode = _originalSharedDepthMode;
-            }
+            TemporalRenderHook.Detach(ref _hook);
+            _sharedState.Restore();
+            _resolveState.Restore();
 
             ReleaseResources();
             _resolveCamera = null;
@@ -535,7 +490,11 @@ namespace ReduxBetterAA.Backends
 
         private void EnsureResources(RenderTexture source)
         {
-            if ((_historyColorA != null || _resourceCreationFailed) &&
+            if (((TemporalTextures.IsCreated(_historyColorA) &&
+                  TemporalTextures.IsCreated(_historyColorB) &&
+                  TemporalTextures.IsCreated(_historyDepthA) &&
+                  TemporalTextures.IsCreated(_historyDepthB) &&
+                  TemporalTextures.IsCreated(_resolveTarget)) || _resourceCreationFailed) &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceFormat == source.format &&
@@ -552,6 +511,8 @@ namespace ReduxBetterAA.Backends
             colorDescriptor.enableRandomWrite = false;
             colorDescriptor.useMipMap = false;
             colorDescriptor.autoGenerateMips = false;
+            colorDescriptor.useDynamicScale = false;
+            colorDescriptor.memoryless = UnityEngine.RenderTextureMemoryless.None;
 
             _historyColorA = CreateTexture(colorDescriptor, "Custom TAA History Color A");
             _historyColorB = CreateTexture(colorDescriptor, "Custom TAA History Color B");
@@ -583,11 +544,11 @@ namespace ReduxBetterAA.Backends
                 _resolveTarget == null || _historyDepthA == null ||
                 _historyDepthB == null)
             {
-                DestroyTexture(ref _historyColorA);
-                DestroyTexture(ref _historyColorB);
-                DestroyTexture(ref _historyDepthA);
-                DestroyTexture(ref _historyDepthB);
-                DestroyTexture(ref _resolveTarget);
+                TemporalTextures.Release(ref _historyColorA);
+                TemporalTextures.Release(ref _historyColorB);
+                TemporalTextures.Release(ref _historyDepthA);
+                TemporalTextures.Release(ref _historyDepthB);
+                TemporalTextures.Release(ref _resolveTarget);
                 _resourceCreationFailed = true;
                 _logger.LogError(
                     "[ReduxBetterAA/Resources] Custom TAA resource creation failed; " +
@@ -659,11 +620,11 @@ namespace ReduxBetterAA.Backends
 
         private void ReleaseResources()
         {
-            DestroyTexture(ref _historyColorA);
-            DestroyTexture(ref _historyColorB);
-            DestroyTexture(ref _historyDepthA);
-            DestroyTexture(ref _historyDepthB);
-            DestroyTexture(ref _resolveTarget);
+            TemporalTextures.Release(ref _historyColorA);
+            TemporalTextures.Release(ref _historyColorB);
+            TemporalTextures.Release(ref _historyDepthA);
+            TemporalTextures.Release(ref _historyDepthB);
+            TemporalTextures.Release(ref _resolveTarget);
             _resourceWidth = 0;
             _resourceHeight = 0;
             _estimatedMemoryBytes = 0;
@@ -683,23 +644,6 @@ namespace ReduxBetterAA.Backends
                 }
             }
             return true;
-        }
-
-        private static bool TextureMatches(Texture texture, int width, int height)
-        {
-            return texture != null && texture.width == width &&
-                texture.height == height;
-        }
-
-        private static void DestroyTexture(ref RenderTexture texture)
-        {
-            if (texture == null)
-            {
-                return;
-            }
-            texture.Release();
-            UnityEngine.Object.Destroy(texture);
-            texture = null;
         }
 
         private static int EstimateColorBytes(RenderTextureFormat format)
