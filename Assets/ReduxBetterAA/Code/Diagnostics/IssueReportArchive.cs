@@ -10,7 +10,7 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     internal sealed class IssueReportManifest
     {
-        public int schemaVersion = 1;
+        public int schemaVersion = 2;
         public string id;
         public string capturedUtc;
         public string status;
@@ -18,6 +18,7 @@ namespace ReduxBetterAA.Diagnostics
         public int outputFrame = -1;
         public int screenshotFrame = -1;
         public string camera;
+        public string inputStage = "unavailable";
         public string note = "EXR files contain floating-point samples; PNGs are previews. " +
             "Cloud and owned targets are observed after the AA pass. Vendor-internal " +
             "history is opaque and cannot be exported. Screenshots include visible UI. " +

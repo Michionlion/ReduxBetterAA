@@ -403,7 +403,8 @@ namespace ReduxBetterAA.Rendering
 
         private bool EnsureResources(int width, int height)
         {
-            if (_sanitizedMotion != null &&
+            if (TemporalTextures.IsCreated(_sanitizedMotion) &&
+                TemporalTextures.IsCreated(_frameCorruption) &&
                 _resourceWidth == width &&
                 _resourceHeight == height)
             {

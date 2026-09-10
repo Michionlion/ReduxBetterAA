@@ -63,6 +63,7 @@ namespace ReduxBetterAA.Diagnostics
 
         internal bool IssueReportBusy => _issueReports != null && _issueReports.Busy;
         internal string LastIssueReport => _issueReports?.LastZipPath;
+        internal int TemporalInputCaptureCount => _issueReports?.TemporalInputCaptureCount ?? 0;
         internal void SetPanelVisible(bool visible) => _visualizer.SetPanelVisible(visible);
         internal bool RequestIssueReport() => !_visualizer.CaptureBusy && _resumePanelAtFrame < 0 &&
             _issueReports != null && _issueReports.Request();

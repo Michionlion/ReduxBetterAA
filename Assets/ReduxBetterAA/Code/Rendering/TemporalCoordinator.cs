@@ -52,6 +52,7 @@ namespace ReduxBetterAA.Rendering
         private readonly HistoryResetTracker _resetTracker = new HistoryResetTracker();
         private readonly TemporalGameEvents _gameEvents;
 
+        private readonly ITemporalBackend[] _backends;
         private ITemporalBackend _activeBackend;
         private TemporalCameraSet _cameras;
         private BackendSelection _requestedBackend;
@@ -109,6 +110,12 @@ namespace ReduxBetterAA.Rendering
                 _motionVectorSanitizer,
                 _depthDisocclusionMask
             );
+            // Indexed by BackendSelection; used for selection and lifecycle ownership.
+            _backends = new ITemporalBackend[]
+            {
+                _disabledBackend, _fxaaLowBackend, _fxaaHighBackend, _smaaBackend,
+                _ppv2Backend, _customBackend, _dlaaBackend, _fsr2Backend
+            };
             _activeBackend = _disabledBackend;
             _requestedBackend = requestPpv2Taa
                 ? BackendSelection.Ppv2Taa
@@ -378,35 +385,8 @@ namespace ReduxBetterAA.Rendering
 
         public void CycleRequestedBackend()
         {
-            BackendSelection next;
-            switch (_requestedBackend)
-            {
-                case BackendSelection.Off:
-                    next = BackendSelection.FxaaLow;
-                    break;
-                case BackendSelection.FxaaLow:
-                    next = BackendSelection.FxaaHigh;
-                    break;
-                case BackendSelection.FxaaHigh:
-                    next = BackendSelection.Smaa;
-                    break;
-                case BackendSelection.Smaa:
-                    next = BackendSelection.Ppv2Taa;
-                    break;
-                case BackendSelection.Ppv2Taa:
-                    next = BackendSelection.CustomTaa;
-                    break;
-                case BackendSelection.CustomTaa:
-                    next = BackendSelection.NvidiaDlaa;
-                    break;
-                case BackendSelection.NvidiaDlaa:
-                    next = BackendSelection.AmdFsr2;
-                    break;
-                default:
-                    next = BackendSelection.Off;
-                    break;
-            }
-            SetRequestedBackend(next);
+            SetRequestedBackend(_requestedBackend == BackendSelection.AmdFsr2
+                ? BackendSelection.Off : _requestedBackend + 1);
         }
 
         public void SetPpv2Config(TemporalBackendConfig config)
@@ -682,16 +662,10 @@ namespace ReduxBetterAA.Rendering
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
-            _ppv2Backend.Dispose();
-            _customBackend.Dispose();
-            _dlaaBackend.Dispose();
-            _fsr2Backend.Dispose();
-            _fxaaLowBackend.Dispose();
-            _smaaBackend.Dispose();
-            _fxaaHighBackend.Dispose();
+            foreach (ITemporalBackend backend in _backends)
+                backend.Dispose();
             _motionVectorSanitizer.Dispose();
             _depthDisocclusionMask.Dispose();
-            _disabledBackend.Dispose();
             _activeBackend = _disabledBackend;
             _cameras = null;
             _resetTracker.Clear();
@@ -712,50 +686,14 @@ namespace ReduxBetterAA.Rendering
                 _mapViewAaEnabled
             );
 
-            ITemporalBackend requestedBackend;
-            if (effectiveRequest == BackendSelection.Off)
-            {
-                requestedBackend = _disabledBackend;
-            }
-            else if (effectiveRequest == BackendSelection.FxaaLow)
-            {
-                requestedBackend = _fxaaLowBackend;
-            }
-            else if (effectiveRequest == BackendSelection.Smaa)
-            {
-                requestedBackend = _smaaBackend;
-            }
-            else if (effectiveRequest == BackendSelection.FxaaHigh)
-            {
-                requestedBackend = _fxaaHighBackend;
-            }
-            else if (effectiveRequest == BackendSelection.Ppv2Taa)
-            {
-                _ppv2Backend.ApplyConfig(in _ppv2Config);
-                requestedBackend = _ppv2Backend;
-            }
-            else if (effectiveRequest == BackendSelection.CustomTaa)
-            {
-                _customBackend.ApplyConfig(in _customConfig);
-                requestedBackend = _customBackend;
-            }
-            else if (effectiveRequest == BackendSelection.NvidiaDlaa)
-            {
-                _dlaaBackend.ApplyConfig(in _dlaaConfig);
-                requestedBackend = _dlaaBackend;
-            }
-            else if (effectiveRequest == BackendSelection.AmdFsr2)
-            {
-                _fsr2Backend.ApplyConfig(in _fsr2Config);
-                requestedBackend = _fsr2Backend;
-            }
-            else
-            {
-                requestedBackend = _disabledBackend;
-            }
+            _ppv2Backend.ApplyConfig(in _ppv2Config);
+            _customBackend.ApplyConfig(in _customConfig);
+            _dlaaBackend.ApplyConfig(in _dlaaConfig);
+            _fsr2Backend.ApplyConfig(in _fsr2Config);
+            ITemporalBackend requestedBackend = GetBackend(effectiveRequest);
 
             string failureReason;
-            if (!requestedBackend.Configure(_cameras, out failureReason))
+            if (!TryConfigure(requestedBackend, _cameras, out failureReason))
             {
                 if (effectiveRequest == BackendSelection.NvidiaDlaa)
                 {
@@ -864,14 +802,8 @@ namespace ReduxBetterAA.Rendering
 
         private void DeactivateTemporalBackends()
         {
-            _disabledBackend.Deactivate();
-            _ppv2Backend.Deactivate();
-            _customBackend.Deactivate();
-            _dlaaBackend.Deactivate();
-            _fsr2Backend.Deactivate();
-            _fxaaLowBackend.Deactivate();
-            _smaaBackend.Deactivate();
-            _fxaaHighBackend.Deactivate();
+            foreach (ITemporalBackend backend in _backends)
+                backend.Deactivate();
             _motionVectorSanitizer.ReleaseResources();
             _depthDisocclusionMask.ReleaseResources();
         }
@@ -998,60 +930,35 @@ namespace ReduxBetterAA.Rendering
             _discoverAfter = Time.unscaledTime;
         }
 
-        private static string BackendName(BackendSelection selection)
-        {
-            switch (selection)
-            {
-                case BackendSelection.FxaaLow:
-                    return "FXAA Low";
-                case BackendSelection.Smaa:
-                    return "SMAA";
-                case BackendSelection.FxaaHigh:
-                    return "FXAA High";
-                case BackendSelection.Ppv2Taa:
-                    return "PPv2 TAA";
-                case BackendSelection.CustomTaa:
-                    return "Custom TAA";
-                case BackendSelection.NvidiaDlaa:
-                    return "NVIDIA DLAA";
-                case BackendSelection.AmdFsr2:
-                    return "FSR2 Native AA";
-                default:
-                    return "Off";
-            }
-        }
+        internal ITemporalBackend GetBackend(BackendSelection selection) =>
+            selection >= BackendSelection.Off && selection <= BackendSelection.AmdFsr2
+                ? _backends[(int)selection] : _disabledBackend;
+
+        private string BackendName(BackendSelection selection) => GetBackend(selection).Id;
 
         private BackendSelection ActiveBackendSelection()
         {
-            if (_activeBackend == _fxaaLowBackend)
-            {
-                return BackendSelection.FxaaLow;
-            }
-            if (_activeBackend == _smaaBackend)
-            {
-                return BackendSelection.Smaa;
-            }
-            if (_activeBackend == _fxaaHighBackend)
-            {
-                return BackendSelection.FxaaHigh;
-            }
-            if (_activeBackend == _ppv2Backend)
-            {
-                return BackendSelection.Ppv2Taa;
-            }
-            if (_activeBackend == _customBackend)
-            {
-                return BackendSelection.CustomTaa;
-            }
-            if (_activeBackend == _dlaaBackend)
-            {
-                return BackendSelection.NvidiaDlaa;
-            }
-            if (_activeBackend == _fsr2Backend)
-            {
-                return BackendSelection.AmdFsr2;
-            }
+            for (int index = 0; index < _backends.Length; index++)
+                if (ReferenceEquals(_activeBackend, _backends[index]))
+                    return (BackendSelection)index;
             return BackendSelection.Off;
+        }
+
+        internal static bool TryConfigure(ITemporalBackend backend, TemporalCameraSet cameras,
+            out string failureReason)
+        {
+            try
+            {
+                if (backend.Configure(cameras, out failureReason))
+                    return true;
+            }
+            catch (Exception exception)
+            {
+                failureReason = "configuration failed: " + exception.GetType().Name;
+            }
+            // Configure may have claimed camera state before an allocation or hook failed.
+            backend.Deactivate();
+            return false;
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

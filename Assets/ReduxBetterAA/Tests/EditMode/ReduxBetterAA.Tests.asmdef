@@ -12,5 +12,10 @@
     "optionalUnityReferences": [
         "TestAssemblies"
     ],
-    "autoReferenced": false
+    "autoReferenced": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "ReduxLib.dll",
+        "nunit.framework.dll"
+    ]
 }

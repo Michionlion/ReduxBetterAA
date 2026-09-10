@@ -9,9 +9,11 @@ if (Get-Process Unity -ErrorAction SilentlyContinue) { throw 'Close Unity before
 function Invoke-UnityStep([string] $Name, [string] $Arguments) {
     Write-Host "Unity: $Name"
     $log = Join-Path $logs "beta-$Name.log"
-    $process = Start-Process -FilePath $Unity -ArgumentList "-batchmode -projectPath `"$repo`" -logFile `"$log`" $Arguments" `
+    # Imported player assemblies are not valid inputs to Editor Burst jobs.
+    # Disable that unrelated compiler during prepare and packaging as well as tests.
+    $process = Start-Process -FilePath $Unity -ArgumentList "-batchmode --burst-disable-compilation -projectPath `"$repo`" -logFile `"$log`" $Arguments" `
         -WindowStyle Hidden -PassThru -Wait
-    if (Select-String -LiteralPath $log -Pattern 'error CS\d+|Shader error in|Halted execution|Aborting batchmode' -Quiet) {
+    if (Select-String -LiteralPath $log -Pattern 'error CS\d+|Shader error in|Halted execution|Aborting batchmode|Timeout after \d+ seconds while waiting' -Quiet) {
         throw "Unity $Name failed; see $log"
     }
     if ($Name -ne 'package' -and $process.ExitCode -ne 0) { throw "Unity $Name exited $($process.ExitCode); see $log" }
@@ -19,9 +21,7 @@ function Invoke-UnityStep([string] $Name, [string] $Arguments) {
 Invoke-UnityStep 'prepare' '-quit -executeMethod Utilities.Editor.PrepareReduxBetterAAMod.Run'
 $results = Join-Path $logs 'beta-editmode.xml'
 if (Test-Path -LiteralPath $results) { Remove-Item -LiteralPath $results }
-# Better AA has no Burst jobs. Imported player assemblies cannot be recompiled by
-# the Editor's Entities/Burst tooling; keep that unrelated compiler out of this run.
-Invoke-UnityStep 'editmode' "--burst-disable-compilation -runTests -testPlatform EditMode -testResults `"$results`""
+Invoke-UnityStep 'editmode' "-runTests -testPlatform EditMode -testResults `"$results`""
 [xml]$tests = Get-Content -LiteralPath $results -Raw
 if ($tests.'test-run'.result -ne 'Passed' -or [int]$tests.'test-run'.failed -ne 0) { throw 'EditMode tests did not pass.' }
 Write-Host "$($tests.'test-run'.passed) EditMode tests passed."
