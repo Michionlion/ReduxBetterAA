@@ -49,10 +49,10 @@ foreach ($key in $required) {
     if ($key -ne 'TEST_WORKSPACE' -and -not (Test-Path -LiteralPath $existing)) { throw "Set an existing $key path in $EnvFile." }
     while (-not (Test-Path -LiteralPath $existing)) { $existing = Split-Path -Parent $existing }
     $item = Get-Item -LiteralPath $existing
-    if ($key -eq 'TEST_WORKSPACE' -and -not $item.PSIsContainer) { throw 'TEST_WORKSPACE must be a directory.' }
+    if ($key -eq 'TEST_WORKSPACE' -and $item -isnot [IO.DirectoryInfo]) { throw 'TEST_WORKSPACE must be a directory.' }
     while ($null -ne $item) {
         if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Linked paths are not supported: $($item.FullName)" }
-        $item = if ($item.PSIsContainer) { $item.Parent } else { $item.Directory }
+        $item = if ($item -is [IO.DirectoryInfo]) { $item.Parent } else { $item.Directory }
     }
 }
 $separate = @($repo, $paths.KSP2_SOURCE, $paths.TEST_WORKSPACE, $paths.KSP2_PROFILE)
