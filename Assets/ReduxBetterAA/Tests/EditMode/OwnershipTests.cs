@@ -101,7 +101,7 @@ namespace ReduxBetterAA.Tests
         {
             var go = new GameObject("external-camera-owner");
             var camera = go.AddComponent<Camera>();
-            var layer = go.AddComponent<PostProcessLayer>();
+            var layer = Ppv2TestLayer.Create(go);
             var claim = new SceneCameraState();
             var projection = new CameraProjectionState();
             try
@@ -127,7 +127,7 @@ namespace ReduxBetterAA.Tests
         {
             var go = new GameObject("spatial-owner");
             var camera = go.AddComponent<Camera>();
-            var layer = go.AddComponent<PostProcessLayer>();
+            var layer = Ppv2TestLayer.Create(go);
             layer.subpixelMorphologicalAntialiasing = null;
             var backend = new Ppv2SpatialAaBackend("FXAA", PostProcessLayer.Antialiasing.FastApproximateAntialiasing, true);
             try

@@ -16,7 +16,7 @@ namespace ReduxBetterAA.Tests
             var first = new GameObject("first");
             var second = new GameObject("second");
             var camera = first.AddComponent<Camera>();
-            var layer = first.AddComponent<PostProcessLayer>();
+            var layer = Ppv2TestLayer.Create(first);
             var other = second.AddComponent<Camera>();
             camera.depthTextureMode = DepthTextureMode.DepthNormals;
             layer.antialiasingMode = PostProcessLayer.Antialiasing.FastApproximateAntialiasing;

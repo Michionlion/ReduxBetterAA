@@ -993,7 +993,7 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void Ppv2ModeOwnersRestoreTheExactPreModLayerState()
+        public void OffAndFxaaRestoreTheGamesPreviousAaState()
         {
             var resolveObject = new GameObject("AaOwnerResolveCamera");
             var sharedObject = new GameObject("AaOwnerSharedCamera");
@@ -1002,9 +1002,9 @@ namespace ReduxBetterAA.Tests
                 Camera resolveCamera = resolveObject.AddComponent<Camera>();
                 Camera sharedCamera = sharedObject.AddComponent<Camera>();
                 PostProcessLayer resolveLayer =
-                    resolveObject.AddComponent<PostProcessLayer>();
+                    Ppv2TestLayer.Create(resolveObject);
                 PostProcessLayer sharedLayer =
-                    sharedObject.AddComponent<PostProcessLayer>();
+                    Ppv2TestLayer.Create(sharedObject);
                 resolveLayer.antialiasingMode =
                     PostProcessLayer.Antialiasing.FastApproximateAntialiasing;
                 sharedLayer.antialiasingMode =

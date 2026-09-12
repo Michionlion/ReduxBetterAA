@@ -3,7 +3,6 @@
     "rootNamespace": "ReduxBetterAA.Tests",
     "references": [
         "ReduxBetterAA",
-        "Unity.Postprocessing.Runtime",
         "Unity.Addressables.Editor"
     ],
     "includePlatforms": [
@@ -15,6 +14,7 @@
     "autoReferenced": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "Unity.Postprocessing.Runtime.dll",
         "Assembly-CSharp.dll",
         "ReduxLib.dll",
         "nunit.framework.dll"
