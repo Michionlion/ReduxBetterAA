@@ -106,3 +106,4 @@ ksp2.catalog
 /TestResults*.xml
 /BuildArtifacts/
 __pycache__/
+/.env

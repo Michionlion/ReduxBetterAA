@@ -32,6 +32,32 @@ build intermediate. Logs and test results are in `Logs`.
 DLAA and FSR 2 require the separate [native libraries](NATIVES.md) when
 playing. TAA, spatial AA and supersampling need no additional native files.
 
+## Test a release candidate
+
+Copy `.env.example` to `.env` and fill in the local paths. Point `KSP2_SOURCE`
+at an untouched Steam installation or a copy of one, and `TEST_WORKSPACE` at
+a writable directory outside the source and repository. The pipeline creates
+it if needed and retains existing runs. Supply the [Redux CLI](https://github.com/KSP2Redux/Updater/releases),
+an external [test-harness checkout](https://github.com/Michionlion/ReduxTestHarness),
+and a stock-part launchpad save facing the northwest hills. `redux-cli doctor --json`
+reports the launcher configuration and game-profile paths. Close KSP2, Unity
+and the Redux launcher before running.
+
+```powershell
+pwsh -NoProfile -File tools/Test-Candidate.ps1
+```
+
+The pipeline requires committed source. It copies the clean game, installs the
+latest Redux beta, builds from a fresh source checkout, and installs the candidate
+and harness. It tests once without vendor runtimes and again with the matching
+DLLs from the configured editor. Each run retains its candidate ZIP, versions,
+hashes, logs, screenshots and validation results in `TEST_WORKSPACE`.
+
+The launcher configuration and existing game profile are restored afterward.
+Tests use a separate profile with only previously accepted legal preferences;
+they do not accept new agreements. Nothing is tagged, pushed or published.
+Moving-image quality and performance still need the checks below.
+
 ## Checks and publishing
 
 Run `pwsh -NoProfile -File tools/Test-Release.ps1` for portable packaging,

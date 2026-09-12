@@ -8,6 +8,9 @@ keep private fixtures, raw captures and one-off investigations outside the repo.
 - `pwsh -NoProfile -File tools/Test-Release.ps1`: package allowlist, metadata,
   version agreement, path safety, source cleanliness guards, script syntax,
   and runtime ZIP contents, source validation and overwrite protection.
+- `pwsh -NoProfile -File tools/Test-Candidate.ps1`: fresh game/source copies,
+  latest Redux beta, candidate build, and in-game checks with and without vendor
+  runtimes. Configure paths in `.env`; see [setup](../CONTRIBUTING.md#test-a-release-candidate).
 - `tools/Release.ps1`: validate all supported runtime DLLs against pinned hashes,
   package three DLLs and notices per runtime ZIP, then verify uploaded assets.
 - `pwsh -NoProfile -File tools/Build.ps1`: all EditMode tests, shader/assembly
@@ -24,7 +27,9 @@ files, including test adapters and third-party DLLs.
 
 Use the built ZIP on an installed Redux player. Run normal mode selection,
 with F10 live comparison stopped. Use the same view/settings for comparisons.
-The external Redux Test Harness can automate these checks, but is optional.
+The candidate pipeline automates mode selection, camera/AA ownership, fallback,
+scene transitions and report integrity through the external Redux Test Harness.
+It also retains screenshots for review; these do not prove temporal stability.
 
 | Check | Pass condition |
 | --- | --- |

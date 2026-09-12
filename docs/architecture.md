@@ -172,6 +172,9 @@ with other mods. The mod ZIP contains only its assembly, manifest, shader bundle
 catalog and installation/license files. Separate runtime ZIPs contain three
 unmodified vendor DLLs plus notices, verified against pinned source hashes.
 Build and release instructions live in [CONTRIBUTING.md](../CONTRIBUTING.md).
+The candidate test pipeline starts from disposable game/source copies and runs
+with an isolated profile. It restores launcher/profile state, records the exact
+Redux and mod inputs, and tests core and vendor modes without publishing.
 
 Better AA does not interpolate vessel motion, change physics, edit installed game assemblies,
 control cloud rendering, upscale with DLSS, generate frames or reconstruct rays.
