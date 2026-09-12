@@ -26,13 +26,16 @@ namespace ReduxBetterAA.Rendering
         public PostProcessLayer ResolveLayer;
         public Camera SharedJitterCamera;
         public PostProcessLayer SharedJitterLayer;
-        // Map remains zero-jitter. The verified menu stack requires matching
-        // opaque AND transparent raster projections (decision 0042).
+        // Scaled planetary rendering needs matching opaque and transparent
+        // raster projections in both map and menu (decisions 0042/0045).
         public bool ProjectionJitterSupported =>
             SceneKind == TemporalSceneKind.Flight ||
             SceneKind == TemporalSceneKind.KerbalSpaceCenter ||
             SceneKind == TemporalSceneKind.Vab || JitterTransparentRendering;
         public bool JitterTransparentRendering =>
+            (SceneKind == TemporalSceneKind.Map && ResolveCamera != null &&
+             ResolveCamera.isActiveAndEnabled && ResolveCamera.name == "MapCamera" &&
+             SharedJitterCamera == null) ||
             SceneKind == TemporalSceneKind.MainMenu &&
             ResolveCamera != null && SharedJitterCamera != null &&
             ResolveCamera.name == "Camera.Scaled" && SharedJitterCamera.name == "Skybox" &&
