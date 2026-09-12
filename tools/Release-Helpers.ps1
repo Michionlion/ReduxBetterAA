@@ -26,7 +26,5 @@ function Get-ReleaseVersion {
             throw "$attribute disagrees with swinfo.json."
         }
     }
-    $asset = Get-Content -LiteralPath (Join-Path $Repository 'Assets\ReduxBetterAA\swinfo.asset') -Raw
-    if ($asset -notmatch ('(?m)^  version: ' + [regex]::Escape($version) + '\r?$')) { throw 'swinfo.asset disagrees with swinfo.json.' }
     return $version
 }

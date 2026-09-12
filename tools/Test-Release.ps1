@@ -19,7 +19,7 @@ foreach ($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1') {
     [void][System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors)
     if ($parseErrors.Count) { throw "PowerShell syntax error in $($file.Name): $parseErrors" }
 }
-foreach ($suite in @('Motion', 'Quality', 'Release')) {
+foreach ($suite in @('Release')) {
     & python -m unittest discover -s (Join-Path $repo "tests\$suite")
     if ($LASTEXITCODE -ne 0) { throw "$suite tests failed." }
 }

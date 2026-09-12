@@ -1,0 +1,6 @@
+{
+    "name": "ReduxBetterAA.Editor",
+    "references": ["Unity.Addressables.Editor"],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": true
+}

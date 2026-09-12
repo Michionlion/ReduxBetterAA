@@ -63,12 +63,7 @@ MonoBehaviour:
   m_overridePlayerVersion: '[UnityEditor.PlayerSettings.bundleVersion]'
   m_GroupAssets:
   - {fileID: 11400000, guid: 8e7c3f4a33a784b48a8c437c55490441, type: 2}
-  - {fileID: 11400000, guid: baa345e904b38304889aea253ccdccf7, type: 2}
-  - {fileID: 11400000, guid: 6c32c9ae0e6021c42913fabc02f7e0e1, type: 2}
   - {fileID: 11400000, guid: 74453775a15955f4bad265e6966067a2, type: 2}
-  - {fileID: 11400000, guid: 31732815283af654382c2b602cdd1948, type: 2}
-  - {fileID: 11400000, guid: 3ffb7cfb750e4794c8828f3c8bcc606a, type: 2}
-  - {fileID: 11400000, guid: 16c2b6906ded8ef4fbffd717e82ace76, type: 2}
   m_BuildSettings:
     m_LogResourceManagerExceptions: 1
     m_BundleBuildPath: Temp/com.unity.addressables/AssetBundles
@@ -122,11 +117,6 @@ MonoBehaviour:
   m_LabelTable:
     m_LabelNames:
     - default
-    - parts_data
-    - celestial_bodies
-    - scienceExperiment
-    - missions
-    - techNodeData
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 4676cb50dd890ac4bbbaf6b7662cd451, type: 2}

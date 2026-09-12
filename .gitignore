@@ -95,22 +95,14 @@ redux.log.old
 redux.log
 Deploy/
 Assets/Mods
-Packages/packages-lock.json
 ksp2.catalog
 
 # Local diagnostics and generated verification artifacts
+/Artifacts/
+/Utilities/
+/tools/local/
 /diagnostic-analysis/
 /out
 /TestResults*.xml
 /BuildArtifacts/
-/Artifacts/visual-*/
-/Artifacts/visual-*.zip
-/Artifacts/beta-review.html
-/Artifacts/quality-*/
-/Artifacts/quality-*.zip
 __pycache__/
-
-/Artifacts/comparison-deployment-backup/
-/Artifacts/ownership-*/
-/Artifacts/motion-investigation-*/
-/Artifacts/terrain-investigation-*/

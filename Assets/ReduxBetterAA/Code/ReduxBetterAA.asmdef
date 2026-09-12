@@ -1,7 +1,7 @@
 {
     "name": "ReduxBetterAA",
     "rootNamespace": "ReduxBetterAA",
-    "references": [],
+    "references": ["Unity.Addressables", "Unity.ResourceManager"],
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
@@ -10,9 +10,7 @@
         "Newtonsoft.Json.dll",
         "ReduxLib.dll",
         "SpaceWarp2.dll",
-        "Unity.Addressables.dll",
-        "Unity.Postprocessing.Runtime.dll",
-        "Unity.ResourceManager.dll"
+        "Unity.Postprocessing.Runtime.dll"
     ],
     "autoReferenced": true,
     "defineConstants": [],

@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Version,
-    [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor\Unity.exe',
+    [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
+    [string] $Ksp2Root,
     [switch] $Publish,
     [switch] $Stable
 )
@@ -10,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Helpers.ps1')
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $commit = Assert-ReleaseSource $repo
-if ((Get-ReleaseVersion $repo) -cne $Version) { throw 'Requested version differs from the three source versions.' }
+if ((Get-ReleaseVersion $repo) -cne $Version) { throw 'Requested version differs from the source versions.' }
 $tag = "v$Version"
 $repository = 'Michionlion/ReduxBetterAA'
 $url = "https://github.com/$repository"
@@ -48,10 +49,10 @@ if ($existingTag.Count) {
 }
 
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
-& (Join-Path $PSScriptRoot 'Build-Beta.ps1') -Unity $Unity
+& (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
 [void](Assert-ReleaseSource $repo $commit)
 $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-& (Join-Path $PSScriptRoot 'Package-Beta.ps1') -OutputDirectory $output -SourceCommit $commit
+& (Join-Path $PSScriptRoot 'Package.ps1') -OutputDirectory $output -SourceCommit $commit
 $format = "--format=- %s ([%h]($url/commit/%H))"
 $history = @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range))
 $heading = if ($previous.Count) { "Changes since $previousTag" } else { 'Changes through the first public release' }

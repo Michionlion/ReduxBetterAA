@@ -109,7 +109,7 @@ def build(sdk, output, commit, root=ROOT):
     payload = {name: data for name, data in sdk_files.items() if name not in BUILD_ONLY}
     validate_payload(payload, version)
     require(payload['swinfo.json'] == (root / 'Assets/ReduxBetterAA/Copied/swinfo.json').read_bytes(),
-            'SDK manifest differs from the current source')
+            'Built manifest differs from the current source')
     payload.update({target: (root / source).read_bytes() for target, source in DOCS.items()})
     manifest = {
         'schemaVersion': 2, 'version': version, 'sourceCommit': commit,
@@ -147,7 +147,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     create = sub.add_parser('build')
-    create.add_argument('--sdk', type=Path, required=True)
+    create.add_argument('--input', type=Path, required=True)
     create.add_argument('--output', type=Path, required=True)
     create.add_argument('--commit', required=True)
     check = sub.add_parser('verify')
@@ -156,7 +156,7 @@ def main():
     check.add_argument('--version', required=True)
     args = parser.parse_args()
     if args.command == 'build':
-        path = build(args.sdk, args.output, args.commit)
+        path = build(args.input, args.output, args.commit)
         print(f'{digest(path.read_bytes())}  {path}')
     else:
         verify(args.zip, args.commit, args.version)
