@@ -52,11 +52,18 @@ namespace ReduxBetterAA.Tests
         {
             var gameObject = new GameObject("diagnostic-depth-owner");
             var visualizer = new BufferVisualizer(null);
+            const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo materialField = typeof(BufferVisualizer).GetField("_material", fields);
+            void DisposeVisualizer()
+            {
+                UnityEngine.Object.DestroyImmediate(materialField.GetValue(visualizer) as Material);
+                materialField.SetValue(visualizer, null);
+                visualizer.Dispose();
+            }
             try
             {
                 var camera = gameObject.AddComponent<Camera>();
                 camera.depthTextureMode = DepthTextureMode.DepthNormals;
-                const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
                 typeof(BufferVisualizer).GetField("_shader", fields).SetValue(visualizer,
                     UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>(
                         "Assets/ReduxBetterAA/Shaders/Phase1BufferDebug.shader"));
@@ -66,15 +73,16 @@ namespace ReduxBetterAA.Tests
                 Assert.That(camera.commandBufferCount, Is.GreaterThan(0));
 
                 if (changed) camera.depthTextureMode = replacement;
-                visualizer.Dispose();
-                visualizer.Dispose();
+                DepthTextureMode expected = changed ? camera.depthTextureMode : DepthTextureMode.DepthNormals;
+                DisposeVisualizer();
+                DisposeVisualizer();
 
-                Assert.That(camera.depthTextureMode, Is.EqualTo(changed ? replacement : DepthTextureMode.DepthNormals));
+                Assert.That(camera.depthTextureMode, Is.EqualTo(expected));
                 Assert.That(camera.commandBufferCount, Is.Zero);
             }
             finally
             {
-                visualizer.Dispose();
+                DisposeVisualizer();
                 UnityEngine.Object.DestroyImmediate(gameObject);
             }
         }
