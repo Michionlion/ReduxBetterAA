@@ -35,7 +35,7 @@ $paths = @{}
 foreach ($line in Get-Content -LiteralPath $EnvFile) {
     $line = $line.Trim()
     if (-not $line -or $line.StartsWith('#')) { continue }
-    if ($line -notmatch '^([A-Z_]+)=(.*)$') { throw "Invalid .env line: $line" }
+    if ($line -notmatch '^([A-Z_][A-Z0-9_]*)=(.*)$') { throw "Invalid .env line: $line" }
     $key, $value = $Matches[1], $Matches[2].Trim().Trim('"').Trim("'")
     if ($paths.ContainsKey($key)) { throw "Duplicate .env key: $key" }
     if (-not [IO.Path]::IsPathFullyQualified($value)) { throw "$key must be an absolute path." }
