@@ -166,7 +166,8 @@ try {
         $lua = Join-Path $phaseRoot 'suite.lua'
         "release_fixture = 'candidate'`nrelease_native = $($phase -eq 'native' | ConvertTo-Json)`n" + (Get-Content -LiteralPath (Join-Path $source 'tests\Release\ingame.lua') -Raw) | Set-Content -LiteralPath $lua -Encoding utf8NoBOM
         try {
-            Invoke-Checked pwsh @('-NoProfile', '-File', $harnessCli, 'run', $lua, '-Launch', '-FailOnLogErrors', '-ResponseTimeoutSeconds', '120', '-Timeout', '1200', '-GameRoot', $game, '-Fixtures', $fixtures, '-Results', $phaseRoot) (Join-Path $phaseRoot 'harness.log')
+            # The player reports MainMenu before its startup logos finish fading.
+            Invoke-Checked pwsh @('-NoProfile', '-File', $harnessCli, 'run', $lua, '-Launch', '-StartupSettleSeconds', '30', '-FailOnLogErrors', '-ResponseTimeoutSeconds', '120', '-Timeout', '1200', '-GameRoot', $game, '-Fixtures', $fixtures, '-Results', $phaseRoot) (Join-Path $phaseRoot 'harness.log')
         }
         finally { Wait-CandidateExit }
         $reports = @(Get-ChildItem -LiteralPath $phaseRoot -Filter 'report.json' -Recurse -File)
