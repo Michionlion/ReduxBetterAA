@@ -43,7 +43,7 @@ The fix reduced the measured flicker signal by **94–97%** across DLAA, TAA and
 FSR 2 in the saved test view, without changing their quality settings.
 Its added CPU cost was about **0.003 ms per terrain depth draw**, with no managed
 allocations in the measured draws. These measurements cover the terrain fix in that fixture.
-[Measurements and rejected fixes](docs/decisions/0044-northwest-hills-flicker-investigation.md).
+[Measurements and rejected fixes](https://github.com/Michionlion/ReduxBetterAA/releases/download/v0.6.1/v0.6.1-terrain-measurements.md).
 
 Before/after images and the beta's testing notes are in the
 [release notes](https://github.com/Michionlion/ReduxBetterAA/releases/tag/v0.6.1).
@@ -51,7 +51,7 @@ Before/after images and the beta's testing notes are in the
 ## Known limits and reports
 
 - This is a beta. Non-NVIDIA hardware, long sessions and the full range of flight/VAB scenes need more testing.
-- The published v0.6.1 uses zero map jitter. The development build restores coherent map jitter and draws map icons after AA; see [the investigation](docs/decisions/0045-map-jitter-and-icons.md).
+- The published v0.6.1 uses zero map jitter. The development build restores coherent map jitter and draws map icons after AA.
 - Supersampling falls back to Off in the map and main menu.
 - F10's live A/B comparison renders the scene twice. Its terrain-depth behavior differs from normal mode selection; stop it before judging terrain flicker or measuring performance.
 - There is no DLSS upscaling, Frame Generation or Ray Reconstruction.
@@ -62,5 +62,5 @@ images, then attach the ZIP and reproduction steps to an
 Reports stay in `mods/ReduxBetterAA/diagnostics/reports`; nothing is uploaded automatically.
 Capture can pause the game, and screenshots can contain visible vessel names/UI.
 
-[Build and release](docs/building.md) · [Developer docs](docs/README.md) ·
+[Build and release](docs/building.md) · [Contributing](CONTRIBUTING.md) ·
 [MIT license](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md)
