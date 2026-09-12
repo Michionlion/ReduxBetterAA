@@ -81,7 +81,7 @@ local ok, failure = pcall(function()
     local issue = aa.release_status().issueZip
     Test.assert.true_(type(issue) == "string" and #issue > 0, "Issue ZIP completes")
     Test.report.value("issueZip", Test.report.attach(issue))
-    Test.capture.screenshot("flight-ui")
+    Test.capture.screenshot("flight-ui", { hideUI = false })
     capture("FlightView", "Off", "Off", "final-cleanup")
 end)
 aa.set_backend("Off")
