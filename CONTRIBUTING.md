@@ -63,7 +63,10 @@ release files, versions, hashes, logs, screenshots and validation results in
 
 The launcher configuration and existing game profile are restored afterward.
 Tests use a separate profile with only previously accepted legal preferences;
-they do not accept new agreements. Nothing is tagged, pushed or published.
+they do not accept new game agreements. The disposable game disables Redux's
+optional online services and Discord integration and confirms those offline
+preferences, so the first-run services dialog cannot cover the screenshots.
+Nothing is tagged, pushed or published.
 Moving-image quality and performance still need the checks below.
 
 ## Prepare and publish a release

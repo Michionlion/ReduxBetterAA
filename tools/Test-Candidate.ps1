@@ -118,6 +118,11 @@ try {
     }
     finally { [IO.File]::WriteAllBytes($paths.REDUX_CONFIG, $config) }
     if ((Get-Item -LiteralPath (Join-Path $game 'UnityPlayer.dll')).VersionInfo.FileVersion -notlike (($editorVersion -replace 'f\d+$', '.') + '*')) { throw 'Redux and the pinned Unity editor have different player versions.' }
+    # Redux 0.2.9.0 schema 1 records optional online-service choices. Decline them
+    # in this disposable install so its first-run dialog does not cover captures.
+    $offlinePreferences = Join-Path $repo 'tests\Release\offline-redux-config.json'
+    Copy-Item -LiteralPath $offlinePreferences -Destination (Join-Path $game 'Redux\config.json') -Force
+    $summary.offlinePreferencesSha256 = (Get-FileHash -LiteralPath $offlinePreferences).Hash
     Invoke-Checked git @('clone', '--no-local', '--', $repo, $source) (Join-Path $run 'clone.log')
     Invoke-Checked git @('-C', $source, 'checkout', '--detach', $commit) (Join-Path $run 'checkout.log')
     & (Join-Path $source 'tools\Release.ps1') -Version $version -Unity $paths.UNITY_EDITOR -Ksp2Root $game `

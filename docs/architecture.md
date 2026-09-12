@@ -181,7 +181,8 @@ Build and release instructions live in [CONTRIBUTING.md](../CONTRIBUTING.md).
 The candidate test pipeline clones the mod and external harness into a disposable
 workspace, installs Redux into a clean game copy, and builds complete local release
 packages. It installs those ZIPs and tests core and vendor modes with an isolated
-profile. Launcher/profile state is restored and exact inputs are recorded. Local
+profile and optional online services disabled. Launcher/profile state is restored
+and exact inputs are recorded. Local
 release preparation needs no GitHub access; publishing is an explicit separate step.
 
 Better AA does not interpolate vessel motion, change physics, edit installed game assemblies,

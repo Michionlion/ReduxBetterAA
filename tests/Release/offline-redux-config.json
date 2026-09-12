@@ -1,0 +1,16 @@
+{
+  "Online Services": {
+    "Accepted Consent Version": 1,
+    "First Launch Consent Completed": true,
+    "Check Mod Versions": false,
+    "Download Localization Updates": false,
+    "Download Mission Updates": false,
+    "Download Main Menu Vessels": false,
+    "Share Anonymous Usage Data": false,
+    "Send Crash and Error Reports": false,
+    "Link Telemetry to Anonymous Session ID": false
+  },
+  "Discord": {
+    "Enable Rich Presence": false
+  }
+}
