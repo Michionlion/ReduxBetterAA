@@ -37,7 +37,9 @@ playing. TAA, spatial AA and supersampling need no additional native files.
 Copy `.env.example` to `.env` and fill in the local paths. Point `KSP2_SOURCE`
 at an untouched Steam installation or a copy of one, and `TEST_WORKSPACE` at
 a writable directory outside the source and repository. The pipeline creates
-it if needed and retains existing runs. Supply the [Redux CLI](https://github.com/KSP2Redux/Updater/releases),
+it if needed and retains existing runs. Allow roughly 80 GB free for a new run;
+Redux needs temporary patching space in addition to the game copy.
+Supply the [Redux CLI](https://github.com/KSP2Redux/Updater/releases),
 an external [test-harness checkout](https://github.com/Michionlion/ReduxTestHarness),
 and a stock-part launchpad save facing the northwest hills. `redux-cli doctor --json`
 reports the launcher configuration and game-profile paths. Close KSP2, Unity
