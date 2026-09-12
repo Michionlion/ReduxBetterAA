@@ -115,6 +115,25 @@ namespace ReduxBetterAA.Tests
                 Is.EqualTo(BackendSelection.CustomTaa));
             Assert.That(UserSettingsPolicy.ParseBackend("PPv2 TAA", false, false),
                 Is.EqualTo(BackendSelection.CustomTaa));
+            Assert.That(UserSettingsPolicy.TryGetMode((BackendSelection)4, false, false, out string mode), Is.True);
+            Assert.That(mode, Is.EqualTo("TAA"));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(true, true)]
+        public void SelectableModesRoundTripThroughPersistence(bool dlaa, bool fsr2)
+        {
+            foreach (string mode in UserSettingsPolicy.BuildModeChoices(dlaa, fsr2))
+            {
+                BackendSelection backend = UserSettingsPolicy.ParseBackend(mode, dlaa, fsr2);
+                Assert.That(UserSettingsPolicy.TryGetMode(backend, dlaa, fsr2, out string saved), Is.True);
+                Assert.That(saved, Is.EqualTo(mode));
+            }
+            Assert.That(UserSettingsPolicy.TryGetMode(BackendSelection.NvidiaDlaa, dlaa, fsr2, out _), Is.EqualTo(dlaa));
+            Assert.That(UserSettingsPolicy.TryGetMode(BackendSelection.AmdFsr2, dlaa, fsr2, out _), Is.EqualTo(fsr2));
+            Assert.That(UserSettingsPolicy.TryGetMode((BackendSelection)999, dlaa, fsr2, out _), Is.False);
         }
 
         [Test]
@@ -294,6 +313,9 @@ namespace ReduxBetterAA.Tests
         [Test]
         public void UserSettingMigrationNormalizesLegacyAndUnsupportedValues()
         {
+            Assert.That(UserSettingsPolicy.NormalizeMode("Off", true, true), Is.EqualTo("Off"));
+            Assert.That(UserSettingsPolicy.NormalizeMode("unknown", true, true), Is.EqualTo("Off"));
+            Assert.That(UserSettingsPolicy.NormalizeMode(null, true, true), Is.EqualTo("Off"));
             Assert.That(
                 UserSettingsPolicy.NormalizeMode("PPv2 TAA", false, false),
                 Is.EqualTo(UserSettingsPolicy.ModeTaa)

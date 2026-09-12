@@ -5,7 +5,8 @@ folder containing `KSP2_x64.exe`. The installed manifest must be at
 `mods/ReduxBetterAA/swinfo.json`.
 
 Open **Settings → Mods → Redux Better AA** and choose a mode. Fresh installs
-start at Off. TAA, FXAA, SMAA and supersampling need no extra native files.
+start with custom TAA (shown as TAA); updates preserve saved selections, including Off.
+TAA, FXAA, SMAA and supersampling need no extra native files.
 See the included `NATIVES.md` for DLAA and FSR 2 downloads.
 
 To update, move the previous mod folder outside `mods`, extract the new ZIP,

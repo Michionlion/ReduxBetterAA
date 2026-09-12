@@ -27,8 +27,11 @@ def read_json(path):
                       object_hook=lambda value: {k: v for k, v in value.items() if k != '$type'})
 
 
-def coverage(capabilities):
+def coverage(capabilities, phase):
     rows = []
+    if phase == 'core':
+        rows.append(dict(scene='MainMenu', requested='CustomTaa', expected='Custom TAA',
+                         mapEnabled=True, label='new-install'))
     for scene in CAMERAS:
         for requested, selected in MODES:
             if ((requested == 'NvidiaDlaa' and not capabilities['dlaa']) or
@@ -150,7 +153,7 @@ def validate(report_path, diagnostics, assembly, phase):
     capabilities = report['values']['capabilities']
     require(all(type(capabilities[k]) is bool for k in ('dlaa', 'fsr2')), 'Invalid vendor capabilities')
     require((capabilities['fsr2'] if phase == 'native' else not capabilities['dlaa'] and not capabilities['fsr2']), 'Unexpected vendor availability')
-    rows = coverage(capabilities)
+    rows = coverage(capabilities, phase)
     require(report['values']['captures'] == {str(i): row for i, row in enumerate(rows, 1)}, 'Release suite coverage is incomplete or changed')
     files = sorted(p for p in diagnostics.glob('phase1-*.json') if p.name != 'phase1-latest.json')
     files = [(p, read_json(p)) for p in files]

@@ -32,7 +32,10 @@ custom TAA; the other numeric IDs remain stable. Redux's PPv2 library is still
 needed for spatial AA, exposure and reversible post-process state. No separate
 PPv2 source package or type-scan patch is needed.
 
-Normal settings and F10 use the same mode policy and persistence callbacks.
+Normal settings and F10 use the same mode policy and persistence callbacks,
+including the conversion between saved labels and backend IDs. New installs
+default to custom TAA; saved Off selections and invalid/unavailable-mode fallbacks
+remain Off. Legacy temporal labels and numeric ID 4 migrate to custom TAA.
 Sharpness is shared by temporal modes; TAA stability controls stationary history.
 When DLAA is selected, entering the main menu resets its preset to K for that
 visit. Menu preset edits preserve the saved gameplay preset; other controls keep
@@ -163,6 +166,9 @@ F10 controls, buffer views, motion statistics, performance profiles and Issue
 ZIPs are supported features. Reports identify capture stage/frame, selected and
 active backend, settings, runtime versions and file hashes. Capture failures
 leave normal rendering alive and mark partial results. Nothing uploads automatically.
+Motion telemetry uses the report's capture camera, independent of the selected
+debug view. Closing a debug view restores its camera depth flags only while
+they still match the value the view applied.
 Live A/B suspends normal AA ownership and renders two independent arms; use
 ordinary mode selection to judge terrain stability or performance.
 

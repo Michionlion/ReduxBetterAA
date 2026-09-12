@@ -17,18 +17,25 @@ namespace ReduxBetterAA.Rendering
 
         public static bool IsCreated(RenderTexture texture) => texture != null && texture.IsCreated();
 
-        public static RenderTextureDescriptor VendorOutputDescriptor(RenderTextureDescriptor source)
+        public static RenderTextureDescriptor PersistentColorDescriptor(RenderTextureDescriptor source)
         {
             source.depthBufferBits = 0;
             source.msaaSamples = 1;
             source.bindMS = false;
-            source.graphicsFormat = GraphicsFormatUtility.GetLinearFormat(source.graphicsFormat);
-            // Both Unity vendor plugins require a persistent linear UAV output.
-            source.enableRandomWrite = true;
+            source.enableRandomWrite = false;
             source.useMipMap = false;
             source.autoGenerateMips = false;
             source.useDynamicScale = false;
             source.memoryless = RenderTextureMemoryless.None;
+            return source;
+        }
+
+        public static RenderTextureDescriptor VendorOutputDescriptor(RenderTextureDescriptor source)
+        {
+            source = PersistentColorDescriptor(source);
+            source.graphicsFormat = GraphicsFormatUtility.GetLinearFormat(source.graphicsFormat);
+            // Both Unity vendor plugins require a persistent linear UAV output.
+            source.enableRandomWrite = true;
             return source;
         }
 

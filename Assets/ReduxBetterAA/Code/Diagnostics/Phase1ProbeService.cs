@@ -323,7 +323,7 @@ namespace ReduxBetterAA.Diagnostics
                 capabilities = _capabilities,
                 cameraGraph = discovery.Graph,
                 evidence = CapabilityReportBuilder.BuildEvidence(discovery.Graph),
-                motionSignDiagnostic = _visualizer.CaptureMotionSignDiagnostic(),
+                motionSignDiagnostic = _visualizer.CaptureMotionSignDiagnostic(camera),
                 temporal = CapabilityReportBuilder.CaptureTemporalBackend()
             };
         }

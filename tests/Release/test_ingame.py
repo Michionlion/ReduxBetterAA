@@ -24,7 +24,7 @@ def png():
 class InGameTests(unittest.TestCase):
     def test_read_harness_dictionary_metadata_without_changing_coverage(self):
         capabilities = {'dlaa': False, 'fsr2': False}
-        rows = {str(i): row for i, row in enumerate(ingame.coverage(capabilities), 1)}
+        rows = {str(i): row for i, row in enumerate(ingame.coverage(capabilities, 'core'), 1)}
         expected = {'values': {'native': False, 'capabilities': capabilities, 'captures': rows}}
         def metadata(value):
             if isinstance(value, dict):
@@ -37,7 +37,7 @@ class InGameTests(unittest.TestCase):
             self.assertEqual(ingame.read_json(path), expected)
 
     def test_validate_off_ownership_and_reject_leaked_state_or_another_build(self):
-        row = ingame.coverage({'dlaa': False, 'fsr2': False})[0]
+        row = ingame.coverage({'dlaa': False, 'fsr2': False}, 'native')[0]
         temporal = dict(requestedBackend='Off', selectedBackend='Off', active=False,
                         resolveCamera='Camera.Scaled', sharedJitterCamera='Skybox',
                         projectionJitterSupported=True, jitterTransparentRendering=True,
@@ -63,10 +63,23 @@ class InGameTests(unittest.TestCase):
                 ingame.snapshot(data, row, HASH)
             target[key] = old
 
+        default = ingame.coverage({'dlaa': False, 'fsr2': False}, 'core')[0]
+        self.assertEqual(default['label'], 'new-install')
+        with self.assertRaisesRegex(ValueError, 'requestedBackend'):
+            ingame.snapshot(data, default, HASH)
+        temporal.update(requestedBackend='CustomTaa', selectedBackend='Custom TAA', active=True)
+        camera.update(components=['ReduxBetterAA.Rendering.TemporalRenderHook'],
+                      depthTextureMode='Depth, MotionVectors')
+        self.assertEqual(ingame.snapshot(data, default, HASH), (1280, 720))
+        temporal['active'] = False
+        with self.assertRaisesRegex(ValueError, 'active'):
+            ingame.snapshot(data, default, HASH)
+
     def test_native_matrix_keeps_unavailable_modes_and_lifecycle_checks(self):
-        core = ingame.coverage({'dlaa': False, 'fsr2': False})
-        native = ingame.coverage({'dlaa': True, 'fsr2': True})
-        self.assertEqual(len(core), 34)
+        core = ingame.coverage({'dlaa': False, 'fsr2': False}, 'core')
+        native = ingame.coverage({'dlaa': True, 'fsr2': True}, 'native')
+        self.assertEqual(len(core), 35)
+        self.assertEqual(len(native), 34)
         self.assertEqual([r['label'] for r in native[-5:]],
                          ['map-disabled', 'map-restored', 'reload', 'unpaused', 'final-cleanup'])
         self.assertTrue(all(r['expected'] == 'Off' for r in core if r['requested'] in ('NvidiaDlaa', 'AmdFsr2')))

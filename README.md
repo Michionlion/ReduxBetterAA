@@ -5,14 +5,16 @@ FXAA, SMAA and supersampling. Temporal modes smooth moving edges while keeping
 the game's UI at native resolution.
 
 **v0.6.1 is the first public beta.** Windows x64, Redux 0.2.8.5 and 0.2.9.0.
+This source prepares the v0.6.2 candidate; see its [changes](docs/releases/v0.6.2.md).
 Most recent testing uses Redux 0.2.9.0, D3D11 and an RTX 5070 Ti at 1440p.
 
 ## Install
 
 1. Install Redux, then close the game.
-2. Download `ReduxBetterAA-0.6.1.zip` from [Releases](https://github.com/Michionlion/ReduxBetterAA/releases)
+2. Download the mod ZIP from [Releases](https://github.com/Michionlion/ReduxBetterAA/releases)
    and extract it beside `KSP2_x64.exe`. You should have `mods/ReduxBetterAA/swinfo.json`.
-3. Open **Settings → Mods → Redux Better AA** and choose a mode. New installs start at Off.
+3. From v0.6.2, new installs start with custom TAA (shown as **TAA**). Change modes in
+   **Settings → Mods → Redux Better AA**. Updates preserve your saved selection, including Off.
 
 DLAA and FSR 2 need matching Unity native libraries. [Direct downloads and installation](NATIVES.md).
 The mod ZIP contains no game or vendor DLLs. Better Clouds is optional.

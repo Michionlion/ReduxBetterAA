@@ -156,6 +156,7 @@ namespace ReduxBetterAA.Diagnostics
         private int _candidateIndex = -1;
         private Camera _attachedCamera;
         private DepthTextureMode _originalDepthTextureMode;
+        private DepthTextureMode _appliedDepthTextureMode;
         private BufferDebugView _view = BufferDebugView.Off;
         private string _overlayText = string.Empty;
         private bool _disposed;
@@ -636,9 +637,8 @@ namespace ReduxBetterAA.Diagnostics
 
         internal Camera SelectedCameraForDiagnostics => GetSelectedCamera();
 
-        public MotionSignDiagnosticRecord CaptureMotionSignDiagnostic()
+        public MotionSignDiagnosticRecord CaptureMotionSignDiagnostic(Camera camera)
         {
-            Camera camera = GetSelectedCamera();
             bool invertX;
             bool invertY;
             BackendSelection backend;
@@ -652,60 +652,12 @@ namespace ReduxBetterAA.Diagnostics
             Vector4 mainTexelSize = _material == null
                 ? Vector4.zero
                 : _material.GetVector(MainTextureTexelSizeProperty);
-            if (camera == null)
-            {
-                return new MotionSignDiagnosticRecord
-                {
-                    view = CurrentViewName,
-                    selectedCamera = "NoCamera",
-                    cameraAvailable = false,
-                    configuredInvertX = invertX,
-                    configuredInvertY = invertY,
-                    configuredBackend = backend.ToString(),
-                    graphicsUvStartsAtTop = SystemInfo.graphicsUVStartsAtTop,
-                    motionTextureTexelSize = VectorValues(motionTexelSize),
-                    depthTextureTexelSize = VectorValues(depthTexelSize),
-                    materialMainTextureTexelSize = VectorValues(mainTexelSize),
-                    unityMotionConvention =
-                        "current-minus-previous in Unity motion-texture UV axes",
-                    vendorMotionConvention =
-                        "current pixel to previous pixel; negate Unity motion",
-                    referencePolicy =
-                        "No selected camera; reference projection unavailable.",
-                    texelSizeTelemetryNote =
-                        "Motion/depth values are Unity global companion vectors. " +
-                        "MainTex is material state only; the command-buffer blit " +
-                        "may override it at execution time."
-                };
-            }
-
-            Matrix4x4 projection = camera.nonJitteredProjectionMatrix;
-            Matrix4x4 screenProjection = GL.GetGPUProjectionMatrix(
-                projection,
-                false
-            );
-            Matrix4x4 renderTextureProjection = GL.GetGPUProjectionMatrix(
-                projection,
-                true
-            );
-            bool usesRenderTextureProjection =
-                MotionSignDiagnosticPolicy.UseRenderTextureProjection(
-                    camera.targetTexture != null,
-                    camera.forceIntoRenderTexture
-                );
-            return new MotionSignDiagnosticRecord
+            var record = new MotionSignDiagnosticRecord
             {
                 view = CurrentViewName,
-                selectedCamera = camera.name,
-                cameraAvailable = true,
-                targetTexturePresent = camera.targetTexture != null,
-                forceIntoRenderTexture = camera.forceIntoRenderTexture,
-                automaticReferenceUsesRenderTextureProjection =
-                    usesRenderTextureProjection,
+                selectedCamera = camera == null ? "NoCamera" : camera.name,
+                cameraAvailable = camera != null,
                 graphicsUvStartsAtTop = SystemInfo.graphicsUVStartsAtTop,
-                cameraProjectionYScale = projection.m11,
-                screenGpuProjectionYScale = screenProjection.m11,
-                renderTextureGpuProjectionYScale = renderTextureProjection.m11,
                 motionTextureTexelSize = VectorValues(motionTexelSize),
                 depthTextureTexelSize = VectorValues(depthTexelSize),
                 materialMainTextureTexelSize = VectorValues(mainTexelSize),
@@ -716,16 +668,30 @@ namespace ReduxBetterAA.Diagnostics
                     "current-minus-previous in Unity motion-texture UV axes",
                 vendorMotionConvention =
                     "current pixel to previous pixel; negate Unity motion",
-                referencePolicy =
-                    "Use render-texture GPU projection when targetTexture is set " +
-                    "or forceIntoRenderTexture is true; independently orient " +
-                    "motion and depth samples from their own texel sizes; mirror " +
-                    "Unity's explicit top-origin Y conversion.",
+                referencePolicy = "No selected camera; reference projection unavailable.",
                 texelSizeTelemetryNote =
                     "Motion/depth values are Unity global companion vectors. " +
                     "MainTex is material state only; the command-buffer blit " +
                     "may override it at execution time."
             };
+            if (camera == null)
+                return record;
+
+            Matrix4x4 projection = camera.nonJitteredProjectionMatrix;
+            record.targetTexturePresent = camera.targetTexture != null;
+            record.forceIntoRenderTexture = camera.forceIntoRenderTexture;
+            record.automaticReferenceUsesRenderTextureProjection =
+                MotionSignDiagnosticPolicy.UseRenderTextureProjection(
+                    record.targetTexturePresent, record.forceIntoRenderTexture);
+            record.cameraProjectionYScale = projection.m11;
+            record.screenGpuProjectionYScale = GL.GetGPUProjectionMatrix(projection, false).m11;
+            record.renderTextureGpuProjectionYScale = GL.GetGPUProjectionMatrix(projection, true).m11;
+            record.referencePolicy =
+                "Use render-texture GPU projection when targetTexture is set " +
+                "or forceIntoRenderTexture is true; independently orient " +
+                "motion and depth samples from their own texel sizes; mirror " +
+                "Unity's explicit top-origin Y conversion.";
+            return record;
         }
 
         private static float[] VectorValues(Vector4 value)
@@ -1187,6 +1153,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 camera.depthTextureMode |= DepthTextureMode.Depth | DepthTextureMode.MotionVectors;
             }
+            _appliedDepthTextureMode = camera.depthTextureMode;
 
             int sourceWidth;
             int sourceHeight;
@@ -1267,7 +1234,8 @@ namespace ReduxBetterAA.Diagnostics
                         _commandBuffer
                     );
                 }
-                _attachedCamera.depthTextureMode = _originalDepthTextureMode;
+                if (_attachedCamera.depthTextureMode == _appliedDepthTextureMode)
+                    _attachedCamera.depthTextureMode = _originalDepthTextureMode;
             }
             if (_commandBuffer != null)
             {

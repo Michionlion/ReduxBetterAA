@@ -83,7 +83,6 @@ namespace ReduxBetterAA.Backends
         private int _resourceHeight;
         private RenderTextureFormat _resourceFormat;
         private bool _resourceSrgb;
-        private bool _resourceCreationFailed;
         private long _estimatedMemoryBytes;
 
         private CustomTaaConfig _config = CustomTaaConfig.Conservative;
@@ -275,8 +274,7 @@ namespace ReduxBetterAA.Backends
                 return;
             }
 
-            EnsureResources(source);
-            if (_historyColorA == null)
+            if (!EnsureResources(source))
             {
                 Graphics.Blit(source, destination);
                 FailRuntime("Custom TAA render targets could not be created");
@@ -504,30 +502,23 @@ namespace ReduxBetterAA.Backends
                 jitterTransparentRendering: _jitterTransparentRendering);
         }
 
-        private void EnsureResources(RenderTexture source)
+        private bool EnsureResources(RenderTexture source)
         {
-            if (((TemporalTextures.IsCreated(_historyColorA) &&
-                  TemporalTextures.IsCreated(_historyColorB) &&
-                  TemporalTextures.IsCreated(_historyDepthA) &&
-                  TemporalTextures.IsCreated(_historyDepthB)) || _resourceCreationFailed) &&
+            if (TemporalTextures.IsCreated(_historyColorA) &&
+                TemporalTextures.IsCreated(_historyColorB) &&
+                TemporalTextures.IsCreated(_historyDepthA) &&
+                TemporalTextures.IsCreated(_historyDepthB) &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceFormat == source.format &&
                 _resourceSrgb == source.sRGB)
             {
-                return;
+                return true;
             }
 
             ReleaseResources();
-            RenderTextureDescriptor colorDescriptor = source.descriptor;
-            colorDescriptor.depthBufferBits = 0;
-            colorDescriptor.msaaSamples = 1;
-            colorDescriptor.bindMS = false;
-            colorDescriptor.enableRandomWrite = false;
-            colorDescriptor.useMipMap = false;
-            colorDescriptor.autoGenerateMips = false;
-            colorDescriptor.useDynamicScale = false;
-            colorDescriptor.memoryless = UnityEngine.RenderTextureMemoryless.None;
+            RenderTextureDescriptor colorDescriptor =
+                TemporalTextures.PersistentColorDescriptor(source.descriptor);
 
             _historyColorA = CreateTexture(colorDescriptor, "Custom TAA History Color A");
             _historyColorB = CreateTexture(colorDescriptor, "Custom TAA History Color B");
@@ -537,18 +528,10 @@ namespace ReduxBetterAA.Backends
             )
                 ? RenderTextureFormat.RFloat
                 : RenderTextureFormat.RHalf;
-            _historyDepthA = CreateDepthTexture(
-                source.width,
-                source.height,
-                depthFormat,
-                "Custom TAA History Depth A"
-            );
-            _historyDepthB = CreateDepthTexture(
-                source.width,
-                source.height,
-                depthFormat,
-                "Custom TAA History Depth B"
-            );
+            var depthDescriptor = new RenderTextureDescriptor(
+                source.width, source.height, depthFormat, 0) { sRGB = false };
+            _historyDepthA = CreateTexture(depthDescriptor, "Custom TAA History Depth A");
+            _historyDepthB = CreateTexture(depthDescriptor, "Custom TAA History Depth B");
 
             _resourceWidth = source.width;
             _resourceHeight = source.height;
@@ -558,16 +541,12 @@ namespace ReduxBetterAA.Backends
                 _historyDepthA == null ||
                 _historyDepthB == null)
             {
-                TemporalTextures.Release(ref _historyColorA);
-                TemporalTextures.Release(ref _historyColorB);
-                TemporalTextures.Release(ref _historyDepthA);
-                TemporalTextures.Release(ref _historyDepthB);
-                _resourceCreationFailed = true;
+                ReleaseResources();
                 _logger.LogError(
                     "[ReduxBetterAA/Resources] Custom TAA resource creation failed; " +
                     "the frame will pass through and the backend will fall back to Off."
                 );
-                return;
+                return false;
             }
 
             int colorBytes = EstimateColorBytes(source.format);
@@ -581,6 +560,7 @@ namespace ReduxBetterAA.Backends
                 source.width + "x" + source.height + ", approximately " +
                 (_estimatedMemoryBytes / (1024L * 1024L)) + " MiB."
             );
+            return true;
         }
 
         private static RenderTexture CreateTexture(
@@ -594,40 +574,18 @@ namespace ReduxBetterAA.Backends
                 wrapMode = TextureWrapMode.Clamp,
                 hideFlags = HideFlags.HideAndDontSave
             };
-            texture.Create();
-            if (texture.IsCreated())
+            try
             {
-                return texture;
+                texture.Create();
+                if (texture.IsCreated())
+                    return texture;
             }
-            UnityEngine.Object.Destroy(texture);
-            return null;
-        }
-
-        private static RenderTexture CreateDepthTexture(
-            int width,
-            int height,
-            RenderTextureFormat format,
-            string name)
-        {
-            var texture = new RenderTexture(
-                width,
-                height,
-                0,
-                format,
-                RenderTextureReadWrite.Linear
-            )
+            catch
             {
-                name = "Redux Better AA " + name,
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp,
-                hideFlags = HideFlags.HideAndDontSave
-            };
-            texture.Create();
-            if (texture.IsCreated())
-            {
-                return texture;
+                TemporalTextures.Release(ref texture);
+                throw;
             }
-            UnityEngine.Object.Destroy(texture);
+            TemporalTextures.Release(ref texture);
             return null;
         }
 
@@ -642,7 +600,6 @@ namespace ReduxBetterAA.Backends
             _estimatedMemoryBytes = 0;
             _historyValid = false;
             _matrixHistoryValid = false;
-            _resourceCreationFailed = false;
         }
 
         private static bool MatrixIsFinite(Matrix4x4 matrix)
@@ -687,7 +644,7 @@ namespace ReduxBetterAA.Backends
             {
                 _shader = operation.Result;
                 _logger.LogInfo(
-                    "[ReduxBetterAA/CustomTAA] Shader loaded; backend remains mutually exclusive and opt-in."
+                    "[ReduxBetterAA/CustomTAA] Shader loaded."
                 );
             }
             else

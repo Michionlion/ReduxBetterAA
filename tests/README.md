@@ -33,8 +33,8 @@ It also retains screenshots for review; these do not prove temporal stability.
 
 | Check | Pass condition |
 | --- | --- |
-| Clean install, natives absent | Loads without errors; unsupported vendor modes are unavailable; TAA/FXAA/SMAA work. |
-| Each supported mode, then Off | Correct mode activates; Off restores unfiltered native rendering. |
+| Clean install, natives absent | Custom TAA activates before any mode selection; unsupported vendor modes are unavailable; TAA/FXAA/SMAA work. |
+| Each supported mode, then Off | Correct mode activates; Off restores unfiltered native rendering. Saved selections, including Off, survive an update. |
 | Main menu, flight, map, VAB | Scene transitions recover; no repeated exceptions, stale history or missing output. |
 | Launchpad terrain | View northwest hills from launchpad 4, zoom out enough to see slopes; compare Off/TAA/DLAA/FSR 2 while paused and launching. No coherent flashing patches. |
 | Thin geometry and foliage | Pan around struts/antennas and vegetation; check shimmer, disappearance and trails. |

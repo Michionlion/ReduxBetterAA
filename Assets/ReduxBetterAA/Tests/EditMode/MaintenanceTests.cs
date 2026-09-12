@@ -61,21 +61,45 @@ namespace ReduxBetterAA.Tests
             finally { UnityEngine.Object.DestroyImmediate(texture); }
         }
 
-        [Test]
-        public void VendorOutputsDoNotInheritMemorylessStorage()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TemporalColorTargetsKeepTheirEncodingAndDiscardTransientStorage(bool srgb)
         {
-            var source = new RenderTextureDescriptor(8, 8, RenderTextureFormat.ARGB32, 24)
+            var source = new RenderTextureDescriptor(8, 16, RenderTextureFormat.ARGB32, 24)
             {
                 memoryless = RenderTextureMemoryless.Color,
                 useDynamicScale = true,
-                msaaSamples = 4
+                msaaSamples = 4,
+                bindMS = true,
+                useMipMap = true,
+                autoGenerateMips = true,
+                dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray,
+                volumeDepth = 2,
+                sRGB = srgb
             };
+            var history = TemporalTextures.PersistentColorDescriptor(source);
+            Assert.That(history.graphicsFormat, Is.EqualTo(source.graphicsFormat),
+                "TAA history must preserve the scene color encoding");
+            Assert.That(history.enableRandomWrite, Is.False);
             var output = TemporalTextures.VendorOutputDescriptor(source);
-            Assert.That(output.memoryless, Is.EqualTo(RenderTextureMemoryless.None));
-            Assert.That(output.useDynamicScale, Is.False);
+            Assert.That(output.graphicsFormat, Is.EqualTo(
+                UnityEngine.Experimental.Rendering.GraphicsFormatUtility.GetLinearFormat(source.graphicsFormat)),
+                "Vendor output must be linear regardless of the scene color encoding");
             Assert.That(output.enableRandomWrite, Is.True);
-            Assert.That(output.msaaSamples, Is.EqualTo(1));
-            Assert.That(output.depthBufferBits, Is.Zero);
+            foreach (var descriptor in new[] { history, output })
+            {
+                Assert.That(descriptor.width, Is.EqualTo(source.width));
+                Assert.That(descriptor.height, Is.EqualTo(source.height));
+                Assert.That(descriptor.dimension, Is.EqualTo(source.dimension));
+                Assert.That(descriptor.volumeDepth, Is.EqualTo(source.volumeDepth));
+                Assert.That(descriptor.memoryless, Is.EqualTo(RenderTextureMemoryless.None));
+                Assert.That(descriptor.useDynamicScale, Is.False);
+                Assert.That(descriptor.useMipMap, Is.False);
+                Assert.That(descriptor.autoGenerateMips, Is.False);
+                Assert.That(descriptor.bindMS, Is.False);
+                Assert.That(descriptor.msaaSamples, Is.EqualTo(1));
+                Assert.That(descriptor.depthBufferBits, Is.Zero);
+            }
         }
 
         [TestCase(false)]

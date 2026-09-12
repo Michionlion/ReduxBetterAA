@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Reflection;
 using NUnit.Framework;
 using ReduxBetterAA.Diagnostics;
 using ReduxBetterAA.Rendering;
@@ -10,6 +11,74 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class BetaDiagnosticsTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MotionSignReportUsesTheCaptureCameraIndependentlyOfTheSelectedDebugCamera(bool cameraAvailable)
+        {
+            var selectedObject = new GameObject("selected-debug-camera");
+            var captureObject = new GameObject("issue-capture-camera");
+            var visualizer = new BufferVisualizer(null);
+            try
+            {
+                var selected = selectedObject.AddComponent<Camera>();
+                var capture = captureObject.AddComponent<Camera>();
+                capture.forceIntoRenderTexture = true;
+                capture.nonJitteredProjectionMatrix = Matrix4x4.Scale(new Vector3(2f, 3f, 1f));
+                visualizer.SetCandidates(new[] { selected });
+
+                MotionSignDiagnosticRecord report = visualizer.CaptureMotionSignDiagnostic(
+                    cameraAvailable ? capture : null);
+
+                Assert.That(visualizer.SelectedCameraForDiagnostics, Is.SameAs(selected));
+                Assert.That(report.cameraAvailable, Is.EqualTo(cameraAvailable));
+                Assert.That(report.selectedCamera, Is.EqualTo(cameraAvailable ? capture.name : "NoCamera"));
+                Assert.That(report.automaticReferenceUsesRenderTextureProjection, Is.EqualTo(cameraAvailable));
+                Assert.That(report.cameraProjectionYScale, Is.EqualTo(cameraAvailable ? 3f : 0f));
+                Assert.That(report.motionTextureTexelSize, Has.Length.EqualTo(4));
+            }
+            finally
+            {
+                visualizer.Dispose();
+                UnityEngine.Object.DestroyImmediate(captureObject);
+                UnityEngine.Object.DestroyImmediate(selectedObject);
+            }
+        }
+
+        [TestCase(false, DepthTextureMode.None)]
+        [TestCase(true, DepthTextureMode.None)]
+        [TestCase(true, DepthTextureMode.MotionVectors)]
+        [TestCase(true, DepthTextureMode.Depth | DepthTextureMode.DepthNormals | DepthTextureMode.MotionVectors)]
+        public void ClosingDebugViewRestoresOnlyDepthFlagsItStillOwns(bool changed, DepthTextureMode replacement)
+        {
+            var gameObject = new GameObject("diagnostic-depth-owner");
+            var visualizer = new BufferVisualizer(null);
+            try
+            {
+                var camera = gameObject.AddComponent<Camera>();
+                camera.depthTextureMode = DepthTextureMode.DepthNormals;
+                const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+                typeof(BufferVisualizer).GetField("_shader", fields).SetValue(visualizer,
+                    UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>(
+                        "Assets/ReduxBetterAA/Shaders/Phase1BufferDebug.shader"));
+                typeof(BufferVisualizer).GetField("_view", fields).SetValue(visualizer, BufferDebugView.LinearDepth);
+                visualizer.SetCandidates(new[] { camera });
+                Assert.That(camera.depthTextureMode, Is.EqualTo(DepthTextureMode.Depth | DepthTextureMode.DepthNormals));
+                Assert.That(camera.commandBufferCount, Is.GreaterThan(0));
+
+                if (changed) camera.depthTextureMode = replacement;
+                visualizer.Dispose();
+                visualizer.Dispose();
+
+                Assert.That(camera.depthTextureMode, Is.EqualTo(changed ? replacement : DepthTextureMode.DepthNormals));
+                Assert.That(camera.commandBufferCount, Is.Zero);
+            }
+            finally
+            {
+                visualizer.Dispose();
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProjectionOwnershipRestoresExactStateAndDoesNotDoubleJitter(bool orthographic)

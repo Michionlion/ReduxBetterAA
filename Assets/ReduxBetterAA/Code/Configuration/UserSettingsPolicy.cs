@@ -149,5 +149,25 @@ namespace ReduxBetterAA.Configuration
                 ? value
                 : "K";
         }
+
+        public static bool TryGetMode(
+            BackendSelection backend,
+            bool dlaaSelectable,
+            bool fsr2Selectable,
+            out string mode)
+        {
+            switch (NormalizeBackend(backend))
+            {
+                case BackendSelection.Off: mode = ModeOff; return true;
+                case BackendSelection.Supersampling: mode = ModeSupersampling; return true;
+                case BackendSelection.FxaaLow: mode = ModeFxaaLow; return true;
+                case BackendSelection.FxaaHigh: mode = ModeFxaaHigh; return true;
+                case BackendSelection.Smaa: mode = ModeSmaa; return true;
+                case BackendSelection.CustomTaa: mode = ModeTaa; return true;
+                case BackendSelection.NvidiaDlaa: mode = ModeDlaa; return dlaaSelectable;
+                case BackendSelection.AmdFsr2: mode = ModeFsr2; return fsr2Selectable;
+                default: mode = string.Empty; return false;
+            }
+        }
     }
 }

@@ -25,8 +25,7 @@ local modes = {
     {"AmdFsr2", initial.fsr2 and "FSR2 Native AA" or "Off"},
     {"Supersampling", "Supersampling"}
 }
-local function capture(scene, requested, expected, label)
-    aa.set_backend(requested)
+local function record_capture(scene, requested, expected, label)
     Test.wait.seconds(expected == "Off" and requested ~= "Off" and 7 or 1.5)
     Test.render.wait_stable(60)
     Test.assert.true_(aa.request_capture(), "Capture " .. scene .. "/" .. (label or requested))
@@ -35,6 +34,10 @@ local function capture(scene, requested, expected, label)
     captures[#captures + 1] = { scene = scene, requested = requested, expected = expected,
         mapEnabled = aa.release_status().mapEnabled, label = label or requested }
     Test.report.value("captures", captures)
+end
+local function capture(scene, requested, expected, label)
+    aa.set_backend(requested)
+    record_capture(scene, requested, expected, label)
 end
 local function cycle(scene)
     for _, mode in ipairs(modes) do
@@ -56,6 +59,9 @@ local ok, failure = pcall(function()
     aa.set_map_enabled(true)
     Test.game.wait_for_state("MainMenu", 45)
     Test.assert.equal(aa.select_camera("Camera.Scaled"), "Camera.Scaled", "Menu camera discovered")
+    if not release_native then
+        record_capture("MainMenu", "CustomTaa", "Custom TAA", "new-install")
+    end
     cycle("MainMenu")
     flight()
     cycle("FlightView")

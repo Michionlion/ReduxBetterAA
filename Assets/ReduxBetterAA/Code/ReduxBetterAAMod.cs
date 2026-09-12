@@ -15,20 +15,12 @@ namespace ReduxBetterAA
     /// Redux loader entry point for renderer diagnostics and the mutually exclusive
     /// Scene AA selection, native-resolution temporal backends, and diagnostics.
     ///
-    /// The AA backend remains off by default. While Off is selected, Redux
+    /// New installs select custom TAA. While Off is selected, Better AA
     /// explicitly owns a zero-AA baseline; all captured renderer state is
     /// restored when ownership moves or the mod unloads.
     /// </summary>
     public sealed class ReduxBetterAAMod : MonoBehaviourMod
     {
-        private const string ModeOff = UserSettingsPolicy.ModeOff;
-        private const string ModeFxaaLow = UserSettingsPolicy.ModeFxaaLow;
-        private const string ModeSmaa = UserSettingsPolicy.ModeSmaa;
-        private const string ModeFxaaHigh = UserSettingsPolicy.ModeFxaaHigh;
-        private const string ModeCustom = UserSettingsPolicy.ModeTaa;
-        private const string ModeDlaa = UserSettingsPolicy.ModeDlaa;
-        private const string ModeFsr2 = UserSettingsPolicy.ModeFsr2;
-
         private static readonly string[] DlaaPresetChoices =
             { "F", "J", "K", "L", "M" };
 
@@ -67,7 +59,7 @@ namespace ReduxBetterAA
             _modeEntry = SWConfiguration.Bind(
                 "Anti-Aliasing",
                 "Mode",
-                ModeOff,
+                UserSettingsPolicy.ModeTaa,
                 "Select the scene anti-aliasing method. FXAA Low and FXAA High " +
                 "are KSP's stock spatial modes; SMAA is the highest-quality PPv2 " +
                 "spatial option. TAA is the portable temporal option. NVIDIA DLAA " +
@@ -418,7 +410,7 @@ namespace ReduxBetterAA
         {
             _temporalCoordinator?.SetRequestedBackend(backend);
             string label;
-            if (TryGetUserBackendLabel(backend, out label))
+            if (UserSettingsPolicy.TryGetMode(backend, _dlaaSelectable, _fsr2Selectable, out label))
             {
                 Persist(_modeEntry, label);
             }
@@ -608,42 +600,6 @@ namespace ReduxBetterAA
                 _dlaaSelectable,
                 _fsr2Selectable
             );
-        }
-
-        private bool TryGetUserBackendLabel(
-            BackendSelection backend,
-            out string label)
-        {
-            switch (backend)
-            {
-                case BackendSelection.Supersampling:
-                    label = UserSettingsPolicy.ModeSupersampling;
-                    return true;
-                case BackendSelection.FxaaLow:
-                    label = ModeFxaaLow;
-                    return true;
-                case BackendSelection.Smaa:
-                    label = ModeSmaa;
-                    return true;
-                case BackendSelection.FxaaHigh:
-                    label = ModeFxaaHigh;
-                    return true;
-                case BackendSelection.CustomTaa:
-                    label = ModeCustom;
-                    return true;
-                case BackendSelection.NvidiaDlaa:
-                    label = ModeDlaa;
-                    return _dlaaSelectable;
-                case BackendSelection.AmdFsr2:
-                    label = ModeFsr2;
-                    return _fsr2Selectable;
-                case BackendSelection.Off:
-                    label = ModeOff;
-                    return true;
-                default:
-                    label = string.Empty;
-                    return false;
-            }
         }
 
         private static DlaaPreset ParseDlaaPreset(string value)
