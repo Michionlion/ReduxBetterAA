@@ -76,6 +76,27 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
+        public void MapJitterRequiresTheRecognizedSingleCamera()
+        {
+            var go = new GameObject("MapCamera");
+            try
+            {
+                var camera=go.AddComponent<Camera>();
+                var graph=new TemporalCameraSet {SceneKind=TemporalSceneKind.Map, ResolveCamera=camera};
+                Assert.That(graph.ProjectionJitterSupported && graph.JitterTransparentRendering, Is.True);
+                camera.enabled=false;
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+                camera.enabled=true;
+                camera.name="Unknown map camera";
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+                camera.name="MapCamera";
+                graph.SharedJitterCamera=camera;
+                Assert.That(graph.ProjectionJitterSupported, Is.False);
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
         public void CameraCleanupPreservesAnExternalOwnersChanges()
         {
             var go = new GameObject("external-camera-owner");

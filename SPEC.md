@@ -81,6 +81,15 @@ Profile any proposed production change separately from capture and retain zero
 steady-state managed allocations. The investigation and evidence log are in
 [decision 0043](docs/decisions/0043-physics-cadence-motion-investigation.md).
 
+### Map jitter and icon qualification (2026-09-11)
+
+Compare zero, opaque-only and coherent opaque/transparent raster jitter in the
+same paused map view across Custom TAA, DLAA and FSR2. Restore full map sampling
+only after consecutive-frame captures show stable planetary rendering and edge
+quality is retained or improved. Trace ship icon draw timing and keep map icons
+outside temporal history and jitter. Preserve independent map AA, transitions,
+saved settings and zero steady-state production allocations.
+
 ### Main-menu AA investigation (2026-09-10)
 
 The main menu must apply the selected DLAA, Custom TAA or FSR2 Native AA to

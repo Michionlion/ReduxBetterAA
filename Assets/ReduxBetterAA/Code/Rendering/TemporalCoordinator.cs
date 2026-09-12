@@ -84,6 +84,7 @@ namespace ReduxBetterAA.Rendering
         private readonly ITemporalBackend[] _backends;
         private ITemporalBackend _activeBackend;
         private TemporalCameraSet _cameras;
+        private MapIconOverlay _mapIcons;
         private BackendSelection _requestedBackend;
         private HistoryResetReason _pendingResetReasons;
         private bool _dirty;
@@ -688,6 +689,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             _disposed = true;
+            MapIconOverlay.Detach(ref _mapIcons);
             _gameEvents.Dispose();
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
@@ -768,6 +770,9 @@ namespace ReduxBetterAA.Rendering
             }
 
             _activeBackend = requestedBackend;
+            if (effectiveRequest != BackendSelection.Off && _cameras.SceneKind == TemporalSceneKind.Map &&
+                _cameras.ResolveCamera != null && _cameras.ResolveCamera.name == "MapCamera")
+                _mapIcons = MapIconOverlay.Attach(_cameras.ResolveCamera);
             if (effectiveRequest == BackendSelection.Off)
             {
                 bool mapOverride = _requestedBackend != BackendSelection.Off &&
@@ -847,6 +852,7 @@ namespace ReduxBetterAA.Rendering
 
         private void DeactivateTemporalBackends()
         {
+            MapIconOverlay.Detach(ref _mapIcons);
             foreach (ITemporalBackend backend in _backends)
                 backend.Deactivate();
             _motionVectorSanitizer.ReleaseResources();

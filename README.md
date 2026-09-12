@@ -51,7 +51,8 @@ Before/after images and the beta's testing notes are in the
 ## Known limits and reports
 
 - This is a beta. Non-NVIDIA hardware, long sessions and the full range of flight/VAB scenes need more testing.
-- Map reconstruction uses zero projection jitter. Supersampling falls back to Off in the map and main menu.
+- The published v0.6.1 uses zero map jitter. The development build restores coherent map jitter and draws map icons after AA; see [the investigation](docs/decisions/0045-map-jitter-and-icons.md).
+- Supersampling falls back to Off in the map and main menu.
 - F10's live A/B comparison renders the scene twice. Its terrain-depth behavior differs from normal mode selection; stop it before judging terrain flicker or measuring performance.
 - There is no DLSS upscaling, Frame Generation or Ray Reconstruction.
 
