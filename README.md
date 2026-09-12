@@ -146,3 +146,8 @@ Current panning improvements and review clips are documented in
 
 Main-menu rendering and verification are documented in
 [the menu AA investigation](docs/decisions/0042-main-menu-coherent-raster-jitter.md).
+
+The northwest hillside flicker fix aligns Redux's early terrain-depth draw with
+the current TAA, DLAA or FSR2 jitter. It preserves temporal quality settings and
+physics. See [measured results and candidate ledger](docs/decisions/0044-northwest-hills-flicker-investigation.md)
+and the [automated terrain regression](docs/terrain-flicker-testing.md).

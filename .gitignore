@@ -112,3 +112,5 @@ __pycache__/
 
 /Artifacts/comparison-deployment-backup/
 /Artifacts/ownership-*/
+/Artifacts/motion-investigation-*/
+/Artifacts/terrain-investigation-*/

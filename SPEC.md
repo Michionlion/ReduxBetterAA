@@ -7,6 +7,52 @@
 
 ## 1. Executive summary
 
+### Launchpad terrain flicker (2026-09-11)
+
+The active reproduction is the user's campaign **Test**, quicksave at launchpad
+4 facing the northwest hills. All temporal modes flicker there and Off stops it.
+Preserve the saved camera view and test without launching the vessel. The user
+has explicitly dropped the 50 Hz motion investigation; it is historical context
+only and must not drive further candidates. Start with this stationary terrain
+case, then verify a successful fix during camera movement and normal launch.
+
+Reproduce the northwest hillside flicker using consecutive
+native-pixel image samples and matched scene/depth/camera metadata. Detect
+excess temporal change on tracked terrain regions independently of vector
+variance. Compare Off and temporal AA, stationary and launch cases, and isolate
+jitter, shadows and depth overlap where evidence warrants it. Test candidates
+in the optional harness, retain an experiment ledger, preserve physics and
+saved graphics settings, and promote only a measured cross-backend fix with
+acceptable detail and rendering cost.
+
+Terrain depth must use the same current raster projection as the contributing
+temporal camera, even when Redux draws it before the camera render callback.
+Bracket the existing depth draw and restore owned state on success or failure;
+do not reduce jitter quality or introduce a second terrain render. Validate all
+three selectable temporal modes, Off, movement, resets and steady-state cost.
+Evidence and rejected candidates are in decision 0044.
+
+### Motion flicker investigation (2026-09-11, historical; closed by user)
+
+Investigate speed-dependent raw motion flicker from the five supplied 120 Hz
+recordings. Instrument consecutive normal rendered frames at the temporal resolve
+boundary with raw/consumed vectors, depth, color, camera matrices, render timing,
+physics-step timing and reset/backend identity. Use asynchronous bounded GPU
+readback; reject gaps, invalid samples and unexpected backend fallback. Keep
+instrumentation in the optional test adapter and preserve saved settings.
+
+Compare simple render-only candidates on repeatable stationary and moving-vessel
+cases across the supported Custom TAA, DLAA and FSR2 modes. Do not alter physics, Rigidbody interpolation, simulation
+timesteps or vessel state in a production fix. Record every attempted candidate,
+including rejected controls, in a decision/evidence log. Judge vector coherence
+and displayed flicker together with detail retention; any candidate proposed for
+release must also pass camera-pan, disocclusion and stop/reversal checks. Reduced
+vector variance alone is not evidence of a correct fix. Preserve
+existing AA quality unless a measured small tradeoff substantially reduces flicker.
+Profile any proposed production change separately from capture and retain zero
+steady-state managed allocations. The investigation and evidence log are in
+[decision 0043](docs/decisions/0043-physics-cadence-motion-investigation.md).
+
 ### Main-menu AA investigation (2026-09-10)
 
 The main menu must apply the selected DLAA, Custom TAA or FSR2 Native AA to

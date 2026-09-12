@@ -156,6 +156,9 @@ namespace ReduxBetterAA.Rendering
         public bool Active => _activeBackend.Active;
         public string SelectedBackend => _activeBackend.Id;
         internal Camera ResolveCamera => _cameras?.ResolveCamera;
+        internal IProjectionJitterSource AuxiliaryProjectionSource =>
+            !_disposed && !_comparisonSuspended && Active
+                ? _activeBackend as IProjectionJitterSource : null;
 
         // Called only by an explicit diagnostic capture; no traversal in the render loop.
         internal object[] CaptureBufferOwners() => new object[]

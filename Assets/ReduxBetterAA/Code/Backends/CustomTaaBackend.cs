@@ -10,7 +10,7 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 
 namespace ReduxBetterAA.Backends
 {
-    internal sealed class CustomTaaBackend : ITemporalBackend, ISceneResolve
+    internal sealed class CustomTaaBackend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
     {
         private const string ShaderAddress =
             "Assets/ReduxBetterAA/Shaders/CustomTaa.shader";
@@ -121,6 +121,17 @@ namespace ReduxBetterAA.Backends
         public bool ShaderReady => _shader != null && _shader.isSupported;
         public long EstimatedMemoryBytes => _estimatedMemoryBytes;
         public Vector2 CurrentJitterNormalized => _jitterNormalized;
+
+        public bool TryGetRasterProjection(Camera camera, out Matrix4x4 projection)
+        {
+            projection = default;
+            if (!Active || !_projectionJitterSupported || camera == null ||
+                (camera != _resolveCamera && camera != _sharedJitterCamera)) return false;
+            CameraProjectionState state = camera == _sharedJitterCamera ? _sharedProjection : _resolveProjection;
+            projection = state.GetRasterProjection(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
+            return true;
+        }
 
         public void Initialize()
         {

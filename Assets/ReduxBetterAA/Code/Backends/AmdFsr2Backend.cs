@@ -15,7 +15,7 @@ namespace ReduxBetterAA.Backends
     /// Experimental native-resolution FSR2 AA backend using Unity's managed AMD
     /// module. It does not alter Redux render scale or include UI in history.
     /// </summary>
-    internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve
+    internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
     {
         private static readonly int CameraDepthTexture =
             Shader.PropertyToID("_CameraDepthTexture");
@@ -78,6 +78,17 @@ namespace ReduxBetterAA.Backends
         public string Id => "FSR2 Native AA";
         internal bool RenderEnabled = true;
         public bool Active => _active && RenderEnabled;
+
+        public bool TryGetRasterProjection(Camera camera, out Matrix4x4 projection)
+        {
+            projection = default;
+            if (!Active || !_projectionJitterSupported || camera == null ||
+                (camera != _resolveCamera && camera != _sharedJitterCamera)) return false;
+            CameraProjectionState state = camera == _sharedJitterCamera ? _sharedProjection : _resolveProjection;
+            projection = state.GetRasterProjection(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
+            return true;
+        }
         public bool ManagedSurfaceAvailable { get; private set; }
         public bool ContextCreated => _api.ContextCreated;
         public uint DeviceVersion => _api.DeviceVersion;

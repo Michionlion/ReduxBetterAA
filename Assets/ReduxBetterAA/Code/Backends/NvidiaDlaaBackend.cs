@@ -15,7 +15,7 @@ namespace ReduxBetterAA.Backends
     /// Phase 4 equal-input/output DLAA backend. UnityEngine.NVIDIA is reached only
     /// through NvidiaDlaaApi so an absent managed or native module remains non-fatal.
     /// </summary>
-    internal sealed class NvidiaDlaaBackend : ITemporalBackend, ISceneResolve
+    internal sealed class NvidiaDlaaBackend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
     {
 
         private static readonly int CameraDepthTexture =
@@ -78,6 +78,17 @@ namespace ReduxBetterAA.Backends
         public string Id => "NVIDIA DLAA";
         internal bool RenderEnabled = true;
         public bool Active => _active && RenderEnabled;
+
+        public bool TryGetRasterProjection(Camera camera, out Matrix4x4 projection)
+        {
+            projection = default;
+            if (!Active || !_projectionJitterSupported || camera == null ||
+                (camera != _resolveCamera && camera != _sharedJitterCamera)) return false;
+            CameraProjectionState state = camera == _sharedJitterCamera ? _sharedProjection : _resolveProjection;
+            projection = state.GetRasterProjection(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
+            return true;
+        }
         public bool ManagedSurfaceAvailable { get; private set; }
         public bool ContextCreated => _api.ContextCreated;
         public uint DeviceVersion => _api.DeviceVersion;
