@@ -4,8 +4,8 @@
 
 1. Install [KSP2 Redux](https://github.com/KSP2Redux/Redux) 0.2.9.0 into your KSP2
    installation and close the game.
-2. Install Git, PowerShell 7, Python 3 and activate Unity **6000.5.8f1**
-   through [Unity Hub](https://unity.com/download).
+2. Install Git, PowerShell 7.4+, Python 3 and activate Unity **6000.5.8f1**
+   with Windows Build Support (Mono) through [Unity Hub](https://unity.com/download).
 3. Clone this repository and run:
 
 ```powershell
@@ -43,22 +43,28 @@ and a stock-part launchpad save facing the northwest hills. `redux-cli doctor --
 reports the launcher configuration and game-profile paths. Close KSP2, Unity
 and the Redux launcher before running.
 
+Complete release packages include runtimes for both supported Redux versions.
+Set `UNITY_EDITOR` to Unity 6000.5.8f1 and `UNITY_EDITOR_LEGACY` to 6000.4.1f1;
+both need Windows Build Support (Mono). The harness builds against the candidate
+game using the current editor; no additional compiler or SDK is needed.
+
 ```powershell
 pwsh -NoProfile -File tools/Test-Candidate.ps1
 ```
 
-The pipeline requires committed source. It copies the clean game, installs the
-latest Redux beta, builds from a fresh source checkout, and installs the candidate
-and harness. It tests once without vendor runtimes and again with the matching
-DLLs from the configured editor. Each run retains its candidate ZIP, versions,
-hashes, logs, screenshots and validation results in `TEST_WORKSPACE`.
+The pipeline requires clean, committed mod and harness source. It copies the
+clean game, installs the latest Redux beta, clones both repositories, and builds
+a complete local release. It installs the mod ZIP, tests without vendor runtimes,
+then extracts the matching runtime ZIP and tests again. Each run retains its
+release files, versions, hashes, logs, screenshots and validation results in
+`TEST_WORKSPACE`.
 
 The launcher configuration and existing game profile are restored afterward.
 Tests use a separate profile with only previously accepted legal preferences;
 they do not accept new agreements. Nothing is tagged, pushed or published.
 Moving-image quality and performance still need the checks below.
 
-## Checks and publishing
+## Prepare and publish a release
 
 Run `pwsh -NoProfile -File tools/Test-Release.ps1` for portable packaging,
 source and script checks. No Python packages need installing. Complete the
@@ -66,32 +72,38 @@ source and script checks. No Python packages need installing. Complete the
 
 Update the version in `Copied/swinfo.json` and
 `Code/AssemblyInfo.cs` under `Assets/ReduxBetterAA`. Write
-`docs/releases/vX.Y.Z.md`, record the checklist results there, and commit on main.
+`docs/releases/vX.Y.Z.md`, record the checklist results there, and commit.
+
+To build a complete release locally, pass your installed game and editor paths:
 
 ```powershell
-pwsh -NoProfile -File tools/Release.ps1 -Version X.Y.Z -Publish
+./tools/Release.ps1 -Version X.Y.Z `
+    -Unity 'D:\Unity\6000.5.8f1\Editor\Unity.exe' `
+    -Ksp2Root 'C:\Games\Kerbal Space Program 2' `
+    -RuntimeEditors @('D:\Unity\6000.5.8f1\Editor', 'D:\Unity\6000.4.1f1\Editor')
 ```
 
-Publishing also needs GitHub CLI authentication (`gh auth login`) and the Windows
-Mono player support files for Unity 6000.5.8f1 and 6000.4.1f1. Install those
-locally through Unity Hub. The release script uses `-Unity` for the current
-editor and the standard Hub path for 6000.4.1f1. For custom locations, invoke
-from PowerShell with `-RuntimeEditors @('D:\Unity\6000.5.8f1\Editor',
-'D:\Unity\6000.4.1f1\Editor')`. Ordinary builds need only the current editor.
+Run this from PowerShell 7.4+. Results go under `Deploy/releases`. Local
+preparation works in a detached checkout and needs no GitHub authentication or
+remote. It does not fetch, push, create tags or contact GitHub. Its changelog starts
+after the nearest ancestor version tag, or at the start of history when none
+exists. A tag on the current commit is skipped. Unity's first package resolution
+still needs network access. Ordinary builds need only the current editor.
 
 Every release packages both runtime ZIPs from those local files, validates
 their pinned hashes, and includes only three DLLs and one notices file per ZIP.
 When adding support for a new Unity player, review its vendor terms and update
 `tools/runtime-targets.json` from verified official player files.
-The script requires clean source, runs the checks and build, verifies that
-tracked files and HEAD stayed unchanged, and pushes main and the annotated tag
-atomically. It uploads the mod ZIP, separate runtime ZIPs, changelog since the
-previous release, build information and checksums to a draft, downloads and
-verifies each file, then publishes the beta. Use `-Stable` for a stable release.
-
-Omit `-Publish` to build and prepare release files without publishing.
-An existing public release is never overwritten. Failed draft uploads can be
-retried from the same commit. No GitHub Actions or license secrets are used.
+The script requires clean source, runs the checks and build, and verifies that
+tracked files and HEAD stayed unchanged. To publish, run the same command on
+`main` with `-Publish` and GitHub CLI authentication (`gh auth login`). Publishing
+requires the project's GitHub `origin`, fetches remote history, and pushes main
+and the annotated tag atomically. It uploads the mod ZIP, separate runtime ZIPs,
+changelog since the previous published release, build information and checksums
+to a draft, downloads and verifies each file, then publishes the beta. Use
+`-Stable` for a stable release. An existing public release is never overwritten;
+failed draft uploads can be retried from the same commit. No GitHub Actions or
+license secrets are used.
 
 Every Unity step must exit 0. Packaging also requires a fresh ZIP, a completion
 marker and no compiler/shader errors.

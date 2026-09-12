@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.UIElements.UIToolkitProjectSettings
   m_EnableAdvancedText: 1
-  m_DefaultRuntimeTheme: {fileID: -4733365628477956816, guid: 2fe325dd5362e6d4e9accafe66fdbb93, type: 3}
+  m_DefaultRuntimeTheme: {fileID: 0}
   m_DefaultEditorTheme: {fileID: 0}
   m_DefaultRuntimeCanvasTheme: 4
   m_DefaultEditorCanvasTheme: 0

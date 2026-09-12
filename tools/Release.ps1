@@ -24,36 +24,47 @@ $repository = 'Michionlion/ReduxBetterAA'
 $url = "https://github.com/$repository"
 $notesPath = Join-Path $repo "docs\releases\$tag.md"
 if (-not (Test-Path -LiteralPath $notesPath)) { throw "Write and commit release notes first: $notesPath" }
-$branch = (Invoke-ReleaseGit $repo @('symbolic-ref', '--short', 'HEAD')) -join ''
-if ($branch -ne 'main') { throw 'Publish releases from main.' }
-$remote = (Invoke-ReleaseGit $repo @('remote', 'get-url', '--push', 'origin')) -join ''
-if ($remote -notin @("git@github.com:$repository.git", "$url.git", $url)) { throw 'origin does not point to ReduxBetterAA.' }
-
 function Invoke-Gh([string[]] $Arguments) {
     $result = @(& gh @Arguments)
     if ($LASTEXITCODE -ne 0) { throw "GitHub command failed: gh $($Arguments -join ' ')" }
     return $result
 }
 
-# Read-only preflight also ensures authentication and history are available before a long build.
-Invoke-ReleaseGit $repo @('fetch', 'origin', 'main', '--tags') | Out-Host
-Invoke-ReleaseGit $repo @('merge-base', '--is-ancestor', 'origin/main', $commit) | Out-Null
-$pages = ((Invoke-Gh @('api', "repos/$repository/releases", '--paginate', '--slurp')) -join "`n") | ConvertFrom-Json -NoEnumerate
-$allReleases = @($pages | ForEach-Object { foreach ($release in $_) { $release } })
-$existing = @($allReleases | Where-Object tag_name -eq $tag)
-if ($existing.Count -and -not $existing[0].draft) { throw "$tag is already published; choose a new version." }
-$previous = @($allReleases | Where-Object { -not $_.draft -and $_.tag_name -ne $tag } | Sort-Object published_at -Descending | Select-Object -First 1)
-$range = $commit
-if ($previous.Count) {
-    $previousTag = $previous[0].tag_name
-    Invoke-ReleaseGit $repo @('merge-base', '--is-ancestor', "$previousTag^{}", $commit) | Out-Null
-    $range = "$previousTag..$commit"
+$previousTag = $null
+if ($Publish) {
+    $branch = (Invoke-ReleaseGit $repo @('symbolic-ref', '--short', 'HEAD')) -join ''
+    if ($branch -ne 'main') { throw 'Publish releases from main.' }
+    $remote = (Invoke-ReleaseGit $repo @('remote', 'get-url', '--push', 'origin')) -join ''
+    if ($remote -notin @("git@github.com:$repository.git", "$url.git", $url)) { throw 'origin does not point to ReduxBetterAA.' }
+    Invoke-ReleaseGit $repo @('fetch', 'origin', 'main', '--tags') | Out-Host
+    Invoke-ReleaseGit $repo @('merge-base', '--is-ancestor', 'origin/main', $commit) | Out-Null
+    $pages = ((Invoke-Gh @('api', "repos/$repository/releases", '--paginate', '--slurp')) -join "`n") | ConvertFrom-Json -NoEnumerate
+    $allReleases = @($pages | ForEach-Object { foreach ($release in $_) { $release } })
+    $existing = @($allReleases | Where-Object tag_name -eq $tag)
+    if ($existing.Count -and -not $existing[0].draft) { throw "$tag is already published; choose a new version." }
+    $previous = @($allReleases | Where-Object { -not $_.draft -and $_.tag_name -ne $tag } | Sort-Object published_at -Descending | Select-Object -First 1)
+    if ($previous.Count) {
+        $previousTag = $previous[0].tag_name
+        Invoke-ReleaseGit $repo @('merge-base', '--is-ancestor', "$previousTag^{}", $commit) | Out-Null
+    }
+    $existingTag = @(Invoke-ReleaseGit $repo @('tag', '--list', $tag))
+    if ($existingTag.Count) {
+        $tagCommit = (Invoke-ReleaseGit $repo @('rev-parse', "$tag^{}")) -join ''
+        if ($tagCommit -ne $commit) { throw 'The version tag already points to another commit.' }
+    }
+} else {
+    $tagPatterns = @()
+    foreach ($candidateTag in (Invoke-ReleaseGit $repo @('tag', '--merged', $commit))) {
+        if ($candidateTag -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') { continue }
+        if (((Invoke-ReleaseGit $repo @('rev-parse', "$candidateTag^{}")) -join '') -ne $commit) {
+            $tagPatterns += @('--match', $candidateTag)
+        }
+    }
+    if ($tagPatterns.Count) {
+        $previousTag = (Invoke-ReleaseGit $repo (@('describe', '--tags', '--abbrev=0') + $tagPatterns + @($commit))) -join ''
+    }
 }
-$existingTag = @(Invoke-ReleaseGit $repo @('tag', '--list', $tag))
-if ($existingTag.Count) {
-    $tagCommit = (Invoke-ReleaseGit $repo @('rev-parse', "$tag^{}")) -join ''
-    if ($tagCommit -ne $commit) { throw 'The version tag already points to another commit.' }
-}
+$range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
 
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
 & (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
@@ -65,7 +76,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed.' }
 $runtimeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'BetterAA-Runtimes-*.zip' -File | Sort-Object Name)
 $format = "--format=- %s ([%h]($url/commit/%H))"
 $history = @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range))
-$heading = if ($previous.Count) { "Changes since $previousTag" } else { 'Changes through the first public release' }
+$heading = if ($previousTag) { "Changes since $previousTag" } else { 'Changes through the first public release' }
 @("# $tag", '', $heading, '') + $history | Set-Content -LiteralPath (Join-Path $output 'CHANGELOG.md') -Encoding utf8NoBOM
 [xml]$tests = Get-Content -LiteralPath (Join-Path $repo 'Logs\beta-editmode.xml') -Raw
 $info = [ordered]@{
@@ -74,7 +85,7 @@ $info = [ordered]@{
     editModePassed = [int]$tests.'test-run'.passed; editModeFailed = [int]$tests.'test-run'.failed
     portableChecksPassed = $true; nativeLibrariesIncluded = $false
     separateRuntimePackages = @($runtimeAssets.Name)
-    previousRelease = $(if ($previous.Count) { $previousTag } else { $null })
+    previousRelease = $previousTag
 }
 $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
 $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)

@@ -42,7 +42,7 @@ foreach ($line in Get-Content -LiteralPath $EnvFile) {
     if ([IO.Path]::GetFullPath($value) -eq [IO.Path]::GetPathRoot($value)) { throw "$key must not be a drive root." }
     $paths[$key] = [IO.Path]::GetFullPath($value).TrimEnd('\')
 }
-$required = @('KSP2_SOURCE', 'TEST_WORKSPACE', 'REDUX_CLI', 'REDUX_CONFIG', 'UNITY_EDITOR', 'TEST_HARNESS', 'TEST_FIXTURE', 'KSP2_PROFILE')
+$required = @('KSP2_SOURCE', 'TEST_WORKSPACE', 'REDUX_CLI', 'REDUX_CONFIG', 'UNITY_EDITOR', 'UNITY_EDITOR_LEGACY', 'TEST_HARNESS', 'TEST_FIXTURE', 'KSP2_PROFILE')
 foreach ($key in $required) {
     if (-not $paths.ContainsKey($key)) { throw "Set $key in $EnvFile." }
     $existing = $paths[$key]
@@ -74,6 +74,7 @@ if (Get-NetTCPConnection -State Listen -LocalPort 28542 -ErrorAction SilentlyCon
 $harnessCli = Join-Path $paths.TEST_HARNESS 'redux-test.ps1'
 if (-not (Test-Path -LiteralPath $harnessCli)) { throw 'TEST_HARNESS must contain the ready-to-run redux-test.ps1 CLI.' }
 $commit = Assert-ReleaseSource $repo
+$harnessCommit = Assert-ReleaseSource $paths.TEST_HARNESS
 $version = Get-ReleaseVersion $repo
 $editorVersion = (Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', ''
 $target = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'runtime-targets.json') -Raw | ConvertFrom-Json -AsHashtable)[$editorVersion]
@@ -87,9 +88,11 @@ $runName = 'candidate-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::N
 $run = Join-Path $paths.TEST_WORKSPACE $runName
 $game = Join-Path $run 'game'
 $source = Join-Path $run 'source'
+$harness = Join-Path $run 'harness'
 New-Item -ItemType Directory -Force -Path $paths.TEST_WORKSPACE | Out-Null
 New-Item -ItemType Directory -Path $run | Out-Null
 $summary = [ordered]@{ status = 'failed'; startedUtc = [DateTime]::UtcNow.ToString('o'); commit = $commit; version = $version; editor = $editorVersion; inputs = $paths; runtimes = $target.hashes; run = $run; phases = @() }
+$summary.harnessCommit = $harnessCommit
 $profileBackup = $paths.KSP2_PROFILE + '.' + $runName + '-original'
 $profileEvidence = $paths.KSP2_PROFILE + '.' + $runName + '-results'
 if ((Test-Path -LiteralPath $profileBackup) -or (Test-Path -LiteralPath $profileEvidence)) { throw 'Profile backup paths already exist.' }
@@ -117,14 +120,21 @@ try {
     if ((Get-Item -LiteralPath (Join-Path $game 'UnityPlayer.dll')).VersionInfo.FileVersion -notlike (($editorVersion -replace 'f\d+$', '.') + '*')) { throw 'Redux and the pinned Unity editor have different player versions.' }
     Invoke-Checked git @('clone', '--no-local', '--', $repo, $source) (Join-Path $run 'clone.log')
     Invoke-Checked git @('-C', $source, 'checkout', '--detach', $commit) (Join-Path $run 'checkout.log')
-    Invoke-Checked pwsh @('-NoProfile', '-File', (Join-Path $source 'tools\Test-Release.ps1')) (Join-Path $run 'portable-tests.log')
-    Invoke-Checked pwsh @('-NoProfile', '-File', (Join-Path $source 'tools\Build.ps1'), '-Unity', $paths.UNITY_EDITOR, '-Ksp2Root', $game) (Join-Path $run 'build.log')
-    $zip = Join-Path $source "Deploy\ReduxBetterAA-$version.zip"
+    & (Join-Path $source 'tools\Release.ps1') -Version $version -Unity $paths.UNITY_EDITOR -Ksp2Root $game `
+        -RuntimeEditors @((Split-Path $paths.UNITY_EDITOR), (Split-Path $paths.UNITY_EDITOR_LEGACY)) *>&1 |
+        Tee-Object -FilePath (Join-Path $run 'release.log') | Out-Host
+    $releases = @(Get-ChildItem -LiteralPath (Join-Path $source 'Deploy\releases') -Directory)
+    if ($releases.Count -ne 1) { throw 'Expected one freshly prepared release.' }
+    $summary.releaseDirectory = $releases[0].FullName
+    $zip = Join-Path $summary.releaseDirectory "ReduxBetterAA-$version.zip"
     $summary.package = @{ path = $zip; sha256 = (Get-FileHash -LiteralPath $zip).Hash }
     Expand-Archive -LiteralPath $zip -DestinationPath $game
     $assembly = Join-Path $game 'mods\ReduxBetterAA\ReduxBetterAA.dll'
     $summary.assemblySha256 = (Get-FileHash -LiteralPath $assembly).Hash
-    Invoke-Checked pwsh @('-NoProfile', '-File', (Join-Path $paths.TEST_HARNESS 'scripts\install-mod.ps1'), '-GameRoot', $game, '-UnityRoot', (Split-Path (Split-Path $paths.UNITY_EDITOR -Parent) -Parent)) (Join-Path $run 'harness-build.log')
+    Invoke-Checked git @('clone', '--no-local', '--', $paths.TEST_HARNESS, $harness) (Join-Path $run 'clone-harness.log')
+    Invoke-Checked git @('-C', $harness, 'checkout', '--detach', $harnessCommit) (Join-Path $run 'checkout-harness.log')
+    $harnessCli = Join-Path $harness 'redux-test.ps1'
+    Invoke-Checked pwsh @('-NoProfile', '-File', (Join-Path $harness 'scripts\install-mod.ps1'), '-GameRoot', $game, '-UnityRoot', (Split-Path (Split-Path $paths.UNITY_EDITOR -Parent) -Parent)) (Join-Path $run 'harness-build.log')
     $summary.harnessSha256 = (Get-FileHash -LiteralPath (Join-Path $game 'mods\ReduxTestHarness\ReduxTestHarness.dll')).Hash
     $fixtures = Join-Path $run 'fixtures'
     New-Item -ItemType Directory -Path $fixtures | Out-Null
@@ -143,8 +153,8 @@ try {
         $phaseRoot = Join-Path $run $phase
         New-Item -ItemType Directory -Path $phaseRoot | Out-Null
         if ($phase -eq 'native') {
+            Expand-Archive -LiteralPath (Join-Path $summary.releaseDirectory "BetterAA-Runtimes-Redux-$($target.redux).zip") -DestinationPath $game
             foreach ($name in $target.hashes.Keys) {
-                Copy-Item -LiteralPath (Join-Path $nativeRoot $name) -Destination $game
                 if ((Get-FileHash -LiteralPath (Join-Path $game $name)).Hash -ne $target.hashes[$name]) { throw "Installed runtime hash differs: $name" }
             }
         }
@@ -179,6 +189,8 @@ finally {
     try {
         [void](Assert-ReleaseSource $repo $commit)
         if (Test-Path -LiteralPath (Join-Path $source '.git')) { [void](Assert-ReleaseSource $source $commit) }
+        [void](Assert-ReleaseSource $paths.TEST_HARNESS $harnessCommit)
+        if (Test-Path -LiteralPath (Join-Path $harness '.git')) { [void](Assert-ReleaseSource $harness $harnessCommit) }
     }
     catch { $summary.status = 'failed'; $summary.sourceError = $_.Exception.Message; $failure = $_ }
     $summary.endedUtc = [DateTime]::UtcNow.ToString('o')

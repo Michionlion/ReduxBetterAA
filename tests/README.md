@@ -8,11 +8,11 @@ keep private fixtures, raw captures and one-off investigations outside the repo.
 - `pwsh -NoProfile -File tools/Test-Release.ps1`: package allowlist, metadata,
   version agreement, path safety, source cleanliness guards, script syntax,
   and runtime ZIP contents, source validation and overwrite protection.
-- `pwsh -NoProfile -File tools/Test-Candidate.ps1`: fresh game/source copies,
-  latest Redux beta, candidate build, and in-game checks with and without vendor
+- `pwsh -NoProfile -File tools/Test-Candidate.ps1`: fresh game/mod/harness copies,
+  latest Redux beta, complete release packages, and in-game checks with and without vendor
   runtimes. Configure paths in `.env`; see [setup](../CONTRIBUTING.md#test-a-release-candidate).
-- `tools/Release.ps1`: validate all supported runtime DLLs against pinned hashes,
-  package three DLLs and notices per runtime ZIP, then verify uploaded assets.
+- `tools/Release.ps1`: prepare the mod, runtime ZIPs, changelog and checksums
+  locally. With `-Publish`, also verify the uploaded assets before publishing.
 - `pwsh -NoProfile -File tools/Build.ps1`: all EditMode tests, shader/assembly
   compilation, player build and installable ZIP validation.
 - For build/dependency changes, repeat the documented first build from a fresh
