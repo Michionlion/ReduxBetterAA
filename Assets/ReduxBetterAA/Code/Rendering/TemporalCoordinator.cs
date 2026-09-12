@@ -102,7 +102,7 @@ namespace ReduxBetterAA.Rendering
         private TemporalBackendConfig _ppv2Config =
             TemporalBackendConfig.ConservativePpv2;
         private CustomTaaConfig _customConfig = CustomTaaConfig.Conservative;
-        private DlaaConfig _dlaaConfig = DlaaConfig.Conservative;
+        private readonly DlaaSceneSettings _dlaaSettings = new DlaaSceneSettings();
         private Fsr2Config _fsr2Config = Fsr2Config.Conservative;
         private string _status = "Off";
 
@@ -185,7 +185,8 @@ namespace ReduxBetterAA.Rendering
         public HistoryResetReason LastResetReason => _lastResetReason;
         public TemporalBackendConfig Ppv2Config => _ppv2Config;
         public CustomTaaConfig CustomConfig => _customConfig;
-        public DlaaConfig DlaaConfig => _dlaaConfig;
+        public DlaaConfig DlaaConfig => _dlaaSettings.Current;
+        public bool DlaaPresetIsMenuOnly => _dlaaSettings.IsMainMenu;
         public Fsr2Config Fsr2Config => _fsr2Config;
         public long CustomEstimatedMemoryBytes => _customBackend.EstimatedMemoryBytes;
         public bool DlaaManagedSurfaceAvailable =>
@@ -451,15 +452,29 @@ namespace ReduxBetterAA.Rendering
 
         public void SetDlaaConfig(DlaaConfig config)
         {
-            if (_dlaaConfig.ValuesEqual(in config))
+            DlaaConfig previous = DlaaConfig;
+            _dlaaSettings.SetCurrent(config);
+            ApplyDlaaConfig(previous);
+        }
+
+        public void SetPersistentDlaaConfig(DlaaConfig config)
+        {
+            DlaaConfig previous = DlaaConfig;
+            _dlaaSettings.SetSaved(config);
+            ApplyDlaaConfig(previous);
+        }
+
+        private void ApplyDlaaConfig(DlaaConfig previous)
+        {
+            DlaaConfig config = DlaaConfig;
+            if (previous.ValuesEqual(in config))
             {
                 return;
             }
-            bool recreate = _dlaaConfig.RequiresContextRecreation(in config);
-            bool resetHistory = _dlaaConfig.RequiresHistoryReset(in config);
-            _dlaaConfig = config;
+            bool recreate = previous.RequiresContextRecreation(in config);
+            bool resetHistory = previous.RequiresHistoryReset(in config);
             _performanceProfiler.Invalidate(BackendSelection.NvidiaDlaa);
-            _dlaaBackend.ApplyConfig(in _dlaaConfig);
+            _dlaaBackend.ApplyConfig(in config);
             if (_activeBackend == _dlaaBackend && _activeBackend.Active)
             {
                 if (recreate)
@@ -714,7 +729,9 @@ namespace ReduxBetterAA.Rendering
 
             _ppv2Backend.ApplyConfig(in _ppv2Config);
             _customBackend.ApplyConfig(in _customConfig);
-            _dlaaBackend.ApplyConfig(in _dlaaConfig);
+            _dlaaSettings.SetScene(_cameras != null && _cameras.SceneKind == TemporalSceneKind.MainMenu);
+            DlaaConfig dlaaConfig = DlaaConfig;
+            _dlaaBackend.ApplyConfig(in dlaaConfig);
             _fsr2Backend.ApplyConfig(in _fsr2Config);
             ITemporalBackend requestedBackend = GetBackend(effectiveRequest);
 
