@@ -233,7 +233,7 @@ namespace ReduxBetterAA.Backends.Nvidia
                 if (!loaded)
                 {
                     failureReason =
-                        "native Unity NVIDIA plugin did not load (no proprietary binaries are bundled)";
+                        "native Unity NVIDIA plugin did not load; install the matching optional runtime ZIP";
                     return false;
                 }
 

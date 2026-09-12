@@ -90,12 +90,7 @@ namespace ReduxBetterAA.Rendering
 
         public void ReleaseResources()
         {
-            if (_mask != null)
-            {
-                _mask.Release();
-                UnityEngine.Object.Destroy(_mask);
-                _mask = null;
-            }
+            TemporalTextures.Release(ref _mask);
             _width = 0;
             _height = 0;
         }

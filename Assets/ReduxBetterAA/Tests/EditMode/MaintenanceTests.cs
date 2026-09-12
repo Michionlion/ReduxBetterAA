@@ -92,13 +92,21 @@ namespace ReduxBetterAA.Tests
         [Test]
         public void RegistryPreservesEveryBackendAndUnknownSelectionFallsBackToOff()
         {
-            using (var coordinator = new TemporalCoordinator(null, false))
+            using (var coordinator = new TemporalCoordinator(null))
             {
-                string[] names = { "Off", "FXAA Low", "FXAA High", "SMAA", "PPv2 TAA",
-                    "Custom TAA", "NVIDIA DLAA", "FSR2 Native AA" };
+                // Legacy numeric mode 4 resolves to the same Custom TAA instance as 5.
+                string[] names = { "Off", "FXAA Low", "FXAA High", "SMAA", "Custom TAA",
+                    "Custom TAA", "NVIDIA DLAA", "FSR2 Native AA", "Supersampling" };
                 for (int index = 0; index < names.Length; index++)
                     Assert.That(coordinator.GetBackend((BackendSelection)index).Id, Is.EqualTo(names[index]));
+                Assert.That(coordinator.GetBackend((BackendSelection)4),
+                    Is.SameAs(coordinator.GetBackend(BackendSelection.CustomTaa)));
                 Assert.That(coordinator.GetBackend((BackendSelection)999).Id, Is.EqualTo("Off"));
+                Assert.That(coordinator.GetBackend((BackendSelection)(-1)).Id, Is.EqualTo("Off"));
+                coordinator.SetRequestedBackend((BackendSelection)4);
+                Assert.That(coordinator.RequestedBackend, Is.EqualTo(BackendSelection.CustomTaa));
+                coordinator.SetRequestedBackend((BackendSelection)999);
+                Assert.That(coordinator.RequestedBackend, Is.EqualTo(BackendSelection.Off));
             }
         }
 

@@ -21,7 +21,6 @@ namespace ReduxBetterAA.Diagnostics
     internal sealed class AaComparison : MonoBehaviour
     {
         internal const string ShaderAddress = "Assets/ReduxBetterAA/Shaders/AaComparison.shader";
-        internal static readonly string[] Modes = DebugMenu.Modes;
         private static readonly BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
         private static readonly FieldInfo Sources = typeof(RenderScalePresenter).GetField("_sourceCameras", Private);
         private static readonly FieldInfo PresenterCamera = typeof(RenderScalePresenter).GetField("_presentCamera", Private);
@@ -37,7 +36,6 @@ namespace ReduxBetterAA.Diagnostics
         private Camera _oldPresenter, _present;
         private bool[] _enabled;
         private bool _presentEnabled, _frameClaimed;
-        private TemporalAntialiasing _originalTaa;
         private Material _material;
         private AsyncOperationHandle<Shader> _shader;
         private int _width, _height;
@@ -59,7 +57,7 @@ namespace ReduxBetterAA.Diagnostics
             GUILayout.Label("Live A/B · full scene on each side · UI stays native");
             for (int i = 0; i < 2; i++)
             {
-                _selection[i] = DebugMenu.Dropdown(i == 0 ? "Left" : "Right", _selection[i], Modes, ref _open[i]);
+                _selection[i] = (int)DebugMenu.ModeDropdown(i == 0 ? "Left" : "Right", (BackendSelection)_selection[i], ref _open[i]);
                 if (_selection[i] == 8)
                 {
                     GUILayout.Label("Supersampling: " + _scale[i] + "% per dimension");
@@ -81,8 +79,9 @@ namespace ReduxBetterAA.Diagnostics
         internal void StartComparison(int left, int right, int leftScale = 200, int rightScale = 200)
         {
             Stop();
-            if (left < 0 || left >= Modes.Length || right < 0 || right >= Modes.Length) { Status = "Invalid comparison mode."; return; }
-            _selection[0] = left; _selection[1] = right;
+            if (left < 0 || left > (int)BackendSelection.Supersampling || right < 0 || right > (int)BackendSelection.Supersampling) { Status = "Invalid comparison mode."; return; }
+            _selection[0] = (int)UserSettingsPolicy.NormalizeBackend((BackendSelection)left);
+            _selection[1] = (int)UserSettingsPolicy.NormalizeBackend((BackendSelection)right);
             _scale[0] = leftScale; _scale[1] = rightScale;
             Busy = true;
             StartCoroutine(GuardStart());
@@ -119,7 +118,6 @@ namespace ReduxBetterAA.Diagnostics
             _enabled = new bool[_sources.Length];
             _width = Screen.width; _height = Screen.height;
             _gameState = TemporalCameraDiscovery.ReadGameState();
-            _originalTaa = _scene.ResolveLayer.temporalAntialiasing;
             _normal.SuspendForComparison(true);
             _normal.ComparisonReset += ResetHistory;
             // Native AA arms always receive native color/depth/motion. Only the
@@ -137,7 +135,7 @@ namespace ReduxBetterAA.Diagnostics
             if (_shader.Status != AsyncOperationStatus.Succeeded || _shader.Result == null) { Fail("Comparison shader unavailable."); yield break; }
             for (int i = 0; i < 2; i++)
             {
-                if (!_arms[i].Configure(_scene, _width, _height, out string reason)) { Fail(Modes[_selection[i]] + ": " + reason); yield break; }
+                if (!_arms[i].Configure(_scene, _width, _height, out string reason)) { Fail(DebugMenu.ModeName((BackendSelection)_selection[i]) + ": " + reason); yield break; }
             }
             _material = new Material(_shader.Result) { hideFlags = HideFlags.HideAndDontSave };
             _material.SetTexture("_RightTex", _arms[1].Output);
@@ -233,7 +231,6 @@ namespace ReduxBetterAA.Diagnostics
             _present = null;
             // Reverse claim order restores the original PPv2/depth state.
             for (int i = 1; i >= 0; i--) { _arms[i]?.Dispose(); _arms[i] = null; }
-            if (_scene?.ResolveLayer != null && _originalTaa != null) _scene.ResolveLayer.temporalAntialiasing = _originalTaa;
             if (_material != null) Destroy(_material);
             _material = null;
             if (_shader.IsValid()) Addressables.Release(_shader);
@@ -250,11 +247,9 @@ namespace ReduxBetterAA.Diagnostics
             internal readonly ITemporalBackend Backend;
             private readonly MotionVectorSanitizer _motion;
             private readonly DepthDisocclusionMask _depth;
-            private static readonly MethodInfo ReleaseTaa = typeof(TemporalAntialiasing).GetMethod("Release", Private);
-            private readonly TemporalAntialiasing _taa = new TemporalAntialiasing();
             private readonly int _mode, _scale;
             internal RenderTexture Output;
-            internal string Label => Modes[_mode] + " (" + _scale + "%, " + Output.width + "x" + Output.height + ")";
+            internal string Label => DebugMenu.ModeName((BackendSelection)_mode) + " (" + _scale + "%, " + Output.width + "x" + Output.height + ")";
             internal bool Ready => _motion.Ready && _depth.Ready && (!(Backend is CustomTaaBackend custom) || custom.ShaderReady);
 
             internal Arm(int mode, int scale, Logger logger, TemporalCoordinator normal, Action<string> failure)
@@ -267,9 +262,7 @@ namespace ReduxBetterAA.Diagnostics
                 switch (mode)
                 {
                     case 1: case 2: case 3:
-                        Backend = new Ppv2SpatialAaBackend(Modes[mode], mode == 3 ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.FastApproximateAntialiasing, mode == 1); break;
-                    case 4:
-                        var pp = new Ppv2TaaBackend(); pp.ApplyConfig(normal.Ppv2Config); Backend = pp; break;
+                        Backend = new Ppv2SpatialAaBackend(DebugMenu.ModeName((BackendSelection)mode), mode == 3 ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing : PostProcessLayer.Antialiasing.FastApproximateAntialiasing, mode == 1); break;
                     case 5:
                         var taa = new CustomTaaBackend(logger, () => { }, profiler, _motion, failure);
                         taa.ApplyConfig(normal.CustomConfig); taa.Initialize(); Backend = taa; break;
@@ -286,10 +279,9 @@ namespace ReduxBetterAA.Diagnostics
 
             internal bool Configure(TemporalCameraSet scene, int width, int height, out string reason)
             {
-                scene.ResolveLayer.temporalAntialiasing = _taa;
                 if (!Backend.Configure(scene, out reason)) return false;
                 Output = new RenderTexture(Mathf.CeilToInt(width * _scale / 100f), Mathf.CeilToInt(height * _scale / 100f), 24, RenderTextureFormat.DefaultHDR)
-                { name = "AA comparison " + Modes[_mode], filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
+                { name = "AA comparison " + DebugMenu.ModeName((BackendSelection)_mode), filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
                 if (!Output.Create()) { reason = "Render target allocation failed."; return false; }
                 Select(scene, false);
                 return true;
@@ -299,9 +291,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 SetRendering(enabled);
                 if (!enabled) return;
-                scene.ResolveLayer.temporalAntialiasing = _taa;
-                scene.ResolveLayer.antialiasingMode = _mode == 4 ? PostProcessLayer.Antialiasing.TemporalAntialiasing :
-                    _mode == 3 ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing :
+                scene.ResolveLayer.antialiasingMode = _mode == 3 ? PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing :
                     _mode == 1 || _mode == 2 ? PostProcessLayer.Antialiasing.FastApproximateAntialiasing : PostProcessLayer.Antialiasing.None;
                 if (_mode == 1 || _mode == 2) scene.ResolveLayer.fastApproximateAntialiasing.fastMode = _mode == 1;
                 if (scene.SharedJitterLayer != null && scene.SharedJitterLayer != scene.ResolveLayer)
@@ -313,12 +303,11 @@ namespace ReduxBetterAA.Diagnostics
                 if (Backend is CustomTaaBackend taa) taa.RenderEnabled = enabled;
                 if (Backend is NvidiaDlaaBackend dlaa) dlaa.RenderEnabled = enabled;
                 if (Backend is AmdFsr2Backend fsr) fsr.RenderEnabled = enabled;
-                if (Backend is Ppv2TaaBackend pp) pp.RenderEnabled = enabled;
             }
 
             public void Dispose()
             {
-                Backend.Dispose(); _motion.Dispose(); _depth.Dispose(); ReleaseTaa?.Invoke(_taa, null);
+                Backend.Dispose(); _motion.Dispose(); _depth.Dispose();
                 if (Output != null) { Output.Release(); Destroy(Output); Output = null; }
             }
         }

@@ -1,12 +1,23 @@
+using System;
+using ReduxBetterAA.Configuration;
 using UnityEngine;
 
 namespace ReduxBetterAA.Diagnostics
 {
     internal static class DebugMenu
     {
-        internal static readonly string[] Modes = {
-            "Off", "FXAA Low", "FXAA High", "SMAA", "PPv2 TAA", "TAA", "NVIDIA DLAA", "FSR2 Native AA", "Supersampling"
-        };
+        internal static readonly string[] Modes = UserSettingsPolicy.BuildModeChoices(true, true);
+        internal static readonly BackendSelection[] Backends = Array.ConvertAll(
+            Modes, mode => UserSettingsPolicy.ParseBackend(mode, true, true));
+
+        internal static string ModeName(BackendSelection backend) =>
+            Modes[Mathf.Max(0, Array.IndexOf(Backends, backend))];
+
+        internal static BackendSelection ModeDropdown(string label, BackendSelection selected, ref bool open)
+        {
+            int index = Mathf.Max(0, Array.IndexOf(Backends, selected));
+            return Backends[Dropdown(label, index, Modes, ref open)];
+        }
 
         // A small IMGUI dropdown: expands in the window so it also works near
         // screen edges, without creating a modal input layer over the game.

@@ -5,57 +5,15 @@ namespace ReduxBetterAA.Configuration
     internal enum BackendSelection
     {
         Off = 0,
-        // These three spatial modes mirror the post-processing AA choices
-        // exposed by KSP's graphics settings.  Keeping them in the shared
-        // selection enum lets the normal settings page, Ctrl+F10 panel, hotkey,
-        // and performance profiler all use the same source of truth.
         FxaaLow = 1,
         FxaaHigh = 2,
         Smaa = 3,
-        Ppv2Taa = 4,
+        // Value 4 belonged to PPv2 TAA. Keep the remaining IDs stable for
+        // settings and diagnostic consumers; legacy requests select custom TAA.
         CustomTaa = 5,
         NvidiaDlaa = 6,
         AmdFsr2 = 7,
         Supersampling = 8
-    }
-
-    internal readonly struct TemporalBackendConfig
-    {
-        public readonly float JitterSpread;
-        public readonly float Sharpness;
-        public readonly float StationaryBlending;
-        public readonly float MotionBlending;
-
-        public TemporalBackendConfig(
-            float jitterSpread,
-            float sharpness,
-            float stationaryBlending,
-            float motionBlending)
-        {
-            JitterSpread = Mathf.Clamp(jitterSpread, 0.1f, 1.0f);
-            // Sharpness is one shared user setting across every reconstructing
-            // backend. Keep PPv2 on that same 0-1 contract so the engineering
-            // panel cannot advertise values that persistence silently truncates.
-            Sharpness = Mathf.Clamp01(sharpness);
-            StationaryBlending = Mathf.Clamp(stationaryBlending, 0.0f, 0.99f);
-            MotionBlending = Mathf.Clamp(motionBlending, 0.0f, 0.99f);
-        }
-
-        public static TemporalBackendConfig ConservativePpv2 =>
-            new TemporalBackendConfig(
-                0.75f,
-                0.15f,
-                0.92f,
-                0.05f
-            );
-
-        public bool ValuesEqual(in TemporalBackendConfig other)
-        {
-            return JitterSpread == other.JitterSpread &&
-                   Sharpness == other.Sharpness &&
-                   StationaryBlending == other.StationaryBlending &&
-                   MotionBlending == other.MotionBlending;
-        }
     }
 
     internal enum CustomTaaDebugView
@@ -139,18 +97,8 @@ namespace ReduxBetterAA.Configuration
 
         public bool ValuesEqual(in CustomTaaConfig other)
         {
-            return JitterSpread == other.JitterSpread &&
-                   SequenceLength == other.SequenceLength &&
-                   StationaryHistory == other.StationaryHistory &&
-                   MovingHistory == other.MovingHistory &&
-                   MotionResponsePixels == other.MotionResponsePixels &&
-                   MaximumMotionPixels == other.MaximumMotionPixels &&
-                   DepthThreshold == other.DepthThreshold &&
-                   DepthEdgeStability == other.DepthEdgeStability &&
-                   VarianceGamma == other.VarianceGamma &&
-                   ReactiveScale == other.ReactiveScale &&
+            return !RequiresHistoryReset(in other) &&
                    Sharpening == other.Sharpening &&
-                   NoDepthHistory == other.NoDepthHistory &&
                    DebugView == other.DebugView;
         }
 
@@ -255,16 +203,9 @@ namespace ReduxBetterAA.Configuration
 
         public bool ValuesEqual(in DlaaConfig other)
         {
-            return JitterSpread == other.JitterSpread &&
-                   SequenceLength == other.SequenceLength &&
-                   Sharpness == other.Sharpness &&
-                   PreExposure == other.PreExposure &&
-                   AutoExposure == other.AutoExposure &&
-                   PreferPpv2Exposure == other.PreferPpv2Exposure &&
-                   InvertMotionX == other.InvertMotionX &&
-                   InvertMotionY == other.InvertMotionY &&
-                   Preset == other.Preset &&
-                   AllowSupersampling == other.AllowSupersampling;
+            return !RequiresContextRecreation(in other) &&
+                   !RequiresHistoryReset(in other) &&
+                   Sharpness == other.Sharpness;
         }
 
         public bool RequiresContextRecreation(in DlaaConfig other)
@@ -409,15 +350,9 @@ namespace ReduxBetterAA.Configuration
 
         public bool ValuesEqual(in Fsr2Config other)
         {
-            return JitterSpread == other.JitterSpread &&
-                   SequenceLength == other.SequenceLength &&
-                   EnableSharpening == other.EnableSharpening &&
-                   Sharpness == other.Sharpness &&
-                   PreExposure == other.PreExposure &&
-                   AutoExposure == other.AutoExposure &&
-                   PreferPpv2Exposure == other.PreferPpv2Exposure &&
-                   InvertMotionX == other.InvertMotionX &&
-                   InvertMotionY == other.InvertMotionY;
+            return !RequiresContextRecreation(in other) &&
+                   !RequiresHistoryReset(in other) &&
+                   Sharpness == other.Sharpness;
         }
 
         public bool RequiresContextRecreation(in Fsr2Config other)

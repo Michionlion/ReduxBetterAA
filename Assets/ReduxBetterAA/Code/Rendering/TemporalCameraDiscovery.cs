@@ -27,7 +27,7 @@ namespace ReduxBetterAA.Rendering
         public Camera SharedJitterCamera;
         public PostProcessLayer SharedJitterLayer;
         // Scaled planetary rendering needs matching opaque and transparent
-        // raster projections in both map and menu (decisions 0042/0045).
+        // raster projections in both map and menu.
         public bool ProjectionJitterSupported =>
             SceneKind == TemporalSceneKind.Flight ||
             SceneKind == TemporalSceneKind.KerbalSpaceCenter ||
@@ -90,50 +90,8 @@ namespace ReduxBetterAA.Rendering
 
         private static TemporalCameraSet DiscoverFlight(TemporalSceneKind sceneKind)
         {
-            Camera resolveCamera = null;
-            PostProcessLayer resolveLayer = null;
-            FlightCameraRenderStack_Physics[] physicsStacks =
-                Resources.FindObjectsOfTypeAll<FlightCameraRenderStack_Physics>();
-            for (int index = 0; index < physicsStacks.Length; index++)
-            {
-                FlightCameraRenderStack_Physics stack = physicsStacks[index];
-                if (!IsUsable(stack))
-                {
-                    continue;
-                }
-
-                Camera camera = stack.GetMainRenderCamera();
-                if (!IsUsable(camera))
-                {
-                    continue;
-                }
-                resolveCamera = camera;
-                resolveLayer = stack.GetPostProcessLayer();
-                break;
-            }
-
-            Camera sharedJitterCamera = null;
-            PostProcessLayer sharedJitterLayer = null;
-            FlightCameraRenderStack_Scaled[] scaledStacks =
-                Resources.FindObjectsOfTypeAll<FlightCameraRenderStack_Scaled>();
-            for (int index = 0; index < scaledStacks.Length; index++)
-            {
-                FlightCameraRenderStack_Scaled stack = scaledStacks[index];
-                if (!IsUsable(stack))
-                {
-                    continue;
-                }
-
-                Camera camera = stack.GetMainRenderCamera();
-                if (!IsUsable(camera))
-                {
-                    continue;
-                }
-                sharedJitterCamera = camera;
-                sharedJitterLayer = stack.GetPostProcessLayer();
-                break;
-            }
-
+            Camera resolveCamera = DiscoverStack<FlightCameraRenderStack_Physics>(out var resolveLayer);
+            Camera sharedJitterCamera = DiscoverStack<FlightCameraRenderStack_Scaled>(out var sharedJitterLayer);
             return new TemporalCameraSet
             {
                 SceneKind = sceneKind,
@@ -143,6 +101,30 @@ namespace ReduxBetterAA.Rendering
                 SharedJitterLayer = sharedJitterLayer,
                 RenderScalePercent = ReadRenderScalePercent()
             };
+        }
+
+        private static Camera DiscoverStack<T>(out PostProcessLayer layer)
+            where T : Component, ICameraRenderStack
+        {
+            T[] stacks = Resources.FindObjectsOfTypeAll<T>();
+            for (int index = 0; index < stacks.Length; index++)
+            {
+                T stack = stacks[index];
+                if (!IsUsable(stack))
+                {
+                    continue;
+                }
+
+                Camera camera = stack.GetMainRenderCamera();
+                if (!IsUsable(camera))
+                {
+                    continue;
+                }
+                layer = stack.GetPostProcessLayer();
+                return camera;
+            }
+            layer = null;
+            return null;
         }
 
         private static TemporalCameraSet DiscoverMap()
@@ -378,15 +360,17 @@ namespace ReduxBetterAA.Rendering
                    camera.isActiveAndEnabled;
         }
 
-        internal static string ReadGameState()
+        internal static string ReadGameState() => ReadCurrentGameState().ToString();
+
+        internal static GameState ReadCurrentGameState()
         {
             GameManager manager = GameManager.Instance;
             if (manager == null || manager.Game == null ||
                 manager.Game.GlobalGameState == null)
             {
-                return GameState.Invalid.ToString();
+                return GameState.Invalid;
             }
-            return manager.Game.GlobalGameState.GetGameState().GameState.ToString();
+            return manager.Game.GlobalGameState.GetGameState().GameState;
         }
     }
 }

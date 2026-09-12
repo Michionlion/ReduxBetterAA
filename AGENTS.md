@@ -1,23 +1,14 @@
 # Working on Better AA
 
-Read README.md, CONTRIBUTING.md and SPEC.md before changing the mod.
-Explicit maintainer instructions take precedence over these documents.
+Read [README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md) and
+[docs/architecture.md](docs/architecture.md). Maintainer instructions take precedence.
 
-- Keep scene color, depth, motion, jitter and reset state coherent across cameras.
-- Run one temporal backend. Failure falls back to Off.
-- Keep UI and map icons outside temporal history.
-- Allocate no managed memory per frame after warm-up. Cache lookups and resources.
-- Restore only state the mod still owns. Release resources on mode changes,
-  scene teardown and shutdown; cleanup must be idempotent.
-- Use runtime patches, never modify installed game assemblies or physics.
-- Verify rendering changes in the game. A screenshot or unit test alone cannot
-  establish temporal stability or performance.
-- Run the standard checks in tests/README.md. Report checks not performed.
-- Keep downloaded tools, game assemblies, captures and one-off experiments out
-  of this repository. Keep lasting regression tests; put investigation scripts
-  and evidence in an external working directory.
-- Keep SDK/editor/package versions pinned. Dependency changes need a build
-  from a fresh checkout and review of the resulting package.
-- Do not ship game or vendor libraries. Preserve third-party notices.
-- Update current documentation when behavior changes. Use Git history for old
-  decisions; do not create phase ledgers or evidence archives in the repository.
+- Preserve the rendering and ownership contracts in the architecture document.
+- Run the relevant [standard checks](tests/README.md); report checks not performed.
+  Rendering changes need in-game validation, not just stills or unit tests.
+- Keep dependencies pinned. Dependency/build changes need a fresh-checkout build
+  and package review. Do not modify installed game assemblies or physics.
+- Keep downloaded tools, binaries, captures and one-off experiments outside source.
+  Only the separate runtime ZIPs may contain approved vendor DLLs and their notices.
+- Update the existing documentation when behavior changes. Record design choices
+  in the architecture document and past decisions in Git, not new evidence ledgers.

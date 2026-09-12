@@ -33,8 +33,8 @@ then restore your configuration and reports. Keep only one Better AA installatio
 All modes except Supersampling render at 100%. Unsupported vendor modes are
 hidden; runtime failures fall back to Off with a reason in diagnostics.
 Map AA and foliage motion repair have separate settings. Physics is unchanged.
-The main menu starts with DLAA K; changes there apply to that menu visit and
-leave the saved gameplay preset alone.
+When DLAA is selected, each main-menu visit starts with preset K. Preset changes
+there apply only to that visit; other controls keep their normal persistence.
 
 ## In practice
 
@@ -62,5 +62,5 @@ images, then attach the ZIP and reproduction steps to an
 Reports stay in `mods/ReduxBetterAA/diagnostics/reports`; nothing is uploaded automatically.
 Capture can pause the game, and screenshots can contain visible vessel names/UI.
 
-[Build and release](docs/building.md) · [Contributing](CONTRIBUTING.md) ·
+[Build and contribute](CONTRIBUTING.md) · [Architecture and fixes](docs/architecture.md) ·
 [MIT license](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md)

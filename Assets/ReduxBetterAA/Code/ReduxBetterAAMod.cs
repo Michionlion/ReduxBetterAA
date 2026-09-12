@@ -13,8 +13,7 @@ namespace ReduxBetterAA
 {
     /// <summary>
     /// Redux loader entry point for renderer diagnostics and the mutually exclusive
-    /// Phase 2 PPv2, Phase 3 custom TAA, Phase 4 managed DLAA, and experimental
-    /// native-resolution FSR2 prototypes.
+    /// Scene AA selection, native-resolution temporal backends, and diagnostics.
     ///
     /// The AA backend remains off by default. While Off is selected, Redux
     /// explicitly owns a zero-AA baseline; all captured renderer state is
@@ -169,10 +168,7 @@ namespace ReduxBetterAA
             _probeService.Initialize();
             _probeService.InitializeIssueReports(this);
 
-            _temporalCoordinator = new TemporalCoordinator(
-                SWLogger,
-                false
-            );
+            _temporalCoordinator = new TemporalCoordinator(SWLogger);
             TemporalCoordinator.Current = _temporalCoordinator;
             _temporalCoordinator.Initialize();
 
@@ -192,9 +188,6 @@ namespace ReduxBetterAA
                 TemporalStatus = () => _temporalCoordinator.Status,
                 RequestedBackend = () => _temporalCoordinator.RequestedBackend,
                 SetRequestedBackend = SetRequestedBackendAndPersist,
-                Ppv2Config = () => _temporalCoordinator.Ppv2Config,
-                SetPpv2Config = SetPpv2ConfigAndPersist,
-                RestorePpv2Preset = RestoreConservativePpv2PresetAndPersist,
                 CustomConfig = () => _temporalCoordinator.CustomConfig,
                 SetCustomConfig = SetCustomConfigAndPersist,
                 RestoreCustomPreset = RestoreConservativeCustomPresetAndPersist,
@@ -241,7 +234,7 @@ namespace ReduxBetterAA
             _harmony = CreateHarmonyAndPatchAll();
 
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Backend] Spatial AA, PPv2, custom TAA, DLAA, and FSR2 Native AA backends installed; requested mode is " +
+                "[ReduxBetterAA/Backend] Spatial AA, custom TAA, DLAA, and FSR2 Native AA backends installed; requested mode is " +
                 _temporalCoordinator.RequestedBackend + "."
             );
         }
@@ -389,14 +382,6 @@ namespace ReduxBetterAA
 
             float sharpness = (float)_sharpnessEntry.Value;
             _temporalCoordinator.SetSupersamplingPercent((int)_supersamplingEntry.Value);
-            TemporalBackendConfig ppv2 = _temporalCoordinator.Ppv2Config;
-            _temporalCoordinator.SetPpv2Config(new TemporalBackendConfig(
-                ppv2.JitterSpread,
-                sharpness,
-                ppv2.StationaryBlending,
-                ppv2.MotionBlending
-            ));
-
             CustomTaaConfig custom = _temporalCoordinator.CustomConfig;
             _temporalCoordinator.SetCustomConfig(custom.WithUserSettings(
                 (float)_taaStabilityEntry.Value,
@@ -451,21 +436,6 @@ namespace ReduxBetterAA
                 _fsr2Selectable
             );
             SetRequestedBackendAndPersist(next);
-        }
-
-        private void SetPpv2ConfigAndPersist(TemporalBackendConfig config)
-        {
-            float sharpness = Mathf.Clamp01(config.Sharpness);
-            if (_temporalCoordinator != null)
-            {
-                _temporalCoordinator.SetPpv2Config(new TemporalBackendConfig(
-                    config.JitterSpread,
-                    sharpness,
-                    config.StationaryBlending,
-                    config.MotionBlending
-                ));
-            }
-            SetSharedSharpnessAndPersist(sharpness);
         }
 
         private void SetCustomConfigAndPersist(CustomTaaConfig config)
@@ -525,11 +495,6 @@ namespace ReduxBetterAA
             );
         }
 
-        private void RestoreConservativePpv2PresetAndPersist()
-        {
-            SetPpv2ConfigAndPersist(TemporalBackendConfig.ConservativePpv2);
-        }
-
         private void RestoreConservativeCustomPresetAndPersist()
         {
             SetCustomConfigAndPersist(CustomTaaConfig.Conservative);
@@ -553,14 +518,6 @@ namespace ReduxBetterAA
             {
                 return;
             }
-
-            TemporalBackendConfig ppv2 = _temporalCoordinator.Ppv2Config;
-            _temporalCoordinator.SetPpv2Config(new TemporalBackendConfig(
-                ppv2.JitterSpread,
-                sharpness,
-                ppv2.StationaryBlending,
-                ppv2.MotionBlending
-            ));
 
             CustomTaaConfig custom = _temporalCoordinator.CustomConfig;
             _temporalCoordinator.SetCustomConfig(custom.WithUserSettings(

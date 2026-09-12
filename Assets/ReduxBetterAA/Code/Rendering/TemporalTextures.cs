@@ -45,5 +45,19 @@ namespace ReduxBetterAA.Rendering
         public static bool IsHdr(RenderTextureFormat format) =>
             format == RenderTextureFormat.ARGBHalf || format == RenderTextureFormat.ARGBFloat ||
             format == RenderTextureFormat.RGB111110Float || format == RenderTextureFormat.DefaultHDR;
+
+        public static int EstimateColorBytes(RenderTextureFormat format)
+        {
+            switch (format)
+            {
+                case RenderTextureFormat.ARGBFloat:
+                    return 16;
+                case RenderTextureFormat.ARGBHalf:
+                case RenderTextureFormat.RGFloat:
+                    return 8;
+                default:
+                    return 4;
+            }
+        }
     }
 }

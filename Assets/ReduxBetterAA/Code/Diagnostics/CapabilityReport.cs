@@ -143,7 +143,6 @@ namespace ReduxBetterAA.Diagnostics
         public string motionVectorSanitizerStatus;
         public MotionMatrixRecord motionMatrix;
         public string depthDisocclusionMaskStatus;
-        public Ppv2SettingsRecord ppv2;
         public CustomTaaSettingsRecord custom;
         public DlaaSettingsRecord dlaa;
         public Fsr2SettingsRecord fsr2;
@@ -171,15 +170,6 @@ namespace ReduxBetterAA.Diagnostics
         public float[] unityPreviousViewProjection;
         public float[] trackedCurrentViewProjection;
         public float[] trackedPreviousViewProjection;
-    }
-
-    [Serializable]
-    public sealed class Ppv2SettingsRecord
-    {
-        public float jitterSpread;
-        public float sharpness;
-        public float stationaryBlending;
-        public float motionBlending;
     }
 
     [Serializable]
@@ -264,7 +254,6 @@ namespace ReduxBetterAA.Diagnostics
         public PerformanceProfileRecord fxaaLow;
         public PerformanceProfileRecord smaa;
         public PerformanceProfileRecord fxaaHigh;
-        public PerformanceProfileRecord ppv2;
         public PerformanceProfileRecord custom;
         public PerformanceProfileRecord dlaa;
         public PerformanceProfileRecord fsr2;

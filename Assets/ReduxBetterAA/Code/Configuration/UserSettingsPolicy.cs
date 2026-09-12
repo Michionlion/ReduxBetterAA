@@ -32,31 +32,20 @@ namespace ReduxBetterAA.Configuration
             choices[index++] = ModeSmaa;
             choices[index++] = ModeTaa;
             choices[index++] = ModeSupersampling;
-            if (dlaaSelectable && fsr2Selectable)
-            {
-                choices[index++] = ModeDlaa;
-                choices[index] = ModeFsr2;
-                return choices;
-            }
-            if (dlaaSelectable)
-            {
-                choices[index] = ModeDlaa;
-                return choices;
-            }
-            if (fsr2Selectable)
-            {
-                choices[index] = ModeFsr2;
-                return choices;
-            }
+            if (dlaaSelectable) choices[index++] = ModeDlaa;
+            if (fsr2Selectable) choices[index] = ModeFsr2;
             return choices;
         }
+
+        public static BackendSelection NormalizeBackend(BackendSelection backend) =>
+            (int)backend == 4 ? BackendSelection.CustomTaa : backend;
 
         public static BackendSelection NextBackend(
             BackendSelection current,
             bool dlaaSelectable,
             bool fsr2Selectable)
         {
-            switch (current)
+            switch (NormalizeBackend(current))
             {
                 case BackendSelection.Off:
                     return BackendSelection.Supersampling;
@@ -69,7 +58,6 @@ namespace ReduxBetterAA.Configuration
                 case BackendSelection.Smaa:
                     return BackendSelection.CustomTaa;
                 case BackendSelection.CustomTaa:
-                case BackendSelection.Ppv2Taa:
                     if (dlaaSelectable)
                     {
                         return BackendSelection.NvidiaDlaa;

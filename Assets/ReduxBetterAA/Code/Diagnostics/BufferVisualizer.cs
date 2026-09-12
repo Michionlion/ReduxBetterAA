@@ -40,7 +40,7 @@ namespace ReduxBetterAA.Diagnostics
             "Assets/ReduxBetterAA/Shaders/Phase1MotionStatistics.shader";
         private const string MotionVectorPassProbeShaderAddress =
             "Assets/ReduxBetterAA/Shaders/Phase1MotionVectorPassProbe.shader";
-        private const string CommandBufferName = "Redux Better AA Phase 1 Debug View";
+        private const string CommandBufferName = "Redux Better AA Debug View";
         private const int MaximumStatisticsDimension = 320;
         private const float MotionQuietPixels = 0.1f;
         private const float MotionOutlierPixels = 64.0f;
@@ -871,16 +871,15 @@ namespace ReduxBetterAA.Diagnostics
                 BackendSelection requested = _backendPanel.RequestedBackend?.Invoke() ?? BackendSelection.Off;
                 bool enabled = GUI.enabled;
                 GUI.enabled = _backendPanel.SetRequestedBackend != null && !(Comparison?.Busy ?? false);
-                int selected = DebugMenu.Dropdown("Mode", (int)requested, DebugMenu.Modes, ref _modeOpen);
-                if (selected != (int)requested) _backendPanel.SetRequestedBackend((BackendSelection)selected);
+                BackendSelection selected = DebugMenu.ModeDropdown("Mode", requested, ref _modeOpen);
+                if (selected != requested) _backendPanel.SetRequestedBackend(selected);
                 GUI.enabled = enabled;
                 GUILayout.Label(_backendPanel.TemporalStatus?.Invoke() ?? "Unavailable");
-                _backendPanel.DrawBasic((BackendSelection)selected);
+                _backendPanel.DrawBasic(selected);
                 GUILayout.Space(8);
                 if (GUILayout.Button((_advancedOpen ? "▼" : "▶") + " Advanced settings")) _advancedOpen = !_advancedOpen;
                 if (_advancedOpen) {
-                    switch ((BackendSelection)selected) {
-                        case BackendSelection.Ppv2Taa: _backendPanel.DrawPpv2Tab(); break;
+                    switch (selected) {
                         case BackendSelection.CustomTaa: _backendPanel.DrawCustomTab(); break;
                         case BackendSelection.NvidiaDlaa: _backendPanel.DrawDlaaTab(); break;
                         case BackendSelection.AmdFsr2: _backendPanel.DrawFsr2Tab(); break;
@@ -890,7 +889,7 @@ namespace ReduxBetterAA.Diagnostics
                 if (GUILayout.Button((_performanceOpen ? "▼" : "▶") + " Performance")) _performanceOpen = !_performanceOpen;
                 if (_performanceOpen) {
                     if (Comparison?.Busy ?? false) GUILayout.Label("Stop comparison before measuring performance.");
-                    else _backendPanel.DrawPerformanceProfile((BackendSelection)selected);
+                    else _backendPanel.DrawPerformanceProfile(selected);
                 }
             }
             GUILayout.EndScrollView();
@@ -1161,7 +1160,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 _material = new Material(_shader)
                 {
-                    name = "Redux Better AA Phase 1 Debug Material",
+                    name = "Redux Better AA Debug Material",
                     hideFlags = HideFlags.HideAndDontSave
                 };
             }
@@ -1310,7 +1309,7 @@ namespace ReduxBetterAA.Diagnostics
                 RenderTextureReadWrite.Linear
             )
             {
-                name = "Redux Better AA Phase 1 Motion Statistics",
+                name = "Redux Better AA Motion Statistics",
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
                 useMipMap = false,
@@ -2123,8 +2122,8 @@ namespace ReduxBetterAA.Diagnostics
         {
             Camera camera = GetSelectedCamera();
             _overlayText = camera == null
-                ? "Redux Better AA Phase 1 | " + _view + " | no camera"
-                : "Redux Better AA Phase 1 | " + _view + " | " + camera.name +
+                ? "Redux Better AA | " + _view + " | no camera"
+                : "Redux Better AA | " + _view + " | " + camera.name +
                   " | F10 AA menu | Shift+F10 capture";
         }
 

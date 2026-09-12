@@ -55,7 +55,6 @@ namespace ReduxBetterAA.Rendering
                 PostProcessLayer.Antialiasing.FastApproximateAntialiasing,
                 false
             );
-        private readonly Ppv2TaaBackend _ppv2Backend = new Ppv2TaaBackend();
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
         private readonly DepthDisocclusionMask _depthDisocclusionMask;
         private readonly CustomTaaBackend _customBackend;
@@ -100,14 +99,12 @@ namespace ReduxBetterAA.Rendering
         private int _lastOriginRebaseUnityFrame = -1;
         private HistoryResetReason _lastResetReason;
         private GameState _lastGameState = GameState.Invalid;
-        private TemporalBackendConfig _ppv2Config =
-            TemporalBackendConfig.ConservativePpv2;
         private CustomTaaConfig _customConfig = CustomTaaConfig.Conservative;
         private readonly DlaaSceneSettings _dlaaSettings = new DlaaSceneSettings();
         private Fsr2Config _fsr2Config = Fsr2Config.Conservative;
         private string _status = "Off";
 
-        public TemporalCoordinator(ReduxLogger logger, bool requestPpv2Taa)
+        public TemporalCoordinator(ReduxLogger logger)
         {
             _logger = logger;
             _gameEvents = new TemporalGameEvents(MarkDirty);
@@ -124,32 +121,30 @@ namespace ReduxBetterAA.Rendering
                 OnTemporalResourceAvailabilityChanged,
                 _performanceProfiler,
                 _motionVectorSanitizer,
-                OnCustomRuntimeFailure
+                reason => OnRuntimeFailure(BackendSelection.CustomTaa, "Custom TAA", reason)
             );
             _dlaaBackend = new NvidiaDlaaBackend(
                 logger,
-                OnDlaaRuntimeFailure,
+                reason => OnRuntimeFailure(BackendSelection.NvidiaDlaa, "DLAA", reason),
                 _performanceProfiler,
                 _motionVectorSanitizer,
                 _depthDisocclusionMask
             );
             _fsr2Backend = new AmdFsr2Backend(
                 logger,
-                OnFsr2RuntimeFailure,
+                reason => OnRuntimeFailure(BackendSelection.AmdFsr2, "FSR2", reason),
                 _performanceProfiler,
                 _motionVectorSanitizer,
                 _depthDisocclusionMask
             );
-            // Indexed by BackendSelection; used for selection and lifecycle ownership.
+            // Keep persisted mode IDs stable. Slot 4 was the removed PPv2 TAA mode;
+            // selection normalizes it to Custom TAA without duplicating ownership.
             _backends = new ITemporalBackend[]
             {
                 _disabledBackend, _fxaaLowBackend, _fxaaHighBackend, _smaaBackend,
-                _ppv2Backend, _customBackend, _dlaaBackend, _fsr2Backend, _supersamplingBackend
+                null, _customBackend, _dlaaBackend, _fsr2Backend, _supersamplingBackend
             };
             _activeBackend = _disabledBackend;
-            _requestedBackend = requestPpv2Taa
-                ? BackendSelection.Ppv2Taa
-                : BackendSelection.Off;
         }
 
         public bool Requested => _requestedBackend != BackendSelection.Off;
@@ -184,7 +179,6 @@ namespace ReduxBetterAA.Rendering
             _cameras != null &&
             _cameras.SceneKind == TemporalSceneKind.Map;
         public HistoryResetReason LastResetReason => _lastResetReason;
-        public TemporalBackendConfig Ppv2Config => _ppv2Config;
         public CustomTaaConfig CustomConfig => _customConfig;
         public DlaaConfig DlaaConfig => _dlaaSettings.Current;
         public bool DlaaPresetIsMenuOnly => _dlaaSettings.IsMainMenu;
@@ -344,9 +338,7 @@ namespace ReduxBetterAA.Rendering
             _customBackend.Initialize();
             _dlaaBackend.Initialize();
             _fsr2Backend.Initialize();
-            _dirty = true;
-            _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-            _discoverAfter = Time.unscaledTime;
+            ScheduleDiscovery();
             _pendingResetReasons =
                 HistoryResetReason.FirstFrame | HistoryResetReason.BackendChanged;
             if (!Requested)
@@ -401,37 +393,10 @@ namespace ReduxBetterAA.Rendering
                     MarkDirty(HistoryResetReason.None);
                     return;
                 }
-                _lastResetReason = reasons;
-                _lastResetUnityFrame = Time.frameCount;
-                _activeBackend.ResetHistory(reasons);
-                _logger.LogInfo(
-                    "[ReduxBetterAA/History] Reset " +
-                    _activeBackend.Id + " history: " + reasons + "."
-                );
+                ResetActiveHistory(reasons);
             }
 
             _activeBackend.Tick(_frameIndex++);
-        }
-
-        public void CycleRequestedBackend()
-        {
-            SetRequestedBackend(_requestedBackend == BackendSelection.AmdFsr2
-                ? BackendSelection.Off : _requestedBackend + 1);
-        }
-
-        public void SetPpv2Config(TemporalBackendConfig config)
-        {
-            if (_ppv2Config.ValuesEqual(in config))
-            {
-                return;
-            }
-            _ppv2Config = config;
-            _performanceProfiler.Invalidate(BackendSelection.Ppv2Taa);
-            _ppv2Backend.ApplyConfig(in _ppv2Config);
-            if (_activeBackend == _ppv2Backend && _activeBackend.Active)
-            {
-                ResetActiveHistory(HistoryResetReason.SettingsChanged);
-            }
         }
 
         public void SetCustomConfig(CustomTaaConfig config)
@@ -481,9 +446,7 @@ namespace ReduxBetterAA.Rendering
                 if (recreate)
                 {
                     DisableActiveBackend();
-                    _dirty = true;
-                    _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-                    _discoverAfter = Time.unscaledTime;
+                    ScheduleDiscovery();
                 }
                 else if (resetHistory)
                 {
@@ -492,9 +455,7 @@ namespace ReduxBetterAA.Rendering
             }
             else if (_requestedBackend == BackendSelection.NvidiaDlaa)
             {
-                _dirty = true;
-                _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-                _discoverAfter = Time.unscaledTime;
+                ScheduleDiscovery();
             }
         }
 
@@ -514,9 +475,7 @@ namespace ReduxBetterAA.Rendering
                 if (recreate)
                 {
                     DisableActiveBackend();
-                    _dirty = true;
-                    _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-                    _discoverAfter = Time.unscaledTime;
+                    ScheduleDiscovery();
                 }
                 else if (resetHistory)
                 {
@@ -525,30 +484,8 @@ namespace ReduxBetterAA.Rendering
             }
             else if (_requestedBackend == BackendSelection.AmdFsr2)
             {
-                _dirty = true;
-                _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-                _discoverAfter = Time.unscaledTime;
+                ScheduleDiscovery();
             }
-        }
-
-        public void RestoreConservativePpv2Preset()
-        {
-            SetPpv2Config(TemporalBackendConfig.ConservativePpv2);
-        }
-
-        public void RestoreConservativeCustomPreset()
-        {
-            SetCustomConfig(CustomTaaConfig.Conservative);
-        }
-
-        public void RestoreConservativeDlaaPreset()
-        {
-            SetDlaaConfig(DlaaConfig.Conservative);
-        }
-
-        public void RestoreConservativeFsr2Preset()
-        {
-            SetFsr2Config(Fsr2Config.Conservative);
         }
 
         public void RequestHistoryReset()
@@ -601,9 +538,7 @@ namespace ReduxBetterAA.Rendering
 
             DisableActiveBackend();
             _pendingResetReasons |= HistoryResetReason.SettingsChanged;
-            _dirty = true;
-            _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-            _discoverAfter = Time.unscaledTime;
+            ScheduleDiscovery();
             _status = enabled
                 ? "Map-view AA enabled; restoring the selected mode..."
                 : "Map-view AA disabled; switching map view to Off...";
@@ -631,11 +566,9 @@ namespace ReduxBetterAA.Rendering
         {
             if (_disposed) return;
             bool reclaimed = _renderScale.Reclaim();
-            if (requested < BackendSelection.Off ||
-                requested > BackendSelection.Supersampling)
-            {
+            requested = UserSettingsPolicy.NormalizeBackend(requested);
+            if (requested < BackendSelection.Off || requested > BackendSelection.Supersampling)
                 requested = BackendSelection.Off;
-            }
             if (_requestedBackend == requested)
             {
                 if (reclaimed) MarkDirty(HistoryResetReason.BackendChanged);
@@ -656,9 +589,7 @@ namespace ReduxBetterAA.Rendering
             {
                 _fsr2Backend.ClearRuntimeFailure();
             }
-            _dirty = true;
-            _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-            _discoverAfter = Time.unscaledTime;
+            ScheduleDiscovery();
             _status = BackendName(requested) +
                 " requested; discovering the final scene camera...";
         }
@@ -677,9 +608,7 @@ namespace ReduxBetterAA.Rendering
             {
                 _performanceProfiler.InvalidateAll();
             }
-            _dirty = true;
-            _remainingDiscoveryRetries = MaximumDiscoveryRetries;
-            _discoverAfter = Time.unscaledTime;
+            ScheduleDiscovery();
         }
 
         public void Dispose()
@@ -695,7 +624,7 @@ namespace ReduxBetterAA.Rendering
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             foreach (ITemporalBackend backend in _backends)
-                backend.Dispose();
+                backend?.Dispose();
             _renderScale.Dispose();
             _motionVectorSanitizer.Dispose();
             _depthDisocclusionMask.Dispose();
@@ -729,7 +658,6 @@ namespace ReduxBetterAA.Rendering
                 VegetationRepairRequested && effectiveRequest != BackendSelection.Off &&
                 effectiveRequest != BackendSelection.Supersampling);
 
-            _ppv2Backend.ApplyConfig(in _ppv2Config);
             _customBackend.ApplyConfig(in _customConfig);
             _dlaaSettings.SetScene(_cameras != null && _cameras.SceneKind == TemporalSceneKind.MainMenu);
             DlaaConfig dlaaConfig = DlaaConfig;
@@ -854,7 +782,7 @@ namespace ReduxBetterAA.Rendering
         {
             MapIconOverlay.Detach(ref _mapIcons);
             foreach (ITemporalBackend backend in _backends)
-                backend.Deactivate();
+                backend?.Deactivate();
             _motionVectorSanitizer.ReleaseResources();
             _depthDisocclusionMask.ReleaseResources();
         }
@@ -911,7 +839,7 @@ namespace ReduxBetterAA.Rendering
             _nextGameStatePollTime = now + GameStatePollSeconds;
             _gameEvents.Refresh();
 
-            GameState state = ReadGameState();
+            GameState state = TemporalCameraDiscovery.ReadCurrentGameState();
             if (_lastGameState != GameState.Invalid &&
                 state != GameState.Invalid &&
                 state != _lastGameState)
@@ -919,17 +847,6 @@ namespace ReduxBetterAA.Rendering
                 MarkDirty(HistoryResetReason.SceneChanged);
             }
             _lastGameState = state;
-        }
-
-        private static GameState ReadGameState()
-        {
-            GameManager manager = GameManager.Instance;
-            if (manager == null || manager.Game == null ||
-                manager.Game.GlobalGameState == null)
-            {
-                return GameState.Invalid;
-            }
-            return manager.Game.GlobalGameState.GetGameState().GameState;
         }
 
         private void OnTemporalResourceAvailabilityChanged()
@@ -945,45 +862,24 @@ namespace ReduxBetterAA.Rendering
             }
         }
 
-        private void OnDlaaRuntimeFailure(string reason)
+        private void OnRuntimeFailure(BackendSelection mode, string label, string reason)
         {
-            if (_disposed || _requestedBackend != BackendSelection.NvidiaDlaa)
-            {
+            if (_disposed || _requestedBackend != mode)
                 return;
-            }
-            _status = "DLAA runtime failure (" + reason +
-                "); switching to the Off fallback...";
-            _dirty = true;
-            _remainingDiscoveryRetries = 0;
-            _discoverAfter = Time.unscaledTime;
+            _status = label + " runtime failure (" + reason + "); switching to Off...";
+            ScheduleDiscovery(0);
         }
 
-        private void OnCustomRuntimeFailure(string reason)
+        private void ScheduleDiscovery(int retries = MaximumDiscoveryRetries)
         {
-            if (_disposed || _requestedBackend != BackendSelection.CustomTaa)
-                return;
-            _status = "Custom TAA runtime failure (" + reason + "); switching to Off...";
             _dirty = true;
-            _remainingDiscoveryRetries = 0;
-            _discoverAfter = Time.unscaledTime;
-        }
-
-        private void OnFsr2RuntimeFailure(string reason)
-        {
-            if (_disposed || _requestedBackend != BackendSelection.AmdFsr2)
-            {
-                return;
-            }
-            _status = "FSR2 runtime failure (" + reason +
-                "); switching to the Off fallback...";
-            _dirty = true;
-            _remainingDiscoveryRetries = 0;
+            _remainingDiscoveryRetries = retries;
             _discoverAfter = Time.unscaledTime;
         }
 
         internal ITemporalBackend GetBackend(BackendSelection selection) =>
             selection >= BackendSelection.Off && selection <= BackendSelection.Supersampling
-                ? _backends[(int)selection] : _disabledBackend;
+                ? _backends[(int)UserSettingsPolicy.NormalizeBackend(selection)] : _disabledBackend;
 
         private string BackendName(BackendSelection selection) => GetBackend(selection).Id;
 

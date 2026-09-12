@@ -216,7 +216,7 @@ namespace ReduxBetterAA.Backends.Amd
                 if (!loaded)
                 {
                     failureReason =
-                        "native Unity AMD plugin did not load (not included in the normal mod package)";
+                        "native Unity AMD plugin did not load; install the matching optional runtime ZIP";
                     return false;
                 }
 

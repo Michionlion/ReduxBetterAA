@@ -12,7 +12,7 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 namespace ReduxBetterAA.Backends
 {
     /// <summary>
-    /// Experimental native-resolution FSR2 AA backend using Unity's managed AMD
+    /// Native-resolution FSR2 AA backend using Unity's managed AMD
     /// module. It does not alter Redux render scale or include UI in history.
     /// </summary>
     internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
@@ -173,7 +173,7 @@ namespace ReduxBetterAA.Backends
                 graphicsApi != GraphicsDeviceType.Direct3D12)
             {
                 unsupportedReason =
-                    "this Unity AMD FSR2 prototype requires Direct3D 11 or Direct3D 12";
+                    "Unity AMD FSR2 requires Direct3D 11 or Direct3D 12";
                 return false;
             }
             if (!SystemInfo.supportsMotionVectors)
@@ -268,19 +268,10 @@ namespace ReduxBetterAA.Backends
 
             try
             {
-                bool usePpv2Exposure = false;
                 float ppv2Exposure = 1.0f;
-                if (_config.AutoExposure && _config.PreferPpv2Exposure)
-                {
-                    bool hasPpv2Exposure = _exposureReader.TryGetExposure(
-                        out ppv2Exposure
-                    );
-                    usePpv2Exposure = hasPpv2Exposure;
-                    if (!hasPpv2Exposure)
-                    {
-                        ppv2Exposure = 1.0f;
-                    }
-                }
+                bool usePpv2Exposure = _config.AutoExposure &&
+                    _config.PreferPpv2Exposure &&
+                    _exposureReader.TryGetExposure(out ppv2Exposure);
                 bool useVendorAutoExposure =
                     _config.AutoExposure && !usePpv2Exposure;
                 _effectivePreExposure = usePpv2Exposure
@@ -470,7 +461,7 @@ namespace ReduxBetterAA.Backends
             }
 
             _estimatedMemoryBytes = (long)source.width * source.height *
-                EstimateColorBytes(source.format);
+                TemporalTextures.EstimateColorBytes(source.format);
             _contextUsesVendorAutoExposure = useVendorAutoExposure;
             _usingPpv2Exposure =
                 _config.AutoExposure && !useVendorAutoExposure;
@@ -575,18 +566,5 @@ namespace ReduxBetterAA.Backends
             _runtimeFailure?.Invoke(_lastFailure);
         }
 
-        private static int EstimateColorBytes(RenderTextureFormat format)
-        {
-            switch (format)
-            {
-                case RenderTextureFormat.ARGBFloat:
-                    return 16;
-                case RenderTextureFormat.ARGBHalf:
-                case RenderTextureFormat.RGFloat:
-                    return 8;
-                default:
-                    return 4;
-            }
-        }
     }
 }

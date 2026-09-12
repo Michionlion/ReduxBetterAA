@@ -4,15 +4,6 @@ namespace ReduxBetterAA.Rendering
 {
     internal static class SharedJitterSequence
     {
-        public static Vector2 GetPpv2Offset(int sampleIndex, float jitterSpread)
-        {
-            int sample = (sampleIndex & 1023) + 1;
-            return new Vector2(
-                Halton(sample, 2) - 0.5f,
-                Halton(sample, 3) - 0.5f
-            ) * jitterSpread;
-        }
-
         public static Vector2 GetCustomOffset(
             uint frameIndex,
             float jitterSpread,

@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using ReduxBetterAA.Configuration;
 using ReduxBetterAA.Diagnostics;
 using UnityEditor;
 using UnityEngine;
@@ -7,6 +8,21 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class AaComparisonTests
     {
+        [Test]
+        public void DiagnosticChoicesMapLabelsToStableBackendIds()
+        {
+            int[] ids = { 0, 1, 2, 3, 5, 8, 6, 7 };
+            string[] labels = { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA",
+                "Supersampling", "NVIDIA DLAA", "FSR 2 Native AA" };
+            Assert.That(DebugMenu.Backends.Length, Is.EqualTo(ids.Length));
+            Assert.That(DebugMenu.Modes, Is.EqualTo(labels));
+            for (int index = 0; index < ids.Length; index++)
+            {
+                Assert.That((int)DebugMenu.Backends[index], Is.EqualTo(ids[index]));
+                Assert.That(DebugMenu.ModeName((BackendSelection)ids[index]), Is.EqualTo(labels[index]));
+            }
+        }
+
         [TestCase(2560, 1440, 16384, 400)]
         [TestCase(7680, 4320, 16384, 200)]
         public void SupersamplingFitsDevice(int width, int height, int limit, int expected)

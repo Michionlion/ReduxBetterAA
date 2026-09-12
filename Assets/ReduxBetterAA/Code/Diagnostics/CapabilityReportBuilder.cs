@@ -71,7 +71,6 @@ namespace ReduxBetterAA.Diagnostics
                 };
             }
 
-            TemporalBackendConfig ppv2 = coordinator.Ppv2Config;
             CustomTaaConfig custom = coordinator.CustomConfig;
             DlaaConfig dlaa = coordinator.DlaaConfig;
             Fsr2Config fsr2 = coordinator.Fsr2Config;
@@ -126,13 +125,6 @@ namespace ReduxBetterAA.Diagnostics
                 motionMatrix = CaptureMotionMatrix(in matrix),
                 depthDisocclusionMaskStatus =
                     coordinator.DepthDisocclusionMaskStatus,
-                ppv2 = new Ppv2SettingsRecord
-                {
-                    jitterSpread = ppv2.JitterSpread,
-                    sharpness = ppv2.Sharpness,
-                    stationaryBlending = ppv2.StationaryBlending,
-                    motionBlending = ppv2.MotionBlending
-                },
                 custom = new CustomTaaSettingsRecord
                 {
                     jitterSpread = custom.JitterSpread,
@@ -233,10 +225,6 @@ namespace ReduxBetterAA.Diagnostics
                     fxaaHigh = CapturePerformanceProfile(
                         coordinator,
                         BackendSelection.FxaaHigh
-                    ),
-                    ppv2 = CapturePerformanceProfile(
-                        coordinator,
-                        BackendSelection.Ppv2Taa
                     ),
                     custom = CapturePerformanceProfile(
                         coordinator,
@@ -419,7 +407,7 @@ namespace ReduxBetterAA.Diagnostics
                     ? "At least one camera requests motion vectors; visual coverage still requires capture"
                     : "No camera requested motion vectors during this capture",
                 resolvePlacementStatus =
-                    "Decision 0001 selects one PPv2 resolve on the final scene camera before UI; near-launchpad motion discontinuities require a conservative experimental fallback"
+                    "One selected AA backend resolves on the final scene camera before UI; verify the actual input/output capture stages"
             };
         }
 

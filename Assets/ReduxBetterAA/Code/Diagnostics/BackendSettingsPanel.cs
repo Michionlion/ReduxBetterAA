@@ -12,9 +12,6 @@ namespace ReduxBetterAA.Diagnostics
         internal Func<string> TemporalStatus;
         internal Func<BackendSelection> RequestedBackend;
         internal Action<BackendSelection> SetRequestedBackend;
-        internal Func<TemporalBackendConfig> Ppv2Config;
-        internal Action<TemporalBackendConfig> SetPpv2Config;
-        internal Action RestorePpv2Preset;
         internal Func<CustomTaaConfig> CustomConfig;
         internal Action<CustomTaaConfig> SetCustomConfig;
         internal Action RestoreCustomPreset;
@@ -94,42 +91,6 @@ namespace ReduxBetterAA.Diagnostics
             "Motion vectors",
             "Depth edges"
         };
-        internal void DrawMapViewAaControl()
-        {
-            bool enabled = MapViewAaEnabled == null || MapViewAaEnabled();
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = SetMapViewAaEnabled != null;
-            Color previousColor = GUI.backgroundColor;
-            if (enabled)
-            {
-                GUI.backgroundColor = Color.cyan;
-            }
-            if (GUILayout.Button(
-                    enabled
-                        ? "Map-view AA: ON"
-                        : "Map-view AA: OFF (flight setting preserved)",
-                    GUILayout.Height(28f)))
-            {
-                SetMapViewAaEnabled(!enabled);
-            }
-            GUI.backgroundColor = previousColor;
-            GUI.enabled = previousEnabled;
-            GUILayout.Label(
-                "This independently forces AA Off only while map view is active."
-            );
-        }
-
-        internal static void DrawOffTab()
-        {
-            GUILayout.Label(
-                "Redux forces PPv2 anti-aliasing off while this mode is selected, " +
-                "providing a true unfiltered baseline. The renderer's prior AA " +
-                "state is restored when Redux releases the scene. Choose FXAA " +
-                "Low, FXAA High, SMAA, PPv2, Custom, DLAA, or FSR2 AA above to " +
-                "enable that mode and open its settings."
-            );
-        }
-
         internal static void DrawSpatialAaTab(BackendSelection mode)
         {
             switch (mode)
@@ -159,81 +120,9 @@ namespace ReduxBetterAA.Diagnostics
             }
         }
 
-        internal void DrawPpv2Tab()
-        {
-            GUILayout.Label("Phase 2 / PPv2 TAA parameters");
-
-            if (Ppv2Config == null || SetPpv2Config == null)
-            {
-                GUILayout.Label("PPv2 parameter controls are unavailable.");
-                return;
-            }
-
-            TemporalBackendConfig config = Ppv2Config();
-            float jitterSpread = DrawParameter(
-                "Jitter spread",
-                config.JitterSpread,
-                0.1f,
-                1.0f
-            );
-            float sharpness = DrawParameter(
-                "Sharpness",
-                config.Sharpness,
-                0.0f,
-                1.0f
-            );
-            float stationaryBlending = DrawParameter(
-                "Stationary history",
-                config.StationaryBlending,
-                0.0f,
-                0.99f
-            );
-            float motionBlending = DrawParameter(
-                "Moving history",
-                config.MotionBlending,
-                0.0f,
-                0.99f
-            );
-
-            var updated = new TemporalBackendConfig(
-                jitterSpread,
-                sharpness,
-                stationaryBlending,
-                motionBlending
-            );
-            if (!config.ValuesEqual(in updated))
-            {
-                SetPpv2Config(updated);
-            }
-
-            GUILayout.Space(10f);
-            GUILayout.Label(
-                "Changes apply immediately. Shared sharpness is saved; the other " +
-                "engineering parameters remain session-only. Each temporal " +
-                "parameter change resets history once."
-            );
-            GUILayout.Label(
-                "Launchpad warning: high Moving history values can amplify the " +
-                "observed motion-vector spikes."
-            );
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Conservative preset", GUILayout.Height(28f)))
-            {
-                RestorePpv2Preset?.Invoke();
-            }
-            bool previousHistoryEnabled = GUI.enabled;
-            GUI.enabled = IsTemporalBackendActive() && ResetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f)))
-            {
-                ResetTemporalHistory();
-            }
-            GUI.enabled = previousHistoryEnabled;
-            GUILayout.EndHorizontal();
-        }
-
         internal void DrawCustomTab()
         {
-            GUILayout.Label("Phase 3 / project-owned custom TAA");
+            GUILayout.Label("Custom TAA");
             if (CustomConfig == null || SetCustomConfig == null)
             {
                 GUILayout.Label("Custom TAA parameter controls are unavailable.");
@@ -315,8 +204,7 @@ namespace ReduxBetterAA.Diagnostics
                     : "Custom history is allocated when the backend first renders."
             );
             GUILayout.Label(
-                "Motion above the configured limit is rejected, including the " +
-                "launchpad outliers observed in Phase 1."
+                "Motion above the configured limit is rejected."
             );
             GUILayout.Label(
                 "Depth-edge stability filters the clamp and depth match to the " +
@@ -347,7 +235,7 @@ namespace ReduxBetterAA.Diagnostics
         {
             if (DlaaPresetIsMenuOnly != null && DlaaPresetIsMenuOnly())
                 GUILayout.Label("Main-menu model only; gameplay selection is preserved.");
-            GUILayout.Label("Phase 4 / managed Unity NVIDIA DLAA");
+            GUILayout.Label("NVIDIA DLAA");
             GUILayout.Label(
                 DlaaDetails == null
                     ? "DLAA runtime details are unavailable."
@@ -486,7 +374,7 @@ namespace ReduxBetterAA.Diagnostics
 
         internal void DrawFsr2Tab()
         {
-            GUILayout.Label("Phase 5 experiment / Unity AMD FSR2 Native AA");
+            GUILayout.Label("FSR 2 Native AA");
             GUILayout.Label(
                 Fsr2Details == null
                     ? "FSR2 runtime details are unavailable."
@@ -661,13 +549,6 @@ namespace ReduxBetterAA.Diagnostics
                     " ms average, " +
                     profile.PeakResolveCpuMilliseconds.ToString("0.000") +
                     " ms peak."
-                );
-            }
-            else if (mode == BackendSelection.Ppv2Taa)
-            {
-                GUILayout.Label(
-                    "PPv2 resolve-only timing is unavailable because Unity owns " +
-                    "the internal post-process pass. Use whole-frame comparison."
                 );
             }
 

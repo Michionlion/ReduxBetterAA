@@ -18,10 +18,10 @@ namespace ReduxBetterAA.Tests
     public sealed class TemporalCoreTests
     {
         [Test]
-        public void Ppv2JitterMatchesFirstTwoHaltonSamples()
+        public void TemporalJitterMatchesFirstTwoHaltonSamples()
         {
-            Vector2 first = SharedJitterSequence.GetPpv2Offset(0, 0.75f);
-            Vector2 second = SharedJitterSequence.GetPpv2Offset(1, 0.75f);
+            Vector2 first = SharedJitterSequence.GetCustomOffset(0, 0.75f, 8);
+            Vector2 second = SharedJitterSequence.GetCustomOffset(1, 0.75f, 8);
 
             Assert.That(first.x, Is.EqualTo(0.0f).Within(0.000001f));
             Assert.That(first.y, Is.EqualTo(-0.125f).Within(0.000001f));
@@ -30,19 +30,7 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void Ppv2JitterIsDeterministic()
-        {
-            for (int index = 0; index < 8; index++)
-            {
-                Assert.That(
-                    SharedJitterSequence.GetPpv2Offset(index, 0.75f),
-                    Is.EqualTo(SharedJitterSequence.GetPpv2Offset(index, 0.75f))
-                );
-            }
-        }
-
-        [Test]
-        public void UserModeChoicesHidePpv2AndUnsupportedVendors()
+        public void UserModeChoicesIncludeOnlySupportedModes()
         {
             CollectionAssert.AreEqual(
                 new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling" },
@@ -55,6 +43,14 @@ namespace ReduxBetterAA.Tests
                     "NVIDIA DLAA", "FSR 2 Native AA"
                 },
                 UserSettingsPolicy.BuildModeChoices(true, true)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "NVIDIA DLAA" },
+                UserSettingsPolicy.BuildModeChoices(true, false)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "FSR 2 Native AA" },
+                UserSettingsPolicy.BuildModeChoices(false, true)
             );
         }
 
@@ -103,7 +99,7 @@ namespace ReduxBetterAA.Tests
             );
             Assert.That(
                 UserSettingsPolicy.NextBackend(
-                    BackendSelection.Ppv2Taa,
+                    (BackendSelection)4,
                     false,
                     true
                 ),
@@ -112,14 +108,13 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void TemporalConfigClampsToPpv2SupportedRanges()
+        public void LegacyBackendNumberSelectsCustomTaaWithoutExposingPpv2()
         {
-            var config = new TemporalBackendConfig(-1.0f, 4.0f, -0.5f, 2.0f);
-
-            Assert.That(config.JitterSpread, Is.EqualTo(0.1f));
-            Assert.That(config.Sharpness, Is.EqualTo(1.0f));
-            Assert.That(config.StationaryBlending, Is.EqualTo(0.0f));
-            Assert.That(config.MotionBlending, Is.EqualTo(0.99f));
+            Assert.That(System.Enum.IsDefined(typeof(BackendSelection), 4), Is.False);
+            Assert.That(UserSettingsPolicy.NormalizeBackend((BackendSelection)4),
+                Is.EqualTo(BackendSelection.CustomTaa));
+            Assert.That(UserSettingsPolicy.ParseBackend("PPv2 TAA", false, false),
+                Is.EqualTo(BackendSelection.CustomTaa));
         }
 
         [Test]
@@ -224,15 +219,13 @@ namespace ReduxBetterAA.Tests
 
             Assert.That(original.RequiresContextRecreation(in dynamicOnly), Is.False);
             Assert.That(original.RequiresContextRecreation(in immutableChange), Is.True);
+            Assert.That(original.ValuesEqual(in dynamicOnly), Is.False);
+            Assert.That(original.ValuesEqual(in immutableChange), Is.False);
         }
 
         [Test]
         public void VendorDefaultsUseAutomaticExposureAndDlaaPresetK()
         {
-            Assert.That(
-                TemporalBackendConfig.ConservativePpv2.Sharpness,
-                Is.EqualTo(0.15f)
-            );
             Assert.That(
                 CustomTaaConfig.Conservative.Sharpening,
                 Is.EqualTo(0.15f)
@@ -370,6 +363,10 @@ namespace ReduxBetterAA.Tests
                 custom.RequiresHistoryReset(in customDebugView),
                 Is.False
             );
+            Assert.That(custom.ValuesEqual(in custom), Is.True);
+            Assert.That(custom.ValuesEqual(in customSharpened), Is.False);
+            Assert.That(custom.ValuesEqual(in customTemporal), Is.False);
+            Assert.That(custom.ValuesEqual(in customDebugView), Is.False);
 
             DlaaConfig dlaa = DlaaConfig.Conservative;
             DlaaConfig dlaaSharpened = dlaa.WithUserSettings(
@@ -383,6 +380,8 @@ namespace ReduxBetterAA.Tests
                 dlaa.RequiresHistoryReset(in dlaaSharpened),
                 Is.False
             );
+            Assert.That(dlaa.ValuesEqual(in dlaa), Is.True);
+            Assert.That(dlaa.ValuesEqual(in dlaaSharpened), Is.False);
 
             Fsr2Config fsr2 = Fsr2Config.Conservative;
             Fsr2Config fsr2Unsharpened = fsr2.WithUserSettings(
@@ -395,6 +394,8 @@ namespace ReduxBetterAA.Tests
                 Is.False
             );
             Assert.That(fsr2Unsharpened.EnableSharpening, Is.False);
+            Assert.That(fsr2.ValuesEqual(in fsr2), Is.True);
+            Assert.That(fsr2.ValuesEqual(in fsr2Unsharpened), Is.False);
         }
 
         [Test]

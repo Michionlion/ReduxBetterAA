@@ -165,7 +165,7 @@ namespace ReduxBetterAA.Rendering
         }
 
         /// <summary>
-        /// Coordinates the TestHarness-only built-in motion shader probe with
+        /// Coordinates F10's built-in motion shader probe with
         /// the production override. Diagnostic modes intentionally retain the
         /// RenderMeshIndirect reroute so they can inspect its object pass.
         /// </summary>

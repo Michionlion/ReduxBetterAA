@@ -320,18 +320,8 @@ namespace ReduxBetterAA.Rendering
 
         public void ReleaseResources()
         {
-            if (_sanitizedMotion != null)
-            {
-                _sanitizedMotion.Release();
-                UnityEngine.Object.Destroy(_sanitizedMotion);
-                _sanitizedMotion = null;
-            }
-            if (_frameCorruption != null)
-            {
-                _frameCorruption.Release();
-                UnityEngine.Object.Destroy(_frameCorruption);
-                _frameCorruption = null;
-            }
+            TemporalTextures.Release(ref _sanitizedMotion);
+            TemporalTextures.Release(ref _frameCorruption);
             _resourceWidth = 0;
             _resourceHeight = 0;
             _resourceBytesPerPixel = 0;

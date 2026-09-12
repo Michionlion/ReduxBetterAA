@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using KSP.Game;
 using KSP.Map;
 using KSP.OAB;
 using KSP.Rendering;
@@ -97,7 +96,7 @@ namespace ReduxBetterAA.Rendering
             {
                 revision = revision,
                 activeScene = SceneManager.GetActiveScene().name,
-                gameState = ReadGameState(),
+                gameState = TemporalCameraDiscovery.ReadGameState(),
                 screenWidth = Screen.width,
                 screenHeight = Screen.height,
                 activeCameraGroup = ReadActiveCameraGroup(),
@@ -454,18 +453,6 @@ namespace ReduxBetterAA.Rendering
             }
             object value = ActiveCameraGroup.GetValue(systems[0]);
             return value == null ? "Unavailable" : value.ToString();
-        }
-
-        private static string ReadGameState()
-        {
-            GameManager manager = GameManager.Instance;
-            if (manager == null || manager.Game == null ||
-                manager.Game.GlobalGameState == null)
-            {
-                return GameState.Invalid.ToString();
-            }
-
-            return manager.Game.GlobalGameState.GetGameState().GameState.ToString();
         }
 
         private static T ReadField<T>(FieldInfo field, object instance)
