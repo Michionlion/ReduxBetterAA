@@ -16,6 +16,15 @@ namespace ReduxBetterAA.Rendering
         private bool _applied;
         private int _appliedFrame;
 
+        public Matrix4x4 GetRasterProjection(Camera camera, Vector2 jitter)
+        {
+            if (_applied && _appliedFrame == Time.frameCount && _camera == camera &&
+                camera.projectionMatrix == _appliedProjection) return _appliedProjection;
+            return camera.orthographic
+                ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
+                : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
+        }
+
         public void Apply(Camera camera, Vector2 jitter,
             System.Func<Camera, Vector2, Matrix4x4> jitterFunction = null,
             bool jitterTransparentRendering = false)
