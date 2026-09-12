@@ -23,7 +23,8 @@ def require(condition, message):
 
 
 def read_json(path):
-    return json.loads(path.read_text(encoding='utf-8-sig'))
+    return json.loads(path.read_text(encoding='utf-8-sig'),
+                      object_hook=lambda value: {k: v for k, v in value.items() if k != '$type'})
 
 
 def coverage(capabilities):
@@ -148,7 +149,7 @@ def validate(report_path, diagnostics, assembly, phase):
     require(report['values']['native'] == (phase == 'native'), 'Wrong native-runtime test phase')
     capabilities = report['values']['capabilities']
     require(all(type(capabilities[k]) is bool for k in ('dlaa', 'fsr2')), 'Invalid vendor capabilities')
-    require((capabilities['fsr2'] if phase == 'native' else not any(capabilities.values())), 'Unexpected vendor availability')
+    require((capabilities['fsr2'] if phase == 'native' else not capabilities['dlaa'] and not capabilities['fsr2']), 'Unexpected vendor availability')
     rows = coverage(capabilities)
     require(report['values']['captures'] == {str(i): row for i, row in enumerate(rows, 1)}, 'Release suite coverage is incomplete or changed')
     files = sorted(p for p in diagnostics.glob('phase1-*.json') if p.name != 'phase1-latest.json')

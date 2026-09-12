@@ -1,4 +1,5 @@
 # Unity writes serialized assets with LF, including on Windows.
 *.asset text eol=lf whitespace=-blank-at-eol
 *.meta text eol=lf
+Packages/*.json text eol=lf
 *.png binary

@@ -22,6 +22,20 @@ def png():
 
 
 class InGameTests(unittest.TestCase):
+    def test_read_harness_dictionary_metadata_without_changing_coverage(self):
+        capabilities = {'dlaa': False, 'fsr2': False}
+        rows = {str(i): row for i, row in enumerate(ingame.coverage(capabilities), 1)}
+        expected = {'values': {'native': False, 'capabilities': capabilities, 'captures': rows}}
+        def metadata(value):
+            if isinstance(value, dict):
+                return {'$type': 'System.Collections.Generic.Dictionary`2, mscorlib',
+                        **{k: metadata(v) for k, v in value.items()}}
+            return value
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            path.write_text(json.dumps(metadata(expected)), encoding='utf-8-sig')
+            self.assertEqual(ingame.read_json(path), expected)
+
     def test_validate_off_ownership_and_reject_leaked_state_or_another_build(self):
         row = ingame.coverage({'dlaa': False, 'fsr2': False})[0]
         temporal = dict(requestedBackend='Off', selectedBackend='Off', active=False,
