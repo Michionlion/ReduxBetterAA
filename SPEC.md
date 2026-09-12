@@ -7,6 +7,14 @@
 
 ## 1. Executive summary
 
+### Main-menu DLAA preset
+
+On entering the main menu, use DLAA preset K without changing the saved gameplay
+preset. F10 displays the effective menu preset and can change it for that menu
+visit. Backend/resource refreshes preserve that debug choice; leaving the menu
+restores the gameplay preset, and the next menu visit starts at K. Normal mod
+settings continue to edit the saved gameplay selection.
+
 ### Launchpad terrain flicker (2026-09-11)
 
 The active reproduction is the user's campaign **Test**, quicksave at launchpad

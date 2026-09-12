@@ -251,6 +251,53 @@ namespace ReduxBetterAA.Tests
             Assert.That(Fsr2Config.Conservative.Sharpness, Is.EqualTo(0.15f));
         }
 
+        [TestCase((int)DlaaPreset.F)]
+        [TestCase((int)DlaaPreset.J)]
+        [TestCase((int)DlaaPreset.K)]
+        [TestCase((int)DlaaPreset.L)]
+        [TestCase((int)DlaaPreset.M)]
+        public void MenuDlaaDebugPresetSurvivesRefreshButDoesNotChangeGameplay(int selected)
+        {
+            var settings = new DlaaSceneSettings();
+            var saved = new DlaaConfig(1.1f, 16, .31f, 1.4f, false,
+                false, true, (DlaaPreset)selected, true, false);
+            settings.SetSaved(saved);
+            settings.SetScene(true);
+            DlaaConfig menu = saved.WithPreset(DlaaPreset.K);
+            Assert.That(settings.Current.ValuesEqual(in menu), Is.True);
+
+            // F10 changes the effective config, and immutable model changes
+            // must still cause the normal context-recreation path to run.
+            DlaaConfig debug = menu.WithPreset(DlaaPreset.M);
+            settings.SetCurrent(debug);
+            Assert.That(menu.RequiresContextRecreation(in debug), Is.True);
+            settings.SetScene(true); // mode/resolution refresh, same menu visit
+            Assert.That(settings.Current.ValuesEqual(in debug), Is.True);
+
+            settings.SetScene(false);
+            Assert.That(settings.Current.ValuesEqual(in saved), Is.True);
+            settings.SetScene(true);
+            Assert.That(settings.Current.ValuesEqual(in menu), Is.True);
+        }
+
+        [Test]
+        public void SavedDlaaEditsInMenuApplyToGameplayWithoutReplacingDebugChoice()
+        {
+            var settings = new DlaaSceneSettings();
+            settings.SetSaved(DlaaConfig.Conservative.WithPreset(DlaaPreset.L));
+            settings.SetScene(true);
+            settings.SetCurrent(settings.Current.WithPreset(DlaaPreset.J));
+            DlaaConfig saved = DlaaConfig.Conservative.WithPreset(DlaaPreset.M);
+            settings.SetSaved(saved); // normal mod settings, including unrelated callbacks
+            Assert.That(settings.Current.Preset, Is.EqualTo(DlaaPreset.J));
+            settings.SetScene(false);
+            Assert.That(settings.Current.ValuesEqual(in saved), Is.True);
+
+            settings.SetCurrent(saved.WithPreset(DlaaPreset.F));
+            settings.SetScene(false);
+            Assert.That(settings.Current.Preset, Is.EqualTo(DlaaPreset.F));
+        }
+
         [Test]
         public void UserSettingMigrationNormalizesLegacyAndUnsupportedValues()
         {

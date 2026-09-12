@@ -200,6 +200,7 @@ namespace ReduxBetterAA
                 RestoreCustomPreset = RestoreConservativeCustomPresetAndPersist,
                 CustomMemoryBytes = () => _temporalCoordinator.CustomEstimatedMemoryBytes,
                 DlaaConfig = () => _temporalCoordinator.DlaaConfig,
+                DlaaPresetIsMenuOnly = () => _temporalCoordinator.DlaaPresetIsMenuOnly,
                 SetDlaaConfig = SetDlaaConfigAndPersist,
                 RestoreDlaaPreset = RestoreConservativeDlaaPresetAndPersist,
                 DlaaDetails = () => _temporalCoordinator.DlaaDetails,
@@ -218,7 +219,8 @@ namespace ReduxBetterAA
                 Sharpness = () => (float)_sharpnessEntry.Value,
                 SetSharpness = value => _sharpnessEntry.Value = value,
                 SetStability = value => _taaStabilityEntry.Value = value,
-                SetDlaaPreset = value => _dlaaPresetEntry.Value = value,
+                SetDlaaPreset = value => SetDlaaConfigAndPersist(
+                    _temporalCoordinator.DlaaConfig.WithPreset(ParseDlaaPreset(value))),
                 SupersamplingPercent = () => (int)_supersamplingEntry.Value,
                 SetSupersamplingPercent = value => _supersamplingEntry.Value = value,
             });
@@ -402,7 +404,7 @@ namespace ReduxBetterAA
             ));
 
             DlaaConfig dlaa = _temporalCoordinator.DlaaConfig;
-            _temporalCoordinator.SetDlaaConfig(dlaa.WithUserSettings(
+            _temporalCoordinator.SetPersistentDlaaConfig(dlaa.WithUserSettings(
                 sharpness,
                 dlaa.PreExposure,
                 dlaa.AutoExposure,
@@ -497,7 +499,8 @@ namespace ReduxBetterAA
                     ).WithExposurePreference(config.PreferPpv2Exposure)
                 );
             }
-            Persist(_dlaaPresetEntry, config.Preset.ToString());
+            if (_temporalCoordinator == null || !_temporalCoordinator.DlaaPresetIsMenuOnly)
+                Persist(_dlaaPresetEntry, config.Preset.ToString());
             SetSharedSharpnessAndPersist(config.Sharpness);
         }
 

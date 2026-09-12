@@ -20,6 +20,7 @@ namespace ReduxBetterAA.Diagnostics
         internal Action RestoreCustomPreset;
         internal Func<long> CustomMemoryBytes;
         internal Func<DlaaConfig> DlaaConfig;
+        internal Func<bool> DlaaPresetIsMenuOnly;
         internal Action<DlaaConfig> SetDlaaConfig;
         internal Action RestoreDlaaPreset;
         internal Func<string> DlaaDetails;
@@ -62,6 +63,8 @@ namespace ReduxBetterAA.Diagnostics
                 int index = Array.IndexOf(DlaaPresetLabels, DlaaConfig().Preset.ToString());
                 int next = DebugMenu.Dropdown("Model", Mathf.Max(0, index), DlaaPresetLabels, ref _presetOpen);
                 if (next != index) SetDlaaPreset(DlaaPresetLabels[next]);
+                if (DlaaPresetIsMenuOnly != null && DlaaPresetIsMenuOnly())
+                    GUILayout.Label("Main-menu model only; gameplay selection is preserved.");
             }
             bool map = MapViewAaEnabled == null || MapViewAaEnabled();
             if (mode == BackendSelection.Supersampling && SupersamplingPercent != null)
@@ -342,6 +345,8 @@ namespace ReduxBetterAA.Diagnostics
 
         internal void DrawDlaaTab()
         {
+            if (DlaaPresetIsMenuOnly != null && DlaaPresetIsMenuOnly())
+                GUILayout.Label("Main-menu model only; gameplay selection is preserved.");
             GUILayout.Label("Phase 4 / managed Unity NVIDIA DLAA");
             GUILayout.Label(
                 DlaaDetails == null

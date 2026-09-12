@@ -323,6 +323,9 @@ namespace ReduxBetterAA.Configuration
             );
         }
 
+        public DlaaConfig WithPreset(DlaaPreset preset) => WithUserSettings(
+            Sharpness, PreExposure, AutoExposure, preset, AllowSupersampling);
+
         private static bool IsValidPreset(DlaaPreset preset)
         {
             return preset == DlaaPreset.F ||
@@ -330,6 +333,33 @@ namespace ReduxBetterAA.Configuration
                    preset == DlaaPreset.K ||
                    preset == DlaaPreset.L ||
                    preset == DlaaPreset.M;
+        }
+    }
+
+    // Only the preset is scene-local. Other controls keep their existing semantics.
+    internal sealed class DlaaSceneSettings
+    {
+        private DlaaConfig _saved = DlaaConfig.Conservative;
+        private DlaaPreset _menuPreset = DlaaPreset.K;
+        public bool IsMainMenu { get; private set; }
+        public DlaaConfig Current => IsMainMenu ? _saved.WithPreset(_menuPreset) : _saved;
+
+        public void SetScene(bool isMainMenu)
+        {
+            if (isMainMenu && !IsMainMenu) _menuPreset = DlaaPreset.K;
+            IsMainMenu = isMainMenu;
+        }
+
+        public void SetSaved(DlaaConfig config) => _saved = config;
+
+        public void SetCurrent(DlaaConfig config)
+        {
+            if (IsMainMenu)
+            {
+                _menuPreset = config.Preset;
+                config = config.WithPreset(_saved.Preset);
+            }
+            _saved = config;
         }
     }
 
