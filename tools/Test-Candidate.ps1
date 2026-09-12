@@ -58,7 +58,8 @@ foreach ($key in $required) {
 $separate = @($repo, $paths.KSP2_SOURCE, $paths.TEST_WORKSPACE, $paths.KSP2_PROFILE)
 for ($i = 0; $i -lt $separate.Count; $i++) {
     for ($j = $i + 1; $j -lt $separate.Count; $j++) {
-        $a, $b = $separate[$i].TrimEnd('\') + '\', $separate[$j].TrimEnd('\') + '\'
+        $a = $separate[$i].TrimEnd('\') + '\'
+        $b = $separate[$j].TrimEnd('\') + '\'
         if ($a.StartsWith($b, 'OrdinalIgnoreCase') -or $b.StartsWith($a, 'OrdinalIgnoreCase')) { throw 'Source, test workspace, player profile and repository must not overlap.' }
     }
 }
