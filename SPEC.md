@@ -1,6 +1,6 @@
 # Redux Better AA — Engineering Specification
 
-**Status:** Draft for implementation  
+**Status:** 0.6.1 public beta; later-phase designs below remain proposals
 **Project:** Redux Better AA  
 **Target:** Kerbal Space Program 2 Redux  
 **Audience:** Rendering engineers, Unity/C# mod developers, shader developers, coding agents, Redux maintainers
@@ -14,6 +14,26 @@ preset. F10 displays the effective menu preset and can change it for that menu
 visit. Backend/resource refreshes preserve that debug choice; leaving the menu
 restores the gameplay preset, and the next menu visit starts at K. Normal mod
 settings continue to edit the saved gameplay selection.
+
+### Local release workflow (0.6.1)
+
+Release from a clean, committed checkout using the pinned local Unity editor
+and imported Redux references. The release command must run portable checks,
+EditMode tests and the SDK build, validate an explicit package allowlist, and
+recheck that tracked sources and HEAD stayed unchanged. Only then may it push
+the version tag and publish the tested files. Include source and artifact
+hashes, release notes and changes since the previous published release.
+Keep the release as a draft until uploaded attachments pass a download/hash
+check. A build or test failure must never produce a public release.
+
+The first release uses MIT for original code. Ship no Redux, Unity or vendor
+DLLs other than the mod assembly. Provide direct native download links and
+manual extraction/copy instructions, without a setup script. No hosted CI, stored Unity
+credentials or private dependency repository is required.
+
+Current modes and supported runtime versions are in README. Historical phase
+requirements and decision records explain the implementation; they are not a
+claim that every proposed phase or broad hardware acceptance test is complete.
 
 ### Launchpad terrain flicker (2026-09-11)
 
