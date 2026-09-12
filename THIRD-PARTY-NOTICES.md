@@ -11,8 +11,6 @@ and Addressables are supplied by the user's Redux installation and are not
 redistributed by this package. Unity/ThunderKit/SDK editor dependencies are
 build tools, not player payload.
 
-Full native-runtime packages must additionally include the Unity/NVIDIA/AMD
-terms, attributions and third-party notices applicable to their exact binaries.
-Those files must accompany the reviewed runtime export; the package tool does
-not assume that an NVIDIA/AMD filename or signature grants redistribution rights.
-See `docs/distribution.md` for the receipt and source requirements.
+Native plugins are downloaded by the user directly from Unity, under their
+applicable Unity/NVIDIA/AMD terms. The mod ZIP does not redistribute those DLLs.
+See `NATIVES.md` for direct downloads and sources.
