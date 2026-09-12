@@ -6,7 +6,10 @@ keep private fixtures, raw captures and one-off investigations outside the repo.
 ## Automated
 
 - `pwsh -NoProfile -File tools/Test-Release.ps1`: package allowlist, metadata,
-  version agreement, path safety, source cleanliness guards and script syntax.
+  version agreement, path safety, source cleanliness guards, script syntax,
+  and runtime ZIP contents, source validation and overwrite protection.
+- `tools/Release.ps1`: validate all supported runtime DLLs against pinned hashes,
+  package three DLLs and notices per runtime ZIP, then verify uploaded assets.
 - `pwsh -NoProfile -File tools/Build.ps1`: all EditMode tests, shader/assembly
   compilation, player build and installable ZIP validation.
 - For build/dependency changes, repeat the documented first build from a fresh

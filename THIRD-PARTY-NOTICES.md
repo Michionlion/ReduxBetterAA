@@ -11,6 +11,6 @@ and Addressables are supplied by the user's Redux installation and are not
 redistributed by this package. Unity editor packages are build dependencies,
 not player payload.
 
-Native plugins are downloaded by the user directly from Unity, under their
-applicable Unity/NVIDIA/AMD terms. The mod ZIP does not redistribute those DLLs.
-See `NATIVES.md` for direct downloads and sources.
+Separate optional runtime ZIPs contain unmodified Unity/NVIDIA player DLLs
+and combined vendor notices from `licenses/Native-Runtimes.txt`. The mod ZIP
+contains none of those DLLs. See `NATIVES.md` for downloads and sources.

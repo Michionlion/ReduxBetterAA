@@ -4,12 +4,19 @@ param(
     [Parameter(Mandatory)] [string] $Version,
     [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
     [string] $Ksp2Root,
+    [string[]] $RuntimeEditors,
     [switch] $Publish,
     [switch] $Stable
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Helpers.ps1')
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $RuntimeEditors) {
+    $RuntimeEditors = @((Split-Path $Unity), 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor')
+}
+# Validate all supported runtime sets before building. No downloads or game writes.
+& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors
+if ($LASTEXITCODE -ne 0) { throw 'Runtime source validation failed.' }
 $commit = Assert-ReleaseSource $repo
 if ((Get-ReleaseVersion $repo) -cne $Version) { throw 'Requested version differs from the source versions.' }
 $tag = "v$Version"
@@ -53,6 +60,9 @@ if ($existingTag.Count) {
 [void](Assert-ReleaseSource $repo $commit)
 $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 & (Join-Path $PSScriptRoot 'Package.ps1') -OutputDirectory $output -SourceCommit $commit
+& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors --output $output
+if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed.' }
+$runtimeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'BetterAA-Runtimes-*.zip' -File | Sort-Object Name)
 $format = "--format=- %s ([%h]($url/commit/%H))"
 $history = @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range))
 $heading = if ($previous.Count) { "Changes since $previousTag" } else { 'Changes through the first public release' }
@@ -63,6 +73,7 @@ $info = [ordered]@{
     unityEditor = ((Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', '')
     editModePassed = [int]$tests.'test-run'.passed; editModeFailed = [int]$tests.'test-run'.failed
     portableChecksPassed = $true; nativeLibrariesIncluded = $false
+    separateRuntimePackages = @($runtimeAssets.Name)
     previousRelease = $(if ($previous.Count) { $previousTag } else { $null })
 }
 $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
@@ -73,6 +84,10 @@ $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $expectedHashes = @{}
 foreach ($file in $assets) { $expectedHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName).Hash }
 $notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd() + "`n`n[Full changelog]($url/releases/download/$tag/CHANGELOG.md) · [Source]($url/tree/$tag)`n"
+$notes += "`nFor DLAA or FSR 2, extract the runtime ZIP matching your Redux version beside KSP2_x64.exe:`n`n"
+foreach ($runtime in $runtimeAssets) {
+    $notes += "- [$($runtime.Name)]($url/releases/download/$tag/$($runtime.Name))`n"
+}
 $finalNotes = Join-Path $repo "Logs\release-$tag.md"
 $notes | Set-Content -LiteralPath $finalNotes -Encoding utf8NoBOM
 [void](Assert-ReleaseSource $repo $commit)

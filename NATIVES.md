@@ -1,47 +1,23 @@
-# DLAA and FSR 2 native libraries
+# DLAA and FSR 2 runtimes
 
-DLAA needs `NVUnityPlugin.dll` and `nvngx_dlss.dll`. FSR 2 needs
-`AMDUnityPlugin.dll`. **Put them beside `KSP2_x64.exe`, not in the mod folder.**
-TAA and spatial AA need none of these files. DLAA also needs supported RTX hardware.
+Download the ZIP matching your installed Redux version:
 
-## Download
-
-These links download Windows support files directly from Unity:
-
-| Installed Redux | Matching Unity | Download |
+| Redux | Unity | Runtime ZIP |
 | --- | --- | --- |
-| 0.2.9.0 | 6000.5.8f1 | [Windows support files — 382 MiB](https://download.unity3d.com/download_unity/5cb7df797b7d/MacEditorTargetInstaller/UnitySetup-Windows-Mono-Support-for-Editor-6000.5.8f1.pkg) |
-| 0.2.8.5 | 6000.4.1f1 | [Windows support files — 370 MiB](https://download.unity3d.com/download_unity/336a400b9ea2/MacEditorTargetInstaller/UnitySetup-Windows-Mono-Support-for-Editor-6000.4.1f1.pkg) |
+| 0.2.9.0 | 6000.5.8f1 | [Download (29 MiB)](https://github.com/Michionlion/ReduxBetterAA/releases/download/v0.6.1/BetterAA-Runtimes-Redux-0.2.9.0.zip) |
+| 0.2.8.5 | 6000.4.1f1 | [Download (29 MiB)](https://github.com/Michionlion/ReduxBetterAA/releases/download/v0.6.1/BetterAA-Runtimes-Redux-0.2.8.5.zip) |
 
-Check `UnityPlayer.dll` → Properties → Details if you are unsure of your player
-version. Keep the plugin version matched to the player when Redux updates.
+Close KSP2 and extract the ZIP beside `KSP2_x64.exe`. It contains only
+`AMDUnityPlugin.dll`, `NVUnityPlugin.dll`, `nvngx_dlss.dll` and their notices.
+Back up any different existing copies before replacing them. Install the
+Better AA mod separately, then select DLAA or FSR 2 in its settings.
 
-## Install
+TAA and spatial AA need no extra files. DLAA requires supported RTX hardware.
+If a mode stays hidden, check F10's capability report. Match the runtime to
+Redux's Unity player when updating; do not mix DLL versions.
 
-1. Close KSP2. Open the downloaded `.pkg` as an archive with [7-Zip](https://www.7-zip.org/).
-2. Open `TargetSupport.pkg.tmp`, then open `Payload` as an archive. Inside it,
-   open `Variations/win64_player_nondevelopment_mono`.
-3. Copy the DLLs listed above beside `KSP2_x64.exe`. Back up any different
-   existing copies before replacing them.
-4. Start KSP2 and select DLAA or FSR 2 Native AA in **Settings → Mods → Redux Better AA**.
-
-The `.pkg` contains Windows player files despite its Mac installer name; don't
-run it as an installer. The archive is larger than the three files you need.
-A matching Unity editor has the same DLLs under
-`Editor/Data/PlaybackEngines/windowsstandalonesupport/Variations/win64_player_nondevelopment_mono`.
-
-If a mode stays hidden, F10's capability report identifies missing runtimes or
-unsupported hardware. Uninstalling Better AA does not require removing these
-shared DLLs; only remove them if no other mod uses them.
-
-## Source
-
-The downloads come from Unity's release pages for
+The DLLs are unmodified Windows player files from Unity
 [6000.5.8f1](https://unity.com/releases/editor/whats-new/6000.5.8f1) and
 [6000.4.1f1](https://unity.com/releases/editor/whats-new/6000.4.1f1).
-Both sets were extracted and hash-checked against the working player/editor copies.
-Unity's [software terms](https://unity.com/legal/editor-terms-of-service/software)
-and applicable third-party terms, including the
-[DLSS license](https://github.com/NVIDIA/DLSS/blob/main/LICENSE.txt), apply.
-Better AA's MIT license covers its own code; its release links to the original
-Unity archives rather than republishing those binaries.
+Their Unity/NVIDIA/AMD terms are identified in the included notices;
+Better AA's MIT license does not cover them.
