@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu', 'Flight', 'All', 'Maintenance')] [string] $Scene = 'All',
+    [ValidateSet('Menu', 'Flight', 'All', 'Maintenance', 'Release')] [string] $Scene = 'All',
     [string] $GameRoot = 'G:\SteamLibrary\steamapps\common\Kerbal Space Program 2',
     [string] $HarnessRoot = (Join-Path $PSScriptRoot '..\..\ReduxTestHarness'),
     [string] $UnityRoot = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1',
@@ -16,7 +16,8 @@ if (Get-Process KSP2_x64 -ErrorAction SilentlyContinue) { throw 'Close KSP2 befo
 $managed = Join-Path $GameRoot 'KSP2_x64_Data\Managed'
 $mod = Join-Path $GameRoot 'mods\ReduxBetterAA\ReduxBetterAA.dll'
 if (-not (Test-Path -LiteralPath $mod)) { throw 'Install the newly built Better AA beta first.' }
-if ((Get-Item -LiteralPath $mod).VersionInfo.FileVersion -ne '0.6.0.0') { throw 'Install Better AA 0.6.0 before running this suite.' }
+$expectedVersion = (Get-Content -LiteralPath (Join-Path $repo 'Assets\ReduxBetterAA\Copied\swinfo.json') -Raw | ConvertFrom-Json).version
+if ((Get-Item -LiteralPath $mod).VersionInfo.FileVersion -ne "$expectedVersion.0") { throw "Install Better AA $expectedVersion before running this suite." }
 # Redux 2.9 changed camera method signatures; compile the harness against this player.
 & (Join-Path $HarnessRoot 'scripts\install-mod.ps1') -GameRoot $GameRoot -UnityRoot $UnityRoot
 if ($LASTEXITCODE -ne 0) { throw 'Could not build/install the matching test harness.' }
@@ -52,6 +53,7 @@ $scripts = switch ($Scene) {
     'Flight' { 'flight-motion' }
     'All' { 'menu-settings'; 'flight-motion' }
     'Maintenance' { 'maintenance' }
+    'Release' { 'release-images' }
 }
 $priorEncoder = $env:RBAA_VISUAL_FFMPEG
 $priorVideo = $env:RBAA_VISUAL_VIDEO
@@ -87,7 +89,7 @@ if ($encoder) {
 }
 & (Join-Path $PSScriptRoot 'Build-VisualGallery.ps1') -Directory $run -Ffmpeg $Ffmpeg
 $images = @(Get-ChildItem -LiteralPath $run -Recurse -Filter '*.png' -File)
-$expectedImages = switch ($Scene) { 'Menu' { 5 }; 'Flight' { 7 }; 'All' { 12 }; 'Maintenance' { 16 } }
+$expectedImages = switch ($Scene) { 'Menu' { 5 }; 'Flight' { 7 }; 'All' { 12 }; 'Maintenance' { 16 }; 'Release' { 3 } }
 if ($images.Count -ne $expectedImages) { throw "Expected $expectedImages screenshots; found $($images.Count). See $run" }
 @{
     suite = $Scene; scene = $Scene; screenshots = $images.Count
@@ -96,7 +98,7 @@ if ($images.Count -ne $expectedImages) { throw "Expected $expectedImages screens
     modSha256 = (Get-FileHash -LiteralPath $mod -Algorithm SHA256).Hash
     sourceCommit = (& git -C $repo rev-parse HEAD)
     sourceHasChanges = [bool](& git -C $repo status --porcelain)
-    note = if ($Scene -eq 'Maintenance') { 'All public modes, resource recovery, repeated switches, map override; report ZIP paths are recorded in the harness report. No performance claim.' } else { 'DLAA M only. Native settings controls, settled flight/map stills and a six-second 30 FPS sampled camera-pan video when Flight is included. No performance claim.' }
+    note = if ($Scene -eq 'Maintenance') { 'All public modes, resource recovery, repeated switches, map override; report ZIP paths are recorded in the harness report. No performance claim.' } elseif ($Scene -eq 'Release') { 'Same-camera Off, TAA and DLAA K screenshots at native resolution, sharpness 0.15. No performance claim.' } else { 'DLAA M only. Native settings controls, settled flight/map stills and a six-second 30 FPS sampled camera-pan video when Flight is included. No performance claim.' }
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'capture.json') -Encoding utf8
 $zip = "$run.zip"
 Compress-Archive -LiteralPath $run -DestinationPath $zip -CompressionLevel Optimal

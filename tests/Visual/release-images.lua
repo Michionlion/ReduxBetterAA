@@ -1,0 +1,25 @@
+Test.name("Better AA: public release screenshots")
+local beta = Test.mod.extension("ReduxBetterAA.Beta")
+local original = beta.settings()
+local ok, err = pcall(function()
+    Test.game.load_save("local/launchpad-fly-safe-15")
+    Test.game.wait_for_state("Flight", 60)
+    Test.flight.start("Fly Safe-15")
+    Test.game.pause()
+    Test.camera.mode("Flight")
+    Test.camera.target_vessel()
+    Test.camera.orbit {distance=45, yaw=0, pitch=35, fov=55}
+    beta.set_settings({_dlaaPresetEntry="K", _sharpnessEntry=0.15})
+    for _, mode in ipairs({{"Off", "Off", "off"}, {"TAA", "Custom TAA", "taa"}, {"NVIDIA DLAA", "NVIDIA DLAA", "dlaa"}}) do
+        beta.set_settings({_modeEntry=mode[1]})
+        Test.render.wait_stable(180)
+        local state = beta.snapshot()
+        Test.assert.equal(state.selected, mode[2], "Correct backend for " .. mode[3])
+        Test.assert.equal(state.scene_width, state.screen_width, "Native scene resolution")
+        Test.report.value(mode[3], state)
+        Test.capture.screenshot(mode[3], {hideUI=true, waitFrames=0})
+    end
+end)
+beta.set_settings(original)
+if not ok then error(err) end
+Test.report.note("Unedited full-resolution screenshots; same paused camera, sharpness 0.15, DLAA K. No issue capture or timing measurement.")

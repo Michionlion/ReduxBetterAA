@@ -62,6 +62,8 @@ namespace Utilities.Editor
             AddressablesTools.MakeAddressable(mod.allGroup, comparisonShader, comparisonShader);
             const string captureShader = "Assets/ReduxBetterAA/Shaders/IssueBufferCapture.shader";
             AddressablesTools.MakeAddressable(mod.allGroup, captureShader, captureShader);
+            const string statisticsShader = "Assets/ReduxBetterAA/Shaders/Phase1MotionStatistics.shader";
+            AddressablesTools.MakeAddressable(mod.allGroup, statisticsShader, statisticsShader);
             AddressablesTools.MakeAddressable(
                 mod.allGroup,
                 MotionVectorPassProbeShaderPath,
@@ -89,7 +91,14 @@ namespace Utilities.Editor
             );
             AddressableAssetSettingsDefaultObject.Settings.activeProfileId =
                 mod.addressablesProfileId;
-            mod.RefreshPipelines();
+            // RefreshPipelines destroys/recreates subassets with random local IDs.
+            // Keep the checked-in SDK pipelines stable during ordinary builds.
+            if (AssetDatabase.LoadAssetAtPath<Pipeline>("Assets/ReduxBetterAA/Pipelines/Build for Editor.asset") == null ||
+                AssetDatabase.LoadAssetAtPath<Pipeline>("Assets/ReduxBetterAA/Pipelines/Build for Player.asset") == null ||
+                AssetDatabase.LoadAssetAtPath<Pipeline>("Assets/ReduxBetterAA/Pipelines/Deploy to Zip File.asset") == null)
+            {
+                mod.RefreshPipelines();
+            }
             UseCuratedManifest("Assets/ReduxBetterAA/Pipelines/Build for Editor.asset");
             UseCuratedManifest("Assets/ReduxBetterAA/Pipelines/Build for Player.asset");
             UseCuratedManifest("Assets/ReduxBetterAA/Pipelines/Deploy to Zip File.asset");

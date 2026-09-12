@@ -1,5 +1,7 @@
-Current ownership and supersampling changes: [review](aa-ownership-review.md).
-The results below describe earlier builds, not current acceptance.
+Historical 0.6.0 review. The maintainer accepted the terrain fix and approved
+the MIT-licensed 0.6.1 public beta. Current scope and limitations are in the
+[README](../README.md); [release packaging](distribution.md) supersedes the
+full-runtime packaging proposal below. The results below describe earlier builds.
 
 # 0.6.0 beta engineering review
 
@@ -73,7 +75,7 @@ the 2.8.5 regression player (the directory name reflects its original intended
 use). The main game now runs 2.9. All native runtime files were matched to each
 player, and the original mod was backed up before installation.
 
-## Public beta acceptance still required
+## Remaining work recorded for the 0.6.0 review
 
 The maintainer must visually accept the generated material and inspect Redux's
 native settings layout. Extend the existing harness to VAB/KSC, orbit/low-altitude,

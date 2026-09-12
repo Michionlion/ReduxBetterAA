@@ -3,6 +3,13 @@ param([string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor\Uni
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$expectedEditor = ((Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', '')
+if (-not (Test-Path -LiteralPath $Unity) -or (Get-Item -LiteralPath $Unity).VersionInfo.ProductVersion -notlike "$expectedEditor*") {
+    throw "Use the pinned Unity $expectedEditor editor."
+}
+if (-not (Test-Path -LiteralPath (Join-Path $repo 'Packages\KSP2_x64\package.json'))) {
+    throw 'Import the matching Redux assemblies with ThunderKit first; see docs/building.md.'
+}
 $logs = Join-Path $repo 'Logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 if (Get-Process Unity -ErrorAction SilentlyContinue) { throw 'Close Unity before running the batch pipeline.' }
@@ -16,14 +23,18 @@ function Invoke-UnityStep([string] $Name, [string] $Arguments) {
     if (Select-String -LiteralPath $log -Pattern 'error CS\d+|Shader error in|Halted execution|Aborting batchmode|Timeout after \d+ seconds while waiting' -Quiet) {
         throw "Unity $Name failed; see $log"
     }
-    if ($Name -ne 'package' -and $process.ExitCode -ne 0) { throw "Unity $Name exited $($process.ExitCode); see $log" }
+    if (($Name -eq 'package' -and $process.ExitCode -notin @(0, 1)) -or ($Name -ne 'package' -and $process.ExitCode -ne 0)) {
+        throw "Unity $Name exited $($process.ExitCode); see $log"
+    }
 }
 Invoke-UnityStep 'prepare' '-quit -executeMethod Utilities.Editor.PrepareReduxBetterAAMod.Run'
 $results = Join-Path $logs 'beta-editmode.xml'
 if (Test-Path -LiteralPath $results) { Remove-Item -LiteralPath $results }
 Invoke-UnityStep 'editmode' "-runTests -testPlatform EditMode -testResults `"$results`""
 [xml]$tests = Get-Content -LiteralPath $results -Raw
-if ($tests.'test-run'.result -ne 'Passed' -or [int]$tests.'test-run'.failed -ne 0) { throw 'EditMode tests did not pass.' }
+if ($tests.'test-run'.result -ne 'Passed' -or [int]$tests.'test-run'.failed -ne 0 -or [int]$tests.'test-run'.passed -lt 1 -or [int]$tests.'test-run'.skipped -ne 0) {
+    throw 'EditMode tests did not all pass.'
+}
 Write-Host "$($tests.'test-run'.passed) EditMode tests passed."
 $packageStart = Get-Date
 Invoke-UnityStep 'package' '-quit -executeMethod ThunderKit.Core.Pipelines.Pipeline.BatchModeExecutePipeline -pipeline="Assets/ReduxBetterAA/Pipelines/Deploy to Zip File.asset"'

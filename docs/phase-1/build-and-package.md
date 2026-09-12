@@ -1,5 +1,9 @@
 # Phase 1 build and package
 
+Historical import/build notes and validation ledger. Use the current
+[build and release guide](../building.md) for release commands. The old native
+bundle examples below are local experiments; they are not public release assets.
+
 ## Pinned environment
 
 - Unity `6000.4.1f1`
