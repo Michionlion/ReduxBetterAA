@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.24)
+project(ReduxBetterAA_FsrBridge LANGUAGES CXX)
+
+if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "The FSR bridge requires Windows x64")
+endif()
+
+add_executable(FsrBridgeTests FsrBridgeTests.cpp)
+target_compile_features(FsrBridgeTests PRIVATE cxx_std_17)
+target_link_libraries(FsrBridgeTests PRIVATE ReduxBetterAA.FsrBridge d3d11 d3d12 dxgi)
+if(MSVC)
+    target_compile_options(FsrBridgeTests PRIVATE /W4 /WX /permissive- /EHsc)
+    set_property(TARGET FsrBridgeTests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+set(FFX_SDK_ROOT "" CACHE PATH "External official FidelityFX-SDK checkout")
+if(NOT EXISTS "${FFX_SDK_ROOT}/Kits/FidelityFX/upscalers/include/ffx_upscale.h")
+    message(FATAL_ERROR "Pass FFX_SDK_ROOT pointing at the pinned official SDK outside this source tree")
+endif()
+find_package(Git REQUIRED)
+execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${FFX_SDK_ROOT}" rev-parse HEAD
+    OUTPUT_VARIABLE sdk_commit OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+if(NOT sdk_commit STREQUAL "60f4ea81909200d8542eca14dccb2628b763a9a3")
+    message(FATAL_ERROR "This bridge requires FidelityFX-SDK commit 60f4ea81909200d8542eca14dccb2628b763a9a3")
+endif()
+execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${FFX_SDK_ROOT}" diff --exit-code HEAD -- Kits/FidelityFX/api/include Kits/FidelityFX/upscalers/include
+    COMMAND_ERROR_IS_FATAL ANY OUTPUT_QUIET)
+
+add_library(ReduxBetterAA.FsrBridge SHARED FsrBridge.cpp FsrBridge.h)
+target_compile_features(ReduxBetterAA.FsrBridge PRIVATE cxx_std_17)
+target_compile_definitions(ReduxBetterAA.FsrBridge PRIVATE RBA_FSR_EXPORTS _WINDOWS UNICODE _UNICODE)
+target_include_directories(ReduxBetterAA.FsrBridge SYSTEM PRIVATE
+    "${FFX_SDK_ROOT}/Kits/FidelityFX/api/include" "${FFX_SDK_ROOT}/Kits/FidelityFX/upscalers/include")
+target_link_libraries(ReduxBetterAA.FsrBridge PRIVATE d3d11 d3d12 dxgi bcrypt)
+if(MSVC)
+    target_compile_options(ReduxBetterAA.FsrBridge PRIVATE /W4 /WX /permissive- /EHsc)
+    set_property(TARGET ReduxBetterAA.FsrBridge PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()

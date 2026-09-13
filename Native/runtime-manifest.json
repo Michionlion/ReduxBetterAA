@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sdk": {
+    "repository": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git",
+    "commit": "60f4ea81909200d8542eca14dccb2628b763a9a3",
+    "version": "2.3.0"
+  },
+  "abiVersion": 1,
+  "graphicsApi": "D3D11 with same-adapter D3D12 interop",
+  "files": [
+    {
+      "filename": "amd_fidelityfx_upscaler_dx12.dll",
+      "source": "Kits/FidelityFX/signedbin/amd_fidelityfx_upscaler_dx12.dll",
+      "sha256": "d0dcccc74a43c44ba435b7a369b456e0970d8a4464e4bd683119b374f2c9fb46"
+    }
+  ],
+  "license": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/docs/license.md",
+  "distributionStatus": "Excluded from the main mod package; Build-Native.ps1 creates a separate optional runtime archive with original AMD license and notices."
+}
