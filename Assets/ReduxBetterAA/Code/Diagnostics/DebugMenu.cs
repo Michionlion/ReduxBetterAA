@@ -6,9 +6,20 @@ namespace ReduxBetterAA.Diagnostics
 {
     internal static class DebugMenu
     {
-        internal static readonly string[] Modes = UserSettingsPolicy.BuildModeChoices(true, true);
-        internal static readonly BackendSelection[] Backends = Array.ConvertAll(
+        internal static string[] Modes { get; private set; } = UserSettingsPolicy.BuildModeChoices(false, false);
+        internal static BackendSelection[] Backends { get; private set; } = Array.ConvertAll(
             Modes, mode => UserSettingsPolicy.ParseBackend(mode, true, true));
+
+        // The mod supplies the exact capability-filtered choices used by its
+        // persistent settings. Never make optional vendor modes visible by default.
+        internal static void ConfigureModes(string[] actualModeChoices)
+        {
+            Modes = actualModeChoices == null || actualModeChoices.Length == 0
+                ? UserSettingsPolicy.BuildModeChoices(false, false)
+                : (string[])actualModeChoices.Clone();
+            Backends = Array.ConvertAll(Modes,
+                mode => UserSettingsPolicy.ParseBackend(mode, true, true));
+        }
 
         internal static string ModeName(BackendSelection backend) =>
             Modes[Mathf.Max(0, Array.IndexOf(Backends, backend))];

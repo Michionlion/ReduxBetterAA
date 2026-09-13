@@ -12,11 +12,18 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 namespace ReduxBetterAA.Backends
 {
     /// <summary>
-    /// Native-resolution FSR2 AA backend using Unity's managed AMD
-    /// module. It does not alter Redux render scale or include UI in history.
+    /// AMD native AA and reconstruction through the optional FSR SDK bridge.
+    /// The stable class/selection names remain for saved-setting compatibility.
     /// </summary>
     internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
     {
+        private ReconstructionQuality _quality = ReconstructionQuality.Native;
+        private bool Upscaling => _quality != ReconstructionQuality.Native;
+        private int _outputWidth, _outputHeight;
+        private int _jitterPhaseCount = 8;
+        internal void ConfigureReconstruction(ReconstructionQuality quality) => _quality = ReconstructionPolicy.Normalize(quality);
+        private Vector2 Jitter => SharedJitterSequence.GetCustomOffset(_frameIndex,
+            Upscaling ? 1.0f : _config.JitterSpread, Upscaling ? _jitterPhaseCount : _config.SequenceLength);
         private static readonly int CameraDepthTexture =
             Shader.PropertyToID("_CameraDepthTexture");
         private static readonly int CameraMotionVectorsTexture =
@@ -26,9 +33,9 @@ namespace ReduxBetterAA.Backends
         private readonly Action<string> _runtimeFailure;
         private readonly BackendPerformanceProfiler _performanceProfiler;
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
-        private readonly DepthDisocclusionMask _depthDisocclusionMask;
-        private readonly AmdFsr2Api _api = new AmdFsr2Api();
-        private readonly Ppv2ExposureReader _exposureReader;
+        private readonly AmdFsrNativeApi _nativeApi = new AmdFsrNativeApi();
+        private readonly Action _availabilityChanged;
+        private string _providerName = "AMD FSR";
 
         private Fsr2Config _config = Fsr2Config.Conservative;
         private Camera _resolveCamera;
@@ -56,26 +63,23 @@ namespace ReduxBetterAA.Backends
         private bool _runtimeFailureLatched;
         private string _lastFailure = string.Empty;
         private long _estimatedMemoryBytes;
-        private bool _contextUsesVendorAutoExposure;
-        private bool _usingPpv2Exposure;
-        private float _effectivePreExposure = 1.0f;
 
         public AmdFsr2Backend(
             ReduxLogger logger,
             Action<string> runtimeFailure,
             BackendPerformanceProfiler performanceProfiler,
             MotionVectorSanitizer motionVectorSanitizer,
-            DepthDisocclusionMask depthDisocclusionMask)
+            DepthDisocclusionMask depthDisocclusionMask,
+            Action availabilityChanged = null)
         {
+            _availabilityChanged = availabilityChanged;
             _logger = logger;
             _runtimeFailure = runtimeFailure;
             _performanceProfiler = performanceProfiler;
             _motionVectorSanitizer = motionVectorSanitizer;
-            _depthDisocclusionMask = depthDisocclusionMask;
-            _exposureReader = new Ppv2ExposureReader(logger);
         }
 
-        public string Id => "FSR2 Native AA";
+        public string Id => _providerName + (Upscaling ? " Upscaling" : " Native AA");
         internal bool RenderEnabled = true;
         public bool Active => _active && RenderEnabled;
 
@@ -85,13 +89,14 @@ namespace ReduxBetterAA.Backends
             if (!Active || !_projectionJitterSupported || camera == null ||
                 (camera != _resolveCamera && camera != _sharedJitterCamera)) return false;
             CameraProjectionState state = camera == _sharedJitterCamera ? _sharedProjection : _resolveProjection;
-            projection = state.GetRasterProjection(camera, SharedJitterSequence.GetCustomOffset(
-                _frameIndex, _config.JitterSpread, _config.SequenceLength));
+            projection = state.GetRasterProjection(camera, Jitter);
             return true;
         }
         public bool ManagedSurfaceAvailable { get; private set; }
-        public bool ContextCreated => _api.ContextCreated;
-        public uint DeviceVersion => _api.DeviceVersion;
+        public bool ContextCreated => _nativeApi.ContextCreated;
+        public bool? ContextUsesHdr => _nativeApi.ContextCreated
+            ? (bool?)_nativeApi.ContextUsesHdr : null;
+        public uint DeviceVersion => 0u;
         public int InputWidth => _resourceWidth;
         public int InputHeight => _resourceHeight;
         public int OutputWidth => _output == null ? 0 : _output.width;
@@ -100,17 +105,13 @@ namespace ReduxBetterAA.Backends
             ? string.Empty
             : _output.graphicsFormat.ToString();
         public bool OutputRandomWrite => _output != null && _output.enableRandomWrite;
-        public long EstimatedMemoryBytes => _estimatedMemoryBytes;
+        public long EstimatedMemoryBytes => _estimatedMemoryBytes + _nativeApi.EstimatedMemoryBytes;
         public string LastFailure => _lastFailure;
-        public string ExposureSource => _usingPpv2Exposure
-            ? "PPv2 GPU exposure"
-            : (_contextUsesVendorAutoExposure
-                ? "FSR2 auto exposure"
-                : "manual pre-exposure");
-        public float EffectivePreExposure => _effectivePreExposure;
+        public string ExposureSource => "post-PPv2 linear HDR processing (exposure 1)";
+        public float EffectivePreExposure => 1.0f;
         public Vector2 ProjectionJitterPixels => _jitterPixels;
         public Vector2 DispatchJitterPixels =>
-            AmdFsr2Api.ToDispatchJitter(_jitterPixels);
+            AmdFsrNativeApi.ToDispatchJitter(_jitterPixels);
         public Vector2 CurrentJitterNormalized =>
             _resourceWidth > 0 && _resourceHeight > 0
                 ? new Vector2(
@@ -121,12 +122,14 @@ namespace ReduxBetterAA.Backends
 
         public void Initialize()
         {
-            string reason;
-            ManagedSurfaceAvailable = _api.TryBindManagedSurface(out reason);
-            if (!ManagedSurfaceAvailable)
+            ManagedSurfaceAvailable = AmdFsrNativeApi.Probe(out string provider, out string reason);
+            if (ManagedSurfaceAvailable)
             {
-                _lastFailure = reason;
+                _providerName = provider;
+                _nativeApi.Initialize(_availabilityChanged);
+                return;
             }
+            _lastFailure = reason;
         }
 
         public void ApplyConfig(in Fsr2Config config)
@@ -144,7 +147,13 @@ namespace ReduxBetterAA.Backends
         {
             if (_runtimeFailureLatched)
             {
-                unsupportedReason = "previous FSR2 execution failed: " + _lastFailure;
+                unsupportedReason = "previous " + _providerName + " execution failed: " + _lastFailure;
+                return false;
+            }
+            if (!ManagedSurfaceAvailable)
+            {
+                unsupportedReason = string.IsNullOrEmpty(_lastFailure)
+                    ? "the optional AMD FSR runtime is unavailable" : _lastFailure;
                 return false;
             }
             if (cameras == null || cameras.SceneKind == TemporalSceneKind.Unsupported)
@@ -162,18 +171,22 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = "the final scene camera is disabled";
                 return false;
             }
-            if (cameras.RenderScalePercent != 100)
+            if (!Upscaling && cameras.RenderScalePercent != 100)
             {
                 unsupportedReason =
-                    "FSR2 Native AA requires 100% render scale (equal input/output dimensions)";
+                    _providerName + " Native AA requires 100% render scale (equal input/output dimensions)";
+                return false;
+            }
+            if (Upscaling && (ReduxSceneOutput.Current == null || cameras.RenderScalePercent >= 100))
+            {
+                unsupportedReason = "FSR upscaling requires an acquired reduced-resolution scene output";
                 return false;
             }
             GraphicsDeviceType graphicsApi = SystemInfo.graphicsDeviceType;
-            if (graphicsApi != GraphicsDeviceType.Direct3D11 &&
-                graphicsApi != GraphicsDeviceType.Direct3D12)
+            if (graphicsApi != GraphicsDeviceType.Direct3D11)
             {
                 unsupportedReason =
-                    "Unity AMD FSR2 requires Direct3D 11 or Direct3D 12";
+                    "the AMD FSR bridge currently requires Direct3D 11";
                 return false;
             }
             if (!SystemInfo.supportsMotionVectors)
@@ -186,14 +199,8 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = _motionVectorSanitizer.Status;
                 return false;
             }
-            if (!_api.TryInitialize(out unsupportedReason))
-            {
-                _lastFailure = unsupportedReason;
-                return false;
-            }
-
-            unsupportedReason = string.Empty;
-            return true;
+            unsupportedReason = _nativeApi.Ready ? string.Empty : "FSR bridge input shader is loading or unavailable";
+            return _nativeApi.Ready;
         }
 
         public bool Configure(TemporalCameraSet cameras, out string failureReason)
@@ -205,6 +212,11 @@ namespace ReduxBetterAA.Backends
             }
 
             _resolveCamera = cameras.ResolveCamera;
+            if (Upscaling)
+            {
+                if (!ReduxSceneOutput.Current.TryGetFrame(_resolveCamera, out SceneOutputFrame frame, out failureReason)) return false;
+                _jitterPhaseCount = ReconstructionPolicy.JitterPhaseCount(frame.RenderWidth, frame.OutputWidth);
+            }
             _resolveLayer = cameras.ResolveLayer;
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
@@ -217,10 +229,9 @@ namespace ReduxBetterAA.Backends
 
             _commandBuffer = new CommandBuffer
             {
-                name = "Redux Better AA AMD FSR2 Native AA"
+                name = "Redux Better AA " + Id
             };
             _hook = TemporalRenderHook.Attach(_resolveCamera, this);
-            _exposureReader.Configure(_resolveLayer);
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
             _historyResetPending = true;
@@ -243,7 +254,7 @@ namespace ReduxBetterAA.Backends
         public void Render(RenderTexture source, RenderTexture destination)
         {
             long start = _performanceProfiler.BeginResolve(
-                BackendSelection.AmdFsr2
+                Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2
             );
             try
             {
@@ -252,7 +263,7 @@ namespace ReduxBetterAA.Backends
             finally
             {
                 _performanceProfiler.EndResolve(
-                    BackendSelection.AmdFsr2,
+                    Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2,
                     start
                 );
             }
@@ -268,17 +279,19 @@ namespace ReduxBetterAA.Backends
 
             try
             {
-                float ppv2Exposure = 1.0f;
-                bool usePpv2Exposure = _config.AutoExposure &&
-                    _config.PreferPpv2Exposure &&
-                    _exposureReader.TryGetExposure(out ppv2Exposure);
-                bool useVendorAutoExposure =
-                    _config.AutoExposure && !usePpv2Exposure;
-                _effectivePreExposure = usePpv2Exposure
-                    ? Mathf.Clamp(ppv2Exposure, 0.2f, 2.0f)
-                    : (_config.AutoExposure ? 1.0f : _config.PreExposure);
-
-                if (!EnsureResources(source, useVendorAutoExposure))
+                SceneOutputFrame outputFrame = default;
+                if (Upscaling)
+                {
+                    string outputReason = "scene output ownership was lost";
+                    if (ReduxSceneOutput.Current == null ||
+                        !ReduxSceneOutput.Current.TryGetFrame(_resolveCamera, out outputFrame, out outputReason))
+                    { Graphics.Blit(source, destination); FailRuntime(outputReason); return; }
+                    if (source.width != outputFrame.RenderWidth || source.height != outputFrame.RenderHeight)
+                    { Graphics.Blit(source, destination); FailRuntime("FSR input extent differs from acquired scene target"); return; }
+                }
+                _outputWidth = Upscaling ? outputFrame.OutputWidth : source.width;
+                _outputHeight = Upscaling ? outputFrame.OutputHeight : source.height;
+                if (!EnsureResources(source))
                 {
                     Graphics.Blit(source, destination);
                     FailRuntime(_lastFailure);
@@ -292,13 +305,13 @@ namespace ReduxBetterAA.Backends
                 if (!TemporalTextures.Matches(depth, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
-                    FailRuntime("camera depth does not match the FSR2 color input");
+                    FailRuntime("camera depth does not match the FSR color input");
                     return;
                 }
                 if (!TemporalTextures.Matches(motionVectors, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
-                    FailRuntime("camera motion vectors do not match the FSR2 color input");
+                    FailRuntime("camera motion vectors do not match the FSR color input");
                     return;
                 }
                 Texture sanitizedMotion;
@@ -320,34 +333,17 @@ namespace ReduxBetterAA.Backends
                     return;
                 }
 
-                Texture biasColorMask;
-                _depthDisocclusionMask.TryGenerate(
-                    source,
-                    depth,
-                    sanitizedMotion,
-                    source.width,
-                    source.height,
-                    out biasColorMask
-                );
-
-                _api.Execute(
-                    _commandBuffer,
-                    source,
-                    _output,
-                    depth,
-                    sanitizedMotion,
-                    biasColorMask,
-                    source.width,
-                    source.height,
-                    _jitterPixels,
-                    _resolveCamera,
-                    Time.unscaledDeltaTime * 1000.0f,
-                    _effectivePreExposure,
-                    in _config,
-                    _historyResetPending
-                );
+                if (!_nativeApi.Execute(_commandBuffer, source, _output, depth, sanitizedMotion,
+                    _jitterPixels, _resolveCamera, in _config, _historyResetPending, out string nativeReason))
+                { Graphics.Blit(source, destination); FailRuntime(nativeReason); return; }
                 _historyResetPending = false;
-                Graphics.Blit(_output, destination);
+                if (Upscaling)
+                {
+                    if (!ReduxSceneOutput.Current.Submit(in outputFrame, _output, out string reason))
+                        FailRuntime(reason);
+                    Graphics.Blit(source, destination);
+                }
+                else Graphics.Blit(_output, destination);
             }
             catch (Exception exception)
             {
@@ -382,10 +378,6 @@ namespace ReduxBetterAA.Backends
             _jitterPixels = Vector2.zero;
             _historyResetPending = false;
             _motionVectorSanitizer.ResetCameraHistory();
-            _exposureReader.Deactivate();
-            _contextUsesVendorAutoExposure = false;
-            _usingPpv2Exposure = false;
-            _effectivePreExposure = 1.0f;
             _active = false;
         }
 
@@ -397,19 +389,17 @@ namespace ReduxBetterAA.Backends
             }
             _disposed = true;
             Deactivate();
-            _exposureReader.Dispose();
+            _nativeApi.Dispose();
         }
 
-        private bool EnsureResources(
-            RenderTexture source,
-            bool useVendorAutoExposure)
+        private bool EnsureResources(RenderTexture source)
         {
-            if (TemporalTextures.IsCreated(_output) && _api.ContextCreated &&
+            if (TemporalTextures.IsCreated(_output) && ContextCreated &&
+                _output.width == _outputWidth && _output.height == _outputHeight &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceGraphicsFormat == source.graphicsFormat &&
-                _resourceSrgb == source.sRGB &&
-                _contextUsesVendorAutoExposure == useVendorAutoExposure)
+                _resourceSrgb == source.sRGB)
             {
                 return true;
             }
@@ -418,17 +408,19 @@ namespace ReduxBetterAA.Backends
             RenderTextureDescriptor descriptor = BuildOutputDescriptor(
                 source.descriptor
             );
+            descriptor.width = _outputWidth;
+            descriptor.height = _outputHeight;
             if (!SystemInfo.IsFormatSupported(
                     descriptor.graphicsFormat,
                     GraphicsFormatUsage.LoadStore))
             {
-                _lastFailure = "FSR2 output format " +
+                _lastFailure = "FSR output format " +
                     descriptor.graphicsFormat + " does not support random write";
                 return false;
             }
             _output = new RenderTexture(descriptor)
             {
-                name = "Redux Better AA FSR2 Native Output",
+                name = "Redux Better AA " + Id + " Output",
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp,
                 hideFlags = HideFlags.HideAndDontSave
@@ -437,7 +429,7 @@ namespace ReduxBetterAA.Backends
             if (!_output.IsCreated())
             {
                 TemporalTextures.Release(ref _output);
-                _lastFailure = "FSR2 output texture creation failed";
+                _lastFailure = "FSR output texture creation failed";
                 return false;
             }
 
@@ -445,52 +437,43 @@ namespace ReduxBetterAA.Backends
             _resourceHeight = source.height;
             _resourceGraphicsFormat = source.graphicsFormat;
             _resourceSrgb = source.sRGB;
-            bool hdr = TemporalTextures.IsHdr(source.format);
-            string reason;
-            if (!_api.TryCreateContext(
-                    _commandBuffer,
-                    source.width,
-                    source.height,
-                    hdr,
-                    useVendorAutoExposure,
-                    out reason))
+            if (!_nativeApi.TryCreateContext(_commandBuffer, source.width, source.height,
+                _outputWidth, _outputHeight, out string reason))
             {
                 TemporalTextures.Release(ref _output);
-                _lastFailure = "FSR2 context creation failed: " + reason;
+                _lastFailure = _providerName + " context creation failed: " + reason;
                 return false;
             }
 
-            _estimatedMemoryBytes = (long)source.width * source.height *
-                TemporalTextures.EstimateColorBytes(source.format);
-            _contextUsesVendorAutoExposure = useVendorAutoExposure;
-            _usingPpv2Exposure =
-                _config.AutoExposure && !useVendorAutoExposure;
+            _estimatedMemoryBytes = (long)_outputWidth * _outputHeight * 8;
             _historyResetPending = true;
             _logger.LogInfo(
-                "[ReduxBetterAA/FSR2] Native-resolution context created for " +
-                source.width + "x" + source.height + ", API v" +
-                _api.DeviceVersion + ", output " + _output.graphicsFormat +
+                "[ReduxBetterAA/FSR] " + Id + " context created for " +
+                source.width + "x" + source.height + " -> " + _outputWidth + "x" + _outputHeight +
+                ", SDK provider " + AmdFsrNativeApi.ProviderName + ", output " + _output.graphicsFormat +
                 " (random-write); exposure: " + ExposureSource + "."
             );
             return true;
         }
 
-        internal static RenderTextureDescriptor BuildOutputDescriptor(RenderTextureDescriptor source) =>
-            TemporalTextures.VendorOutputDescriptor(source);
+        internal static RenderTextureDescriptor BuildOutputDescriptor(RenderTextureDescriptor source)
+        {
+            RenderTextureDescriptor output = TemporalTextures.VendorOutputDescriptor(source);
+            output.graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat;
+            return output;
+        }
 
         private void ReleaseResources()
         {
             if (_commandBuffer != null)
             {
-                _api.DestroyContext(_commandBuffer);
+                _nativeApi.DestroyContext(_commandBuffer);
             }
             TemporalTextures.Release(ref _output);
             _resourceWidth = 0;
             _resourceHeight = 0;
             _resourceGraphicsFormat = GraphicsFormat.None;
             _estimatedMemoryBytes = 0;
-            _contextUsesVendorAutoExposure = false;
-            _usingPpv2Exposure = false;
         }
 
         private void OnCameraPreCull(Camera camera)
@@ -511,11 +494,7 @@ namespace ReduxBetterAA.Backends
                     ApplyJitter(camera, ref _resolveProjection);
                 }
                 _jitterPixels = _projectionJitterSupported
-                    ? SharedJitterSequence.GetCustomOffset(
-                        _frameIndex,
-                        _config.JitterSpread,
-                        _config.SequenceLength
-                    )
+                    ? Jitter
                     : Vector2.zero;
                 CameraProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
@@ -543,24 +522,26 @@ namespace ReduxBetterAA.Backends
 
         private void ApplyJitter(Camera camera, ref CameraProjectionState state)
         {
-            state.Apply(camera, SharedJitterSequence.GetCustomOffset(
-                _frameIndex, _config.JitterSpread, _config.SequenceLength),
+            state.Apply(camera, Jitter,
                 jitterTransparentRendering: _jitterTransparentRendering);
         }
 
         private void FailRuntime(string reason)
         {
+            // A resize/Redux graph rebuild invalidates the frame, not the GPU.
+            // The coordinator reacquires it before the next vendor context.
+            if (Upscaling && ReduxSceneOutput.Current?.ReacquisitionPending == true) return;
             if (_runtimeFailureLatched)
             {
                 return;
             }
             _runtimeFailureLatched = true;
             _lastFailure = string.IsNullOrEmpty(reason)
-                ? "unknown FSR2 execution failure"
+                ? "unknown FSR execution failure"
                 : reason;
             _active = false;
             _logger.LogError(
-                "[ReduxBetterAA/FSR2] Disabled after a runtime failure: " +
+                "[ReduxBetterAA/FSR] " + Id + " disabled after a runtime failure: " +
                 _lastFailure + "."
             );
             _runtimeFailure?.Invoke(_lastFailure);

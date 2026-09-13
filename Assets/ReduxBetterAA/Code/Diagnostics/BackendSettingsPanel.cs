@@ -22,11 +22,15 @@ namespace ReduxBetterAA.Diagnostics
         internal Action RestoreDlaaPreset;
         internal Func<string> DlaaDetails;
         internal Func<long> DlaaMemoryBytes;
+        internal Func<string> DlssDetails;
+        internal Func<long> DlssMemoryBytes;
         internal Func<Fsr2Config> Fsr2Config;
         internal Action<Fsr2Config> SetFsr2Config;
         internal Action RestoreFsr2Preset;
         internal Func<string> Fsr2Details;
         internal Func<long> Fsr2MemoryBytes;
+        internal Func<string> FsrUpscalingDetails;
+        internal Func<long> FsrUpscalingMemoryBytes;
         internal Func<BackendSelection, PerformanceProfileSnapshot>
             PerformanceProfile;
         internal Action<BackendSelection> StartPerformanceProfile;
@@ -40,13 +44,25 @@ namespace ReduxBetterAA.Diagnostics
         internal Action<string> SetDlaaPreset;
         internal Func<int> SupersamplingPercent;
         internal Action<int> SetSupersamplingPercent;
+        internal Func<ReconstructionQuality> UpscalingQuality;
+        internal Action<ReconstructionQuality> SetUpscalingQuality;
         private bool _scaleOpen;
         private static readonly string[] ScaleLabels = { "125%", "150%", "175%", "200%" };
+        private bool _qualityOpen;
+        private static readonly string[] QualityLabels = { "Quality", "Balanced", "Performance" };
         private bool _presetOpen;
 
         internal void DrawBasic(BackendSelection mode)
         {
-            if (mode >= BackendSelection.CustomTaa && mode <= BackendSelection.AmdFsr2 && Sharpness != null) {
+            if ((mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling) &&
+                UpscalingQuality != null && SetUpscalingQuality != null)
+            {
+                int index = Mathf.Clamp((int)UpscalingQuality() - 1, 0, QualityLabels.Length - 1);
+                int next = DebugMenu.Dropdown("Upscaling quality", index, QualityLabels, ref _qualityOpen);
+                if (next != index) SetUpscalingQuality((ReconstructionQuality)(next + 1));
+            }
+            if ((mode >= BackendSelection.CustomTaa && mode <= BackendSelection.AmdFsr2 ||
+                mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling) && Sharpness != null) {
                 float value = Sharpness();
                 float next = DrawParameter("Sharpness", value, 0, 1);
                 if (next != value) SetSharpness(next);
@@ -374,15 +390,15 @@ namespace ReduxBetterAA.Diagnostics
 
         internal void DrawFsr2Tab()
         {
-            GUILayout.Label("FSR 2 Native AA");
+            GUILayout.Label(DebugMenu.ModeName(BackendSelection.AmdFsr2));
             GUILayout.Label(
                 Fsr2Details == null
-                    ? "FSR2 runtime details are unavailable."
+                    ? "FSR runtime details are unavailable."
                     : Fsr2Details()
             );
             if (Fsr2Config == null || SetFsr2Config == null)
             {
-                GUILayout.Label("FSR2 parameter controls are unavailable.");
+                GUILayout.Label("FSR parameter controls are unavailable.");
                 return;
             }
 
@@ -395,17 +411,6 @@ namespace ReduxBetterAA.Diagnostics
             ));
             float sharpness = DrawParameter(
                 "Sharpness", config.Sharpness, 0.0f, 1.0f
-            );
-            float preExposure = DrawParameter(
-                "Pre-exposure", config.PreExposure, 0.01f, 16.0f
-            );
-            bool autoExposure = GUILayout.Toggle(
-                config.AutoExposure,
-                " Automatic exposure"
-            );
-            bool preferPpv2Exposure = GUILayout.Toggle(
-                config.PreferPpv2Exposure,
-                " Prefer game / PPv2 exposure"
             );
             bool invertMotionX = GUILayout.Toggle(
                 config.InvertMotionX,
@@ -420,11 +425,11 @@ namespace ReduxBetterAA.Diagnostics
                 jitterSpread,
                 sequenceLength,
                 sharpness,
-                preExposure,
-                autoExposure,
+                config.PreExposure,
+                config.AutoExposure,
                 invertMotionX,
                 invertMotionY,
-                preferPpv2Exposure
+                config.PreferPpv2Exposure
             );
             if (!config.ValuesEqual(in updated))
             {
@@ -434,14 +439,13 @@ namespace ReduxBetterAA.Diagnostics
             long bytes = Fsr2MemoryBytes == null ? 0 : Fsr2MemoryBytes();
             GUILayout.Label(
                 bytes > 0
-                    ? "Project-owned FSR2 output: " +
+                    ? "Project-owned FSR output: " +
                       (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
-                    : "The FSR2 output is allocated when its context first renders."
+                    : "The FSR output is allocated when its context first renders."
             );
             GUILayout.Label(
-                "This first FSR2 mode is native-resolution AA only: render scale " +
-                "must be 100%. It is selectable on AMD, NVIDIA, and Intel GPUs " +
-                "when Unity's AMD runtime loads. Screen-wide corruption is " +
+                "Native-resolution AA keeps the scene render scale at 100%. " +
+                "The active FSR provider is shown above. Screen-wide corruption is " +
                 "replaced in the same frame. Coherent camera pans may exceed " +
                 "256 px; invalid, unverified >256 px, or >96 px disagreement uses " +
                 "a <=256 px " +
@@ -461,6 +465,25 @@ namespace ReduxBetterAA.Diagnostics
             }
             GUI.enabled = previousHistoryEnabled;
             GUILayout.EndHorizontal();
+        }
+
+        internal void DrawUpscalingTab(BackendSelection mode)
+        {
+            bool dlss = mode == BackendSelection.NvidiaDlss;
+            GUILayout.Label(DebugMenu.ModeName(mode));
+            Func<string> details = dlss ? DlssDetails : FsrUpscalingDetails;
+            GUILayout.Label(details == null ? "Upscaling runtime details are unavailable." : details());
+            Func<long> memoryBytes = dlss ? DlssMemoryBytes : FsrUpscalingMemoryBytes;
+            long bytes = memoryBytes == null ? 0 : memoryBytes();
+            GUILayout.Label(bytes > 0
+                ? "Project-owned reconstruction buffers: " + (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
+                : "Reconstruction buffers are allocated when this mode first renders.");
+            GUILayout.Label("Reconstructs the scene to display resolution while the UI stays native. " +
+                "Quality renders more scene detail; Performance renders fewer pixels.");
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = RequestedBackend != null && RequestedBackend() == mode && ResetTemporalHistory != null;
+            if (GUILayout.Button("Reset history", GUILayout.Height(28f))) ResetTemporalHistory();
+            GUI.enabled = previousEnabled;
         }
 
         internal void DrawPerformanceProfile(BackendSelection mode)
@@ -526,7 +549,7 @@ namespace ReduxBetterAA.Diagnostics
             in PerformanceProfileSnapshot profile)
         {
             GUILayout.Label(
-                "Whole frame CPU: " +
+                "CPU frame interval (includes waits): " +
                 profile.AverageCpuFrameMilliseconds.ToString("0.00") +
                 " ms average, " +
                 profile.PeakCpuFrameMilliseconds.ToString("0.00") + " ms peak."
@@ -538,8 +561,14 @@ namespace ReduxBetterAA.Diagnostics
                       " ms average, " +
                       profile.PeakGpuFrameMilliseconds.ToString("0.00") +
                       " ms peak (" + profile.GpuSamples + " samples)."
-                    : "Whole frame GPU timing was unavailable from Unity."
+                    : "Whole frame GPU unavailable: " + profile.GpuUnavailableReason
             );
+            if (profile.GpuSamples > 0)
+                GUILayout.Label("GPU timing source: " + profile.GpuSource +
+                    "; repeated Unity records skipped: " + profile.DuplicateTimingRecords + ".");
+            if (profile.CpuFallbackSamples > 0)
+                GUILayout.Label("CPU frame interval used Unity delta time for " +
+                    profile.CpuFallbackSamples + " frames without fresh CPU timing records.");
 
             if (profile.ResolveSamples > 0)
             {
@@ -587,6 +616,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 return ", GPU unavailable";
             }
+            if (profile.GpuSource != baseline.GpuSource) return ", GPU timing sources differ";
             double delta = profile.AverageGpuFrameMilliseconds -
                 baseline.AverageGpuFrameMilliseconds;
             return ", GPU " + FormatSigned(delta) + " ms";

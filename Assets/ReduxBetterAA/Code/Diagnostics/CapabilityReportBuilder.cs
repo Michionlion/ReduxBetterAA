@@ -158,6 +158,7 @@ namespace ReduxBetterAA.Diagnostics
                     managedSurfaceAvailable =
                         coordinator.DlaaManagedSurfaceAvailable,
                     contextCreated = coordinator.DlaaContextCreated,
+                    contextUsesHdr = coordinator.DlaaContextUsesHdr,
                     deviceVersion = coordinator.DlaaDeviceVersion,
                     inputWidth = coordinator.DlaaInputWidth,
                     inputHeight = coordinator.DlaaInputHeight,
@@ -196,6 +197,7 @@ namespace ReduxBetterAA.Diagnostics
                     managedSurfaceAvailable =
                         coordinator.Fsr2ManagedSurfaceAvailable,
                     contextCreated = coordinator.Fsr2ContextCreated,
+                    contextUsesHdr = coordinator.Fsr2ContextUsesHdr,
                     deviceVersion = coordinator.Fsr2DeviceVersion,
                     inputWidth = coordinator.Fsr2InputWidth,
                     inputHeight = coordinator.Fsr2InputHeight,
@@ -237,7 +239,10 @@ namespace ReduxBetterAA.Diagnostics
                     fsr2 = CapturePerformanceProfile(
                         coordinator,
                         BackendSelection.AmdFsr2
-                    )
+                    ),
+                    supersampling = CapturePerformanceProfile(coordinator, BackendSelection.Supersampling),
+                    dlss = CapturePerformanceProfile(coordinator, BackendSelection.NvidiaDlss),
+                    fsrUpscaling = CapturePerformanceProfile(coordinator, BackendSelection.AmdFsrUpscaling)
                 }
             };
         }
@@ -331,7 +336,18 @@ namespace ReduxBetterAA.Diagnostics
                     snapshot.AverageResolveCpuMilliseconds,
                 peakResolveCpuMilliseconds =
                     snapshot.PeakResolveCpuMilliseconds,
-                resolveSamples = snapshot.ResolveSamples
+                resolveSamples = snapshot.ResolveSamples,
+                gpuSource = snapshot.GpuSource.ToString(),
+                frameTimingEnabledAtStart = snapshot.FrameTimingEnabledAtStart,
+                runtimeGpuRecorderAvailable = snapshot.RuntimeGpuRecorderAvailable,
+                cpuTimingSamples = snapshot.CpuTimingSamples,
+                cpuFallbackSamples = snapshot.CpuFallbackSamples,
+                timingRecords = snapshot.TimingRecords,
+                duplicateTimingRecords = snapshot.DuplicateTimingRecords,
+                invalidTimingRecords = snapshot.InvalidTimingRecords,
+                invalidGpuSamples = snapshot.InvalidGpuSamples,
+                gpuUnavailableReason = snapshot.GpuUnavailableReason,
+                timingRecorderError = snapshot.TimingRecorderError
             };
         }
 

@@ -3,7 +3,7 @@ using UnityEngine.Rendering.PostProcessing;
 
 namespace ReduxBetterAA.Rendering
 {
-    // One owner per camera. Shared by Custom, DLAA and FSR2 so aborted frames
+    // One owner per camera. Shared by Custom, NVIDIA and AMD so aborted frames
     // cannot leave a jittered projection behind in only one backend.
     internal struct CameraProjectionState
     {

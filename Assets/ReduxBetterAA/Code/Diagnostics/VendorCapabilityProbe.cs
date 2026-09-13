@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using ReduxBetterAA.Backends.Amd;
 using UnityEngine;
 
 namespace ReduxBetterAA.Diagnostics
@@ -28,15 +29,34 @@ namespace ReduxBetterAA.Diagnostics
                     "DLSS",
                     probeRuntime
                 ),
-                amd = Probe(
-                    "AMD",
-                    "UnityEngine.AMDModule",
-                    "UnityEngine.AMD.AMDUnityPlugin",
-                    "UnityEngine.AMD.GraphicsDevice",
-                    null,
-                    "FSR2",
-                    probeRuntime
-                )
+                amd = ProbeAmd(probeRuntime)
+            };
+        }
+
+        private static VendorModuleRecord ProbeAmd(bool probeRuntime)
+        {
+            bool wasLoaded = AmdFsrNativeApi.NativeBridgeLoaded;
+            if (probeRuntime) AmdFsrNativeApi.Probe(out _, out _);
+            bool available = AmdFsrNativeApi.ProviderAvailable;
+            return new VendorModuleRecord
+            {
+                vendor = "AMD",
+                featureName = available ? AmdFsrNativeApi.ProviderName : "AMD FSR",
+                // This adapter belongs to BetterAA. Unity's AMD module is not
+                // inspected or loaded, even when an old runtime is installed.
+                managedAssemblyPresent = true,
+                apiTypesPresent = true,
+                managedAssemblyVersion = typeof(AmdFsrNativeApi).Assembly.GetName().Version.ToString(),
+                pluginWasLoaded = wasLoaded,
+                pluginLoadAttempted = AmdFsrNativeApi.NativeLoadAttempted,
+                pluginLoadSucceeded = AmdFsrNativeApi.NativeBridgeLoaded,
+                nativeFeatureCreationAttempted = AmdFsrNativeApi.NativeContextProbeAttempted,
+                graphicsDeviceAvailable = available,
+                featureQueryAttempted = AmdFsrNativeApi.NativeContextProbeAttempted,
+                featureAvailable = available,
+                status = AmdFsrNativeApi.ProbeCompleted
+                    ? AmdFsrNativeApi.ProbeReason
+                    : "BetterAA FSR bridge capability probe has not run; runtime query disabled by configuration"
             };
         }
 

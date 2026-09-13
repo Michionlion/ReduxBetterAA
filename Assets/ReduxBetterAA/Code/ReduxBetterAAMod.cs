@@ -26,6 +26,7 @@ namespace ReduxBetterAA
 
         private IConfigEntry _modeEntry;
         private IConfigEntry _supersamplingEntry;
+        private IConfigEntry _upscalingQualityEntry;
         private IConfigEntry _sharpnessEntry;
         private IConfigEntry _taaStabilityEntry;
         private IConfigEntry _dlaaPresetEntry;
@@ -37,7 +38,10 @@ namespace ReduxBetterAA
         private KeyCode _cycleKey = KeyCode.None;
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
+        private string _fsrProviderName = string.Empty;
+        private bool _upscalingSelectable;
         private bool _syncingConfiguration;
+        private bool _pendingPersistentSettings;
         private int _originalMsaaSamples;
         private bool _ownsMsaa;
         private Phase1ProbeService _probeService;
@@ -50,11 +54,13 @@ namespace ReduxBetterAA
             string dlaaReason;
             string fsr2Reason;
             _dlaaSelectable = ProbeDlaaAvailability(out dlaaReason);
-            _fsr2Selectable = ProbeFsr2Availability(out fsr2Reason);
+            _fsr2Selectable = ProbeFsrAvailability(out _fsrProviderName, out fsr2Reason);
+            _upscalingSelectable = ReduxSceneOutput.CompatibleAssembly;
             string[] modeChoices = UserSettingsPolicy.BuildModeChoices(
                 _dlaaSelectable,
-                _fsr2Selectable
+                _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
             );
+            DebugMenu.ConfigureModes(modeChoices);
 
             _modeEntry = SWConfiguration.Bind(
                 "Anti-Aliasing",
@@ -63,15 +69,15 @@ namespace ReduxBetterAA
                 "Select the scene anti-aliasing method. FXAA Low and FXAA High " +
                 "are KSP's stock spatial modes; SMAA is the highest-quality PPv2 " +
                 "spatial option. TAA is the portable temporal option. NVIDIA DLAA " +
-                "is offered only on supported NVIDIA hardware. FSR 2 Native AA " +
-                "uses equal input and output resolution and is offered when its " +
-                "Unity runtime is available.",
+                "is offered only on supported NVIDIA hardware. AMD FSR chooses the best " +
+                "available runtime and reports its actual provider. Upscaling renders " +
+                "the scene at reduced resolution while keeping the UI native.",
                 new ListConstraint<string>(modeChoices)
             );
             _sharpnessEntry = BindFloat(
                 "Anti-Aliasing", "Sharpness", 0.15f, 0.0f, 1.0f, 100,
-                "Shared post-reconstruction sharpness for TAA, DLAA, and FSR 2 " +
-                "Native AA. " +
+                "Shared post-reconstruction sharpness for supported temporal AA and " +
+                "upscaling modes. " +
                 "Zero disables sharpening."
             );
             _supersamplingEntry = SWConfiguration.Bind(
@@ -79,6 +85,11 @@ namespace ReduxBetterAA
                 "Scene resolution per dimension when Supersampling is selected. UI stays native. " +
                 "200% renders four times as many pixels; other AA modes use 100%.",
                 new ListConstraint<int>(new[] { 125, 150, 175, 200 }));
+            _upscalingQualityEntry = SWConfiguration.Bind(
+                "Anti-Aliasing", "Upscaling quality", "Quality",
+                "Used by DLSS and AMD FSR Upscaling. Quality keeps more scene detail; " +
+                "Performance renders fewer pixels. Unsupported scenes use native AA.",
+                new ListConstraint<string>(new[] { "Quality", "Balanced", "Performance" }));
             _taaStabilityEntry = BindFloat(
                 "Anti-Aliasing", "TAA stability", 0.93f, 0.0f, 0.99f, 100,
                 "Controls stationary TAA history retention. Higher values reduce " +
@@ -135,7 +146,7 @@ namespace ReduxBetterAA
             SWLogger.LogInfo(
                 "[ReduxBetterAA/Config] User-facing anti-aliasing settings " +
                 "loaded; DLAA selectable=" + _dlaaSelectable + " (" +
-                dlaaReason + "); FSR2 selectable=" + _fsr2Selectable + " (" +
+                dlaaReason + "); AMD FSR selectable=" + _fsr2Selectable + " (" +
                 fsr2Reason + ")."
             );
         }
@@ -208,6 +219,12 @@ namespace ReduxBetterAA
                     _temporalCoordinator.DlaaConfig.WithPreset(ParseDlaaPreset(value))),
                 SupersamplingPercent = () => (int)_supersamplingEntry.Value,
                 SetSupersamplingPercent = value => _supersamplingEntry.Value = value,
+                UpscalingQuality = () => _temporalCoordinator.UpscalingQuality,
+                SetUpscalingQuality = value => _upscalingQualityEntry.Value = value.ToString(),
+                DlssDetails = () => _temporalCoordinator.DlaaDetails,
+                DlssMemoryBytes = () => _temporalCoordinator.DlaaEstimatedMemoryBytes,
+                FsrUpscalingDetails = () => _temporalCoordinator.Fsr2Details,
+                FsrUpscalingMemoryBytes = () => _temporalCoordinator.Fsr2EstimatedMemoryBytes,
             });
             _probeService.SetMotionSanitizerDiagnostics(
                 () => _temporalCoordinator.MotionVectorSanitizedTexture,
@@ -226,7 +243,7 @@ namespace ReduxBetterAA
             _harmony = CreateHarmonyAndPatchAll();
 
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Backend] Spatial AA, custom TAA, DLAA, and FSR2 Native AA backends installed; requested mode is " +
+                "[ReduxBetterAA/Backend] Spatial AA, custom TAA, NVIDIA and AMD reconstruction backends installed; requested mode is " +
                 _temporalCoordinator.RequestedBackend + "."
             );
         }
@@ -241,6 +258,7 @@ namespace ReduxBetterAA
 
         private void Update()
         {
+            ApplyPendingPersistentSettings();
             if (_cycleKey != KeyCode.None && Input.GetKeyDown(_cycleKey) && !DiagnosticHotkeys.AnyModifierDown())
             {
                 CycleRequestedBackendAndPersist();
@@ -343,6 +361,7 @@ namespace ReduxBetterAA
         private void RegisterSettingsCallbacks()
         {
             _supersamplingEntry.RegisterCallback(OnPersistentSettingChanged);
+            _upscalingQualityEntry.RegisterCallback(OnPersistentSettingChanged);
             _modeEntry.RegisterCallback(OnPersistentSettingChanged);
             _sharpnessEntry.RegisterCallback(OnPersistentSettingChanged);
             _taaStabilityEntry.RegisterCallback(OnPersistentSettingChanged);
@@ -357,8 +376,21 @@ namespace ReduxBetterAA
         {
             if (!_syncingConfiguration)
             {
-                ApplyPersistentSettings();
+                // Redux's UI mirrors callback arguments back into the entry.
+                // Correcting a value here would let a later UI callback replay
+                // the outer setter's stale value and recurse indefinitely.
+                _pendingPersistentSettings = true;
             }
+        }
+
+        internal void ApplyPendingPersistentSettings()
+        {
+            if (!_pendingPersistentSettings) return;
+            _pendingPersistentSettings = false;
+            // ReduxLib reset can restore a provider label from another GPU.
+            // Normalize after the original setter and UI callbacks have returned.
+            MigrateUserFacingSettings();
+            ApplyPersistentSettings();
         }
 
         private void ApplyPersistentSettings()
@@ -374,6 +406,7 @@ namespace ReduxBetterAA
 
             float sharpness = (float)_sharpnessEntry.Value;
             _temporalCoordinator.SetSupersamplingPercent((int)_supersamplingEntry.Value);
+            _temporalCoordinator.SetReconstructionQuality(ReconstructionPolicy.Parse((string)_upscalingQualityEntry.Value));
             CustomTaaConfig custom = _temporalCoordinator.CustomConfig;
             _temporalCoordinator.SetCustomConfig(custom.WithUserSettings(
                 (float)_taaStabilityEntry.Value,
@@ -410,7 +443,7 @@ namespace ReduxBetterAA
         {
             _temporalCoordinator?.SetRequestedBackend(backend);
             string label;
-            if (UserSettingsPolicy.TryGetMode(backend, _dlaaSelectable, _fsr2Selectable, out label))
+            if (UserSettingsPolicy.TryGetMode(backend, _dlaaSelectable, _fsr2Selectable, out label, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable))
             {
                 Persist(_modeEntry, label);
             }
@@ -425,7 +458,7 @@ namespace ReduxBetterAA
             BackendSelection next = UserSettingsPolicy.NextBackend(
                 _temporalCoordinator.RequestedBackend,
                 _dlaaSelectable,
-                _fsr2Selectable
+                _fsr2Selectable, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
             );
             SetRequestedBackendAndPersist(next);
         }
@@ -542,7 +575,7 @@ namespace ReduxBetterAA
                 UserSettingsPolicy.NormalizeMode(
                     mode,
                     _dlaaSelectable,
-                    _fsr2Selectable
+                    _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
                 )
             );
 
@@ -570,10 +603,9 @@ namespace ReduxBetterAA
             return api.TryInitialize(out reason);
         }
 
-        private static bool ProbeFsr2Availability(out string reason)
+        private static bool ProbeFsrAvailability(out string provider, out string reason)
         {
-            var api = new AmdFsr2Api();
-            return api.TryInitialize(out reason);
+            return AmdFsrNativeApi.Probe(out provider, out reason);
         }
 
         private void Persist<T>(IConfigEntry entry, T value)
@@ -598,7 +630,7 @@ namespace ReduxBetterAA
             return UserSettingsPolicy.ParseBackend(
                 value,
                 _dlaaSelectable,
-                _fsr2Selectable
+                _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
             );
         }
 

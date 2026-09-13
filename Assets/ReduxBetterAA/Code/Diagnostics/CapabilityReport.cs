@@ -207,6 +207,7 @@ namespace ReduxBetterAA.Diagnostics
         public bool allowSupersampling;
         public bool managedSurfaceAvailable;
         public bool contextCreated;
+        public bool? contextUsesHdr;
         public uint deviceVersion;
         public int inputWidth;
         public int inputHeight;
@@ -236,6 +237,7 @@ namespace ReduxBetterAA.Diagnostics
         public bool invertMotionY;
         public bool managedSurfaceAvailable;
         public bool contextCreated;
+        public bool? contextUsesHdr;
         public uint deviceVersion;
         public int inputWidth;
         public int inputHeight;
@@ -257,6 +259,9 @@ namespace ReduxBetterAA.Diagnostics
         public PerformanceProfileRecord custom;
         public PerformanceProfileRecord dlaa;
         public PerformanceProfileRecord fsr2;
+        public PerformanceProfileRecord supersampling;
+        public PerformanceProfileRecord dlss;
+        public PerformanceProfileRecord fsrUpscaling;
     }
 
     [Serializable]
@@ -273,5 +278,16 @@ namespace ReduxBetterAA.Diagnostics
         public double averageResolveCpuMilliseconds;
         public double peakResolveCpuMilliseconds;
         public int resolveSamples;
+        public string gpuSource;
+        public bool frameTimingEnabledAtStart;
+        public bool runtimeGpuRecorderAvailable;
+        public int cpuTimingSamples;
+        public int cpuFallbackSamples;
+        public int timingRecords;
+        public int duplicateTimingRecords;
+        public int invalidTimingRecords;
+        public int invalidGpuSamples;
+        public string gpuUnavailableReason;
+        public string timingRecorderError;
     }
 }

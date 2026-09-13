@@ -17,6 +17,7 @@
         "Unity.Postprocessing.Runtime.dll",
         "Assembly-CSharp.dll",
         "ReduxLib.dll",
+        "SpaceWarp2.dll",
         "nunit.framework.dll"
     ]
 }

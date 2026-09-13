@@ -136,7 +136,21 @@ namespace ReduxBetterAA.Diagnostics
                 if (!_expectsTemporalInput)
                     CaptureInput(source);
                 _manifest.outputFrame = Time.frameCount;
-                _writer.Capture("scene-output", source);
+                ReduxSceneOutput sceneOutput = ReduxSceneOutput.Current;
+                if (sceneOutput != null && sceneOutput.Active)
+                {
+                    _writer.Capture("resolve-chain-output", source);
+                    bool submitted = sceneOutput.TryGetSubmittedOutput(_camera, out RenderTexture reconstructed, out _);
+                    _manifest.outputStage = submitted
+                        ? "submitted-reconstruction-before-presentation" : "reconstruction-unavailable";
+                    _writer.Capture("scene-output", submitted ? reconstructed : null, 0,
+                        "No valid reconstruction submission for this camera, frame and output graph");
+                }
+                else
+                {
+                    _manifest.outputStage = _expectsTemporalInput ? "after-temporal-resolve" : "after-ppv2";
+                    _writer.Capture("scene-output", source);
+                }
                 TemporalCoordinator coordinator = TemporalCoordinator.Current;
                 if (coordinator != null)
                 {

@@ -10,7 +10,7 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     internal sealed class IssueReportManifest
     {
-        public int schemaVersion = 2;
+        public int schemaVersion = 3;
         public string id;
         public string capturedUtc;
         public string status;
@@ -19,9 +19,12 @@ namespace ReduxBetterAA.Diagnostics
         public int screenshotFrame = -1;
         public string camera;
         public string inputStage = "unavailable";
+        public string outputStage = "unavailable";
         public string note = "EXR files contain floating-point samples; PNGs are previews. " +
             "Owned targets are observed after the AA pass. Vendor-internal " +
-            "history is opaque and cannot be exported. Screenshots include visible UI. " +
+            "history is opaque and cannot be exported. For upscaling, resolve-chain-output " +
+            "is the low-resolution image-effect chain and scene-output is the current submitted reconstruction. " +
+            "Screenshots include visible UI. " +
             "Capture stalls are expected and are not performance measurements.";
         public readonly List<BufferCaptureRecord> buffers = new List<BufferCaptureRecord>();
         public readonly List<string> errors = new List<string>();

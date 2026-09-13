@@ -43,7 +43,9 @@ namespace ReduxBetterAA.Rendering
         // Called on mode/scene changes, never from the rendering hot path.
         internal bool Apply(int requested)
         {
-            AppliedPercent = ClampPercent(requested, Screen.width, Screen.height, SystemInfo.maxTextureSize);
+            AppliedPercent = requested < 100 && ReduxSceneOutput.Current?.Active == true
+                ? Mathf.Clamp(requested, 50, 100)
+                : ClampPercent(requested, Screen.width, Screen.height, SystemInfo.maxTextureSize);
             if (Scale == null) return requested == 100;
             foreach (var presenter in new List<RenderScalePresenter>(_claims.Keys))
                 if (presenter == null) _claims.Remove(presenter);

@@ -120,7 +120,7 @@ namespace ReduxBetterAA.Tests
             {
                 // Legacy numeric mode 4 resolves to the same Custom TAA instance as 5.
                 string[] names = { "Off", "FXAA Low", "FXAA High", "SMAA", "Custom TAA",
-                    "Custom TAA", "NVIDIA DLAA", "FSR2 Native AA", "Supersampling" };
+                    "Custom TAA", "NVIDIA DLAA", "AMD FSR Native AA", "Supersampling", "NVIDIA DLSS", "AMD FSR Upscaling" };
                 for (int index = 0; index < names.Length; index++)
                     Assert.That(coordinator.GetBackend((BackendSelection)index).Id, Is.EqualTo(names[index]));
                 Assert.That(coordinator.GetBackend((BackendSelection)4),

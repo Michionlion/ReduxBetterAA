@@ -40,16 +40,16 @@ namespace ReduxBetterAA.Tests
                 new[]
                 {
                     "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling",
-                    "NVIDIA DLAA", "FSR 2 Native AA"
+                    "NVIDIA DLAA", "FSR 3.1 Native AA", "NVIDIA DLSS Upscaling", "FSR 3.1 Upscaling"
                 },
                 UserSettingsPolicy.BuildModeChoices(true, true)
             );
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "NVIDIA DLAA" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "NVIDIA DLAA", "NVIDIA DLSS Upscaling" },
                 UserSettingsPolicy.BuildModeChoices(true, false)
             );
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "FSR 2 Native AA" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "FSR 3.1 Native AA", "FSR 3.1 Upscaling" },
                 UserSettingsPolicy.BuildModeChoices(false, true)
             );
         }
@@ -761,23 +761,12 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
-        public void AmdManagedSurfaceBindsWithoutCreatingNativeFeature()
-        {
-            var api = new AmdFsr2Api();
-
-            bool bound = api.TryBindManagedSurface(out string reason);
-
-            Assert.That(bound, Is.True, reason);
-            Assert.That(api.ContextCreated, Is.False);
-        }
-
-        [Test]
-        public void Fsr2DispatchJitterNegatesPpv2ProjectionSample()
+        public void FsrDispatchJitterNegatesPpv2ProjectionSample()
         {
             var projectionJitter = new Vector2(0.375f, -0.625f);
 
             Vector2 dispatchJitter =
-                AmdFsr2Api.ToDispatchJitter(projectionJitter);
+                AmdFsrNativeApi.ToDispatchJitter(projectionJitter);
 
             Assert.That(dispatchJitter.x, Is.EqualTo(-0.375f));
             Assert.That(dispatchJitter.y, Is.EqualTo(0.625f));
@@ -816,7 +805,7 @@ namespace ReduxBetterAA.Tests
             RenderTextureDescriptor output =
                 AmdFsr2Backend.BuildOutputDescriptor(source);
 
-            Assert.That(output.graphicsFormat, Is.EqualTo(GraphicsFormat.R8G8B8A8_UNorm));
+            Assert.That(output.graphicsFormat, Is.EqualTo(GraphicsFormat.R16G16B16A16_SFloat));
             Assert.That(output.enableRandomWrite, Is.True);
             Assert.That(output.depthBufferBits, Is.EqualTo(0));
             Assert.That(output.msaaSamples, Is.EqualTo(1));

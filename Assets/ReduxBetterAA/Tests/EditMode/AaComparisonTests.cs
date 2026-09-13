@@ -11,15 +11,25 @@ namespace ReduxBetterAA.Tests
         [Test]
         public void DiagnosticChoicesMapLabelsToStableBackendIds()
         {
-            int[] ids = { 0, 1, 2, 3, 5, 8, 6, 7 };
+            int[] ids = { 0, 1, 2, 3, 5, 8, 6, 7, 9, 10 };
             string[] labels = { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA",
-                "Supersampling", "NVIDIA DLAA", "FSR 2 Native AA" };
-            Assert.That(DebugMenu.Backends.Length, Is.EqualTo(ids.Length));
-            Assert.That(DebugMenu.Modes, Is.EqualTo(labels));
-            for (int index = 0; index < ids.Length; index++)
+                "Supersampling", "NVIDIA DLAA", "FSR 4.1 Native AA",
+                "NVIDIA DLSS Upscaling", "FSR 4.1 Upscaling" };
+            string[] previous = DebugMenu.Modes;
+            try
             {
-                Assert.That((int)DebugMenu.Backends[index], Is.EqualTo(ids[index]));
-                Assert.That(DebugMenu.ModeName((BackendSelection)ids[index]), Is.EqualTo(labels[index]));
+                DebugMenu.ConfigureModes(UserSettingsPolicy.BuildModeChoices(true, true, "FSR 4.1"));
+                Assert.That(DebugMenu.Backends.Length, Is.EqualTo(ids.Length));
+                Assert.That(DebugMenu.Modes, Is.EqualTo(labels));
+                for (int index = 0; index < ids.Length; index++)
+                {
+                    Assert.That((int)DebugMenu.Backends[index], Is.EqualTo(ids[index]));
+                    Assert.That(DebugMenu.ModeName((BackendSelection)ids[index]), Is.EqualTo(labels[index]));
+                }
+            }
+            finally
+            {
+                DebugMenu.ConfigureModes(previous);
             }
         }
 
