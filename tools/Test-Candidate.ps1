@@ -1,6 +1,9 @@
 #Requires -Version 7.4
 [CmdletBinding()]
-param([string] $EnvFile = (Join-Path $PSScriptRoot '..\.env'))
+param(
+    [string] $EnvFile = (Join-Path $PSScriptRoot '..\.env'),
+    [string] $FsrRuntimeZip
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -76,6 +79,16 @@ if (-not (Test-Path -LiteralPath $harnessCli)) { throw 'TEST_HARNESS must contai
 $commit = Assert-ReleaseSource $repo
 $harnessCommit = Assert-ReleaseSource $paths.TEST_HARNESS
 $version = Get-ReleaseVersion $repo
+$fsrValidation = $null
+if ($FsrRuntimeZip) {
+    $FsrRuntimeZip = [IO.Path]::GetFullPath($FsrRuntimeZip)
+    if (-not (Test-Path -LiteralPath $FsrRuntimeZip -PathType Leaf)) { throw '-FsrRuntimeZip must name an existing modern FSR companion archive.' }
+    $validationJson = & python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --validate-fsr-runtime $FsrRuntimeZip --mod-version $version
+    if ($LASTEXITCODE -ne 0) { throw 'The modern FSR archive failed pinned manifest/hash validation.' }
+    $fsrValidation = $validationJson -join "`n" | ConvertFrom-Json -AsHashtable
+} else {
+    Write-Warning 'No modern FSR archive supplied. AMD-unavailable behavior will be tested; this run cannot establish full vendor coverage. Pass -FsrRuntimeZip for AMD runtime coverage.'
+}
 $editorVersion = (Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', ''
 $target = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'runtime-targets.json') -Raw | ConvertFrom-Json -AsHashtable)[$editorVersion]
 if (-not $target) { throw "No verified native runtime target for $editorVersion" }
@@ -93,6 +106,9 @@ New-Item -ItemType Directory -Force -Path $paths.TEST_WORKSPACE | Out-Null
 New-Item -ItemType Directory -Path $run | Out-Null
 $summary = [ordered]@{ status = 'failed'; startedUtc = [DateTime]::UtcNow.ToString('o'); commit = $commit; version = $version; editor = $editorVersion; inputs = $paths; runtimes = $target.hashes; run = $run; phases = @() }
 $summary.harnessCommit = $harnessCommit
+$summary.fsrRuntime = $fsrValidation
+$summary.vendorCoverageScope = if ($fsrValidation) { 'NVIDIA and modern AMD requested' } else { 'NVIDIA runtime only; modern AMD unavailable expected' }
+$summary.fullVendorCoverage = $false
 $profileBackup = $paths.KSP2_PROFILE + '.' + $runName + '-original'
 $profileEvidence = $paths.KSP2_PROFILE + '.' + $runName + '-results'
 if ((Test-Path -LiteralPath $profileBackup) -or (Test-Path -LiteralPath $profileEvidence)) { throw 'Profile backup paths already exist.' }
@@ -162,9 +178,17 @@ try {
             foreach ($name in $target.hashes.Keys) {
                 if ((Get-FileHash -LiteralPath (Join-Path $game $name)).Hash -ne $target.hashes[$name]) { throw "Installed runtime hash differs: $name" }
             }
+            if ($fsrValidation) {
+                if ((Get-FileHash -LiteralPath $FsrRuntimeZip -Algorithm SHA256).Hash -ine $fsrValidation.archiveSha256) { throw 'Modern FSR archive changed after validation.' }
+                Expand-Archive -LiteralPath $FsrRuntimeZip -DestinationPath $game
+                foreach ($name in $fsrValidation.files.Keys) {
+                    if ((Get-FileHash -LiteralPath (Join-Path $game "mods\ReduxBetterAA\native\$name") -Algorithm SHA256).Hash -ine $fsrValidation.files[$name]) { throw "Installed modern FSR hash differs: $name" }
+                }
+            }
         }
         $lua = Join-Path $phaseRoot 'suite.lua'
-        "release_fixture = 'candidate'`nrelease_native = $($phase -eq 'native' | ConvertTo-Json)`n" + (Get-Content -LiteralPath (Join-Path $source 'tests\Release\ingame.lua') -Raw) | Set-Content -LiteralPath $lua -Encoding utf8NoBOM
+        $expectFsr = $phase -eq 'native' -and $null -ne $fsrValidation
+        "release_fixture = 'candidate'`nrelease_native = $($phase -eq 'native' | ConvertTo-Json)`nrelease_amd_runtime = $($expectFsr | ConvertTo-Json)`n" + (Get-Content -LiteralPath (Join-Path $source 'tests\Release\ingame.lua') -Raw) | Set-Content -LiteralPath $lua -Encoding utf8NoBOM
         try {
             # The player reports MainMenu before its startup logos finish fading.
             Invoke-Checked pwsh @('-NoProfile', '-File', $harnessCli, 'run', $lua, '-Launch', '-StartupSettleSeconds', '30', '-FailOnLogErrors', '-ResponseTimeoutSeconds', '120', '-Timeout', '1200', '-GameRoot', $game, '-Fixtures', $fixtures, '-Results', $phaseRoot) (Join-Path $phaseRoot 'harness.log')
@@ -173,9 +197,13 @@ try {
         $reports = @(Get-ChildItem -LiteralPath $phaseRoot -Filter 'report.json' -Recurse -File)
         if ($reports.Count -ne 1) { throw "Expected one harness report for $phase" }
         $diagnostics = Join-Path $game 'mods\ReduxBetterAA\diagnostics'
-        Invoke-Checked python @('-X', 'utf8', (Join-Path $source 'tests\Release\validate-ingame.py'), '--report', $reports[0].FullName, '--diagnostics', $diagnostics, '--assembly', $assembly, '--phase', $phase, '--output', (Join-Path $phaseRoot 'validation.json')) (Join-Path $phaseRoot 'validation.log')
+        $validationArgs = @('-X', 'utf8', (Join-Path $source 'tests\Release\validate-ingame.py'), '--report', $reports[0].FullName, '--diagnostics', $diagnostics, '--assembly', $assembly, '--phase', $phase, '--output', (Join-Path $phaseRoot 'validation.json'))
+        if ($expectFsr) { $validationArgs += '--expect-fsr-runtime' }
+        Invoke-Checked python $validationArgs (Join-Path $phaseRoot 'validation.log')
         Move-Item -LiteralPath $diagnostics -Destination (Join-Path $phaseRoot 'diagnostics')
-        $summary.phases += @{ phase = $phase; validation = (Get-Content -LiteralPath (Join-Path $phaseRoot 'validation.json') -Raw | ConvertFrom-Json) }
+        $phaseValidation = Get-Content -LiteralPath (Join-Path $phaseRoot 'validation.json') -Raw | ConvertFrom-Json
+        $summary.phases += @{ phase = $phase; validation = $phaseValidation }
+        if ($phase -eq 'native') { $summary.fullVendorCoverage = $phaseValidation.fullVendorCoverage }
     }
     $summary.status = 'passed'
 }

@@ -2,7 +2,6 @@
   "6000.5.8f1": {
     "redux": "0.2.9.0",
     "hashes": {
-      "AMDUnityPlugin.dll": "6b51122ee555ee19bbdd1602cebac00512b773504a8409d3724400b58d1e75aa",
       "NVUnityPlugin.dll": "da31418a9c209cbc8042121c2aa5a108b350e355049f4d4f0e55e7be8e43874d",
       "nvngx_dlss.dll": "8707e53b26c68c606b98bf31c223485ff30d310a261b1a36d48b2eaabc1507ec"
     }
@@ -10,7 +9,6 @@
   "6000.4.1f1": {
     "redux": "0.2.8.5",
     "hashes": {
-      "AMDUnityPlugin.dll": "e070d3bbc31b29246cb4e27378fbe76cb332d5499cf7f7f5b3f85d2131bc381e",
       "NVUnityPlugin.dll": "b1f82c5e16af6f886dbf909d1bdd9c064c253078ebf5a55dac9e89bf81c2b946",
       "nvngx_dlss.dll": "8707e53b26c68c606b98bf31c223485ff30d310a261b1a36d48b2eaabc1507ec"
     }

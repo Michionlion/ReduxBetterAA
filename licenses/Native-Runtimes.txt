@@ -1,9 +1,9 @@
 Optional runtime component of Redux Better AA. Extract beside KSP2_x64.exe.
 
-These unmodified Unity integration libraries and NVIDIA DLSS runtime retain
+These unmodified Unity NVIDIA integration and NVIDIA DLSS runtime libraries retain
 their vendor terms; Better AA's MIT license does not cover these binaries.
-AMD's license below covers FSR 2 code, not the whole Unity integration library.
-NVIDIA DLAA uses NVIDIA DLSS technology.
+The companion archive contains only NVUnityPlugin.dll and nvngx_dlss.dll.
+NVIDIA DLAA and DLSS Super Resolution use NVIDIA DLSS technology.
 
 Unity software terms: https://unity.com/legal/editor-terms-of-service/software
 Unity general terms: https://unity.com/legal/terms-of-service
@@ -116,29 +116,3 @@ This supplement is an exhibit to the Agreement and is incorporated as an integra
 (b)	No Combination Marks or Similar Marks.  You agree not to (a) combine NVIDIA Marks with any other content without NVIDIA’s prior written approval, or (b) use any other trademark, trade name, or other designation of source which creates a likelihood of confusion with NVIDIA Marks.
 
 (v. March 14, 2024)
-
-
-
-AMD-FSR2-LICENSE.txt
-============================================================
-FidelityFX Super Resolution 2.2
-=================================
-Copyright (c) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.

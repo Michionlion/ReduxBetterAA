@@ -60,7 +60,9 @@ class PackagingTests(unittest.TestCase):
         self.assertEqual(a.read_bytes(), b.read_bytes())
 
     def test_game_test_and_native_binaries_are_rejected(self):
-        for name in ('Assembly-CSharp.dll', 'ReduxBetterAA.Tests.dll', 'NVUnityPlugin.dll', 'secrets.txt'):
+        for name in ('Assembly-CSharp.dll', 'ReduxBetterAA.Tests.dll', 'NVUnityPlugin.dll',
+                     'nvngx_dlss.dll', 'AMDUnityPlugin.dll', 'amd_fidelityfx_upscaler_dx12.dll',
+                     'native/ReduxBetterAA.FsrBridge.dll', 'secrets.txt'):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 package.validate_payload(self.files | {name: b'forbidden'}, '0.6.1')
 
@@ -76,7 +78,7 @@ class PackagingTests(unittest.TestCase):
     def test_test_shader_cannot_enter_catalog(self):
         catalog = json.loads(self.files['addressables/catalog.json'])
         catalog['m_InternalIds'].append('Assets/Tests/Baseline.shader')
-        with self.assertRaisesRegex(ValueError, 'nine runtime shaders'):
+        with self.assertRaisesRegex(ValueError, 'declared runtime shaders'):
             package.validate_payload(self.files | {'addressables/catalog.json': package.encode_json(catalog)}, '0.6.1')
 
     def test_assembly_version_mismatch_fails(self):

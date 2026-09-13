@@ -95,7 +95,7 @@ $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $expectedHashes = @{}
 foreach ($file in $assets) { $expectedHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName).Hash }
 $notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd() + "`n`n[Full changelog]($url/releases/download/$tag/CHANGELOG.md) · [Source]($url/tree/$tag)`n"
-$notes += "`nFor DLAA or FSR 2, extract the runtime ZIP matching your Redux version beside KSP2_x64.exe:`n`n"
+$notes += "`nFor NVIDIA DLAA or DLSS, extract the NVIDIA runtime ZIP matching your Redux version beside KSP2_x64.exe:`n`n"
 foreach ($runtime in $runtimeAssets) {
     $notes += "- [$($runtime.Name)]($url/releases/download/$tag/$($runtime.Name))`n"
 }

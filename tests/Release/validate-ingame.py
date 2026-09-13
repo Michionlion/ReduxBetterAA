@@ -10,11 +10,12 @@ import zlib
 
 MODES = [('Off', 'Off'), ('FxaaLow', 'FXAA Low'), ('FxaaHigh', 'FXAA High'),
          ('Smaa', 'SMAA'), ('CustomTaa', 'Custom TAA'), ('NvidiaDlaa', 'NVIDIA DLAA'),
-         ('AmdFsr2', 'FSR2 Native AA'), ('Supersampling', 'Supersampling')]
+         ('AmdFsr2', 'AMD Native AA'), ('Supersampling', 'Supersampling')]
 CAMERAS = {'MainMenu': ('Camera.Scaled', 'Skybox'),
            'FlightView': ('FlightCameraPhysics_Main', 'FlightCameraScaled_Main'),
            'Map3DView': ('MapCamera', '')}
-TEMPORAL = {'Custom TAA', 'NVIDIA DLAA', 'FSR2 Native AA'}
+AMD_NATIVE = {'FSR 3.1 Native AA', 'FSR 4.1 Native AA'}
+TEMPORAL = {'Custom TAA', 'NVIDIA DLAA'} | AMD_NATIVE
 
 
 def require(condition, message):
@@ -34,6 +35,8 @@ def coverage(capabilities, phase):
                          mapEnabled=True, label='new-install'))
     for scene in CAMERAS:
         for requested, selected in MODES:
+            if requested == 'AmdFsr2' and capabilities.get('fsrProvider') in ('FSR 3.1', 'FSR 4.1'):
+                selected = capabilities['fsrProvider'] + ' Native AA'
             if ((requested == 'NvidiaDlaa' and not capabilities['dlaa']) or
                     (requested == 'AmdFsr2' and not capabilities['fsr2']) or
                     (requested == 'Supersampling' and scene != 'FlightView')):
@@ -52,6 +55,21 @@ def coverage(capabilities, phase):
         ('FlightView', 'Off', 'Off', True, 'final-cleanup')]:
         rows.append(dict(scene=scene, requested=mode, expected=selected, mapEnabled=enabled, label=label))
     return rows
+
+
+def validate_capabilities(values, phase, expect_fsr_runtime):
+    require(values['native'] == (phase == 'native'), 'Wrong NVIDIA-runtime test phase')
+    require(type(values.get('amdRuntimeInstalled')) is bool and values['amdRuntimeInstalled'] == expect_fsr_runtime,
+            'Wrong modern AMD runtime installation expectation')
+    require(not expect_fsr_runtime or phase == 'native', 'Modern FSR cannot be installed during the no-runtime phase')
+    capabilities = values['capabilities']
+    require(all(type(capabilities[k]) is bool for k in ('dlaa', 'fsr2')), 'Invalid vendor capabilities')
+    require(capabilities['fsr2'] == expect_fsr_runtime, 'AMD availability must match the separately installed modern FSR bundle')
+    require(phase == 'native' or not capabilities['dlaa'], 'NVIDIA runtime unexpectedly available in the no-runtime phase')
+    if capabilities['fsr2']:
+        require(capabilities.get('fsrProvider', 'runtime-selected') in ('FSR 3.1', 'FSR 4.1', 'runtime-selected'),
+                'AMD reported an unsupported or legacy FSR provider')
+    return capabilities
 
 
 def png_size(data):
@@ -78,6 +96,9 @@ def png_size(data):
 def snapshot(data, row, assembly_hash):
     temporal, graph = data['temporal'], data['cameraGraph']
     scene, selected = row['scene'], row['expected']
+    if selected == 'AMD Native AA':
+        selected = temporal['selectedBackend']
+        require(selected in AMD_NATIVE, 'Expected an actual modern FSR 3.1 or FSR 4.1 provider')
     requested = {'4': 'CustomTaa', '999': 'Off'}.get(row['requested'], row['requested'])
     camera_name, shared = CAMERAS[scene]
     scale = temporal['supersamplingPercent'] if selected == 'Supersampling' else 100
@@ -112,7 +133,7 @@ def snapshot(data, row, assembly_hash):
                     'motionVectorSanitizerEstimatedMemoryBytes', 'depthDisocclusionMaskEstimatedMemoryBytes'):
             require(temporal[key] == 0, f'Off retained {key}')
         require(not temporal['vegetationMotionRepairEnabled'], 'Off retained foliage override')
-    if selected in ('NVIDIA DLAA', 'FSR2 Native AA'):
+    if selected == 'NVIDIA DLAA' or selected in AMD_NATIVE:
         vendor = temporal['dlaa' if selected == 'NVIDIA DLAA' else 'fsr2']
         require(vendor['contextCreated'] and vendor['nativeResolution'] and vendor['outputRandomWrite'] and not vendor['lastFailure'], 'Vendor context is not healthy')
         require((vendor['inputWidth'], vendor['inputHeight']) == size == (vendor['outputWidth'], vendor['outputHeight']), 'Vendor dimensions mismatch')
@@ -144,15 +165,12 @@ def issue_archive(path, assembly_hash):
         png_size(archive.read('presented.png'))
 
 
-def validate(report_path, diagnostics, assembly, phase):
+def validate(report_path, diagnostics, assembly, phase, expect_fsr_runtime=False):
     report = read_json(report_path)
     assembly_hash = hashlib.sha256(assembly.read_bytes()).hexdigest()
     require(report['status'] == 'passed' and not report['errors'] and not report['process']['crashed'], 'Harness run did not pass')
     require(report['assertions'] and all(a['status'] == 'passed' for a in report['assertions']), 'Harness assertions failed or absent')
-    require(report['values']['native'] == (phase == 'native'), 'Wrong native-runtime test phase')
-    capabilities = report['values']['capabilities']
-    require(all(type(capabilities[k]) is bool for k in ('dlaa', 'fsr2')), 'Invalid vendor capabilities')
-    require((capabilities['fsr2'] if phase == 'native' else not capabilities['dlaa'] and not capabilities['fsr2']), 'Unexpected vendor availability')
+    capabilities = validate_capabilities(report['values'], phase, expect_fsr_runtime)
     rows = coverage(capabilities, phase)
     require(report['values']['captures'] == {str(i): row for i, row in enumerate(rows, 1)}, 'Release suite coverage is incomplete or changed')
     files = sorted(p for p in diagnostics.glob('phase1-*.json') if p.name != 'phase1-latest.json')
@@ -170,7 +188,7 @@ def validate(report_path, diagnostics, assembly, phase):
             require(len(images) == 1 and png_size(images[0].read_bytes()) == size, 'Missing or wrong-sized production screenshot')
         except (KeyError, ValueError, OSError, struct.error, zlib.error) as error:
             errors.append(f'{path.name}: {error}')
-        captures.append(row | {'report': path.name})
+        captures.append(row | {'report': path.name, 'actualBackend': data['temporal']['selectedBackend']})
     issue = Path(report['values']['issueZip'])
     if not issue.is_absolute():
         issue = report_path.parent / issue
@@ -178,7 +196,12 @@ def validate(report_path, diagnostics, assembly, phase):
     require(len(report['screenshots']) == 1, 'Missing final UI screenshot')
     png_size((report_path.parent / report['screenshots'][0]).read_bytes())
     return dict(passed=not errors, phase=phase, modSha256=assembly_hash, environment=report['environment'],
-                capabilities=capabilities, reports=len(files), errors=errors, captures=captures)
+                capabilities=capabilities, modernFsrRuntimeInstalled=expect_fsr_runtime,
+                fullVendorCoverage=not errors and phase == 'native' and capabilities['dlaa'] and capabilities['fsr2'],
+                vendorCoverageScope='NVIDIA and modern AMD' if expect_fsr_runtime else
+                    'NVIDIA only; AMD-unavailable behavior' if phase == 'native' else 'No vendor runtimes',
+                actualAmdProviders=sorted({row['actualBackend'] for row in captures if row['actualBackend'] in AMD_NATIVE}),
+                reports=len(files), errors=errors, captures=captures)
 
 
 if __name__ == '__main__':
@@ -186,9 +209,10 @@ if __name__ == '__main__':
     for name in ('report', 'diagnostics', 'assembly', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--phase', choices=('core', 'native'), required=True)
+    parser.add_argument('--expect-fsr-runtime', action='store_true')
     args = parser.parse_args()
     try:
-        result = validate(args.report, args.diagnostics, args.assembly, args.phase)
+        result = validate(args.report, args.diagnostics, args.assembly, args.phase, args.expect_fsr_runtime)
     except (KeyError, ValueError, OSError, struct.error, zipfile.BadZipFile, zlib.error) as error:
         result = dict(passed=False, phase=args.phase, errors=[str(error)])
     args.output.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')

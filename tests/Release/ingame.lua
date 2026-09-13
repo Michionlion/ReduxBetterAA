@@ -1,20 +1,30 @@
--- The pipeline prefixes release_fixture and release_native from its local configuration.
+-- The pipeline supplies separate NVIDIA and modern AMD runtime expectations.
 Test.name("Better AA release candidate")
 Test.assert.true_(type(release_fixture) == "string", "A save fixture is configured")
 Test.assert.true_(type(release_native) == "boolean", "The runtime phase is configured")
+Test.assert.true_(type(release_amd_runtime) == "boolean", "The modern AMD runtime expectation is configured")
 Test.assert.true_(Test.mod.is_loaded("ReduxBetterAA"), "Better AA loaded from the candidate ZIP")
 local aa = Test.mod.extension("ReduxBetterAA")
 Test.assert.not_equal(aa, nil, "The external harness supplies the Better AA adapter")
 local initial = aa.release_status()
-local capabilities = { dlaa = initial.dlaa, fsr2 = initial.fsr2 }
+local capabilities = { dlaa = initial.dlaa, fsr2 = initial.fsr2, fsrProvider = initial.fsrProvider or "runtime-selected" }
 Test.report.value("native", release_native)
+Test.report.value("amdRuntimeInstalled", release_amd_runtime)
 Test.report.value("capabilities", capabilities)
 if not release_native then
     Test.assert.false_(initial.dlaa, "DLAA is unavailable without native libraries")
-    Test.assert.false_(initial.fsr2, "FSR 2 is unavailable without native libraries")
 else
-    Test.assert.true_(initial.fsr2, "The matching FSR 2 runtime is usable")
     if not initial.dlaa then Test.report.note("DLAA unavailable on this hardware; fallback is tested.") end
+end
+Test.assert.equal(initial.fsr2, release_amd_runtime, "AMD availability requires the separate modern FSR bundle")
+if release_amd_runtime then
+    if initial.fsrProvider then
+        Test.assert.true_(initial.fsrProvider == "FSR 3.1" or initial.fsrProvider == "FSR 4.1", "AMD reports the actual modern provider")
+    else
+        Test.report.note("This harness does not expose the provider name; the production diagnostic validator requires FSR 3.1 or FSR 4.1 on every AMD capture.")
+    end
+elseif release_native then
+    Test.report.note("NVIDIA-only runtime phase: AMD-unavailable behavior is covered, but modern AMD execution is not tested.")
 end
 
 local captures = {}
@@ -22,7 +32,7 @@ local modes = {
     {"Off", "Off"}, {"FxaaLow", "FXAA Low"}, {"FxaaHigh", "FXAA High"},
     {"Smaa", "SMAA"}, {"CustomTaa", "Custom TAA"},
     {"NvidiaDlaa", initial.dlaa and "NVIDIA DLAA" or "Off"},
-    {"AmdFsr2", initial.fsr2 and "FSR2 Native AA" or "Off"},
+    {"AmdFsr2", initial.fsr2 and (initial.fsrProvider and (initial.fsrProvider .. " Native AA") or "AMD Native AA") or "Off"},
     {"Supersampling", "Supersampling"}
 }
 local function record_capture(scene, requested, expected, label)

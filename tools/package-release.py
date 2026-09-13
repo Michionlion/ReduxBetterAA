@@ -18,7 +18,7 @@ DOCS = {
     'licenses/Unity-Built-in-Shaders.txt': 'licenses/Unity-Built-in-Shaders.txt',
 }
 SHADERS = {
-    'AaComparison', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
+    'AaComparison', 'FsrBridgeInputs', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
     'MotionVectorSanitizer', 'Phase1BufferDebug', 'Phase1MotionStatistics',
     'Phase1MotionVectorPassProbe', 'VegetationMotionVectorRepair',
 }
@@ -81,7 +81,7 @@ def validate_payload(files, version):
     bundle_ids = [item for item in ids if item.endswith('.bundle')]
     require(len(bundle_ids) == 1 and bundle_ids[0].replace('\\', '/') == '{SpaceWarpPaths.ReduxBetterAA}/' + bundles[0],
             'Catalog refers to a different bundle')
-    require(set(ids) == shaders | set(bundle_ids), 'Catalog must contain only the nine runtime shaders and bundle')
+    require(set(ids) == shaders | set(bundle_ids), 'Catalog must contain only the declared runtime shaders and bundle')
     require(re.fullmatch(rb'[0-9a-fA-F]{32}\s*', files['addressables/catalog.hash']), 'Invalid catalog hash')
 
 

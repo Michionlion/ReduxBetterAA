@@ -85,6 +85,42 @@ class InGameTests(unittest.TestCase):
         self.assertTrue(all(r['expected'] == 'Off' for r in core if r['requested'] in ('NvidiaDlaa', 'AmdFsr2')))
         self.assertEqual(sum(r['expected'] == 'NVIDIA DLAA' for r in native), 3)
 
+    def test_amd_installation_expectation_is_separate_from_nvidia_zip(self):
+        for phase, nvidia, amd, provider, expected in (
+                ('core', False, False, 'runtime-selected', False),
+                ('native', True, False, 'runtime-selected', False),
+                ('native', False, True, 'FSR 3.1', True),
+                ('native', True, True, 'FSR 4.1', True)):
+            values = {'native': phase == 'native', 'amdRuntimeInstalled': expected,
+                      'capabilities': {'dlaa': nvidia, 'fsr2': amd, 'fsrProvider': provider}}
+            with self.subTest(phase=phase, nvidia=nvidia, amd=amd):
+                self.assertEqual(ingame.validate_capabilities(values, phase, expected), values['capabilities'])
+                values['capabilities']['fsr2'] = not amd
+                with self.assertRaisesRegex(ValueError, 'separately installed'):
+                    ingame.validate_capabilities(values, phase, expected)
+
+    def test_supplied_legacy_provider_or_wrong_installation_phase_is_rejected(self):
+        values = {'native': True, 'amdRuntimeInstalled': True,
+                  'capabilities': {'dlaa': True, 'fsr2': True, 'fsrProvider': 'FSR 2'}}
+        with self.assertRaisesRegex(ValueError, 'legacy FSR'):
+            ingame.validate_capabilities(values, 'native', True)
+        values['capabilities']['fsrProvider'] = 'FSR 3.1'
+        with self.assertRaisesRegex(ValueError, 'installation expectation'):
+            ingame.validate_capabilities(values, 'native', False)
+        values['native'] = False
+        with self.assertRaisesRegex(ValueError, 'no-runtime phase'):
+            ingame.validate_capabilities(values, 'core', True)
+
+    def test_modern_provider_labels_are_exact_and_old_harness_must_verify_diagnostics(self):
+        for provider in ('FSR 3.1', 'FSR 4.1'):
+            rows = ingame.coverage({'dlaa': False, 'fsr2': True, 'fsrProvider': provider}, 'native')
+            self.assertEqual({row['expected'] for row in rows if row['requested'] == 'AmdFsr2'},
+                             {provider + ' Native AA'})
+        generic = next(row for row in ingame.coverage({'dlaa': False, 'fsr2': True}, 'native') if row['requested'] == 'AmdFsr2')
+        self.assertEqual(generic['expected'], 'AMD Native AA')
+        with self.assertRaisesRegex(ValueError, 'actual modern FSR'):
+            ingame.snapshot({'temporal': {'selectedBackend': 'FSR 2 Native AA'}, 'cameraGraph': {}}, generic, HASH)
+
     def test_capture_integrity_and_issue_zip_hashes(self):
         image = png()
         self.assertEqual(ingame.png_size(image), (1, 1))

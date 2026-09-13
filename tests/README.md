@@ -10,7 +10,9 @@ keep private fixtures, raw captures and one-off investigations outside the repo.
   and runtime ZIP contents, source validation and overwrite protection.
 - `pwsh -NoProfile -File tools/Test-Candidate.ps1`: fresh game/mod/harness copies,
   latest Redux beta, complete release packages, and in-game checks with and without vendor
-  runtimes. Configure paths in `.env`; see [setup](../CONTRIBUTING.md#test-a-release-candidate).
+  runtimes. Supply `-FsrRuntimeZip` for modern AMD coverage; without it the
+  result explicitly records limited vendor coverage and tests AMD unavailable.
+  Configure paths in `.env`; see [setup](../CONTRIBUTING.md#test-a-release-candidate).
 - `tools/Release.ps1`: prepare the mod, runtime ZIPs, changelog and checksums
   locally. With `-Publish`, also verify the uploaded assets before publishing.
 - `pwsh -NoProfile -File tools/Build.ps1`: all EditMode tests, shader/assembly
@@ -36,7 +38,7 @@ It also retains screenshots for review; these do not prove temporal stability.
 | Clean install, natives absent | Custom TAA activates before any mode selection; unsupported vendor modes are unavailable; TAA/FXAA/SMAA work. |
 | Each supported mode, then Off | Correct mode activates; Off restores unfiltered native rendering. Saved selections, including Off, survive an update. |
 | Main menu, flight, map, VAB | Scene transitions recover; no repeated exceptions, stale history or missing output. |
-| Launchpad terrain | View northwest hills from launchpad 4, zoom out enough to see slopes; compare Off/TAA/DLAA/FSR 2 while paused and launching. No coherent flashing patches. |
+| Launchpad terrain | View northwest hills from launchpad 4, zoom out enough to see slopes; compare Off/TAA/DLAA/FSR while paused and launching. No coherent flashing patches. |
 | Thin geometry and foliage | Pan around struts/antennas and vegetation; check shimmer, disappearance and trails. |
 | Map planet and icons | Rotate and zoom; no flashing planet patches, icon filtering or changed icon stacking. Toggle map AA. |
 | Plumes and atmospheric flight | Check trails and transparency during motion, not only when paused. |

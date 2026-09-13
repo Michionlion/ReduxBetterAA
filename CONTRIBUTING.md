@@ -29,8 +29,9 @@ with Unity, then validates and packages the result. Extract
 manifest should be `mods/ReduxBetterAA/swinfo.json`. The unversioned ZIP is a
 build intermediate. Logs and test results are in `Logs`.
 
-DLAA and FSR 2 require the separate [native libraries](NATIVES.md) when
-playing. TAA, spatial AA and supersampling need no additional native files.
+NVIDIA DLAA/DLSS and AMD FSR require their separate [native libraries](NATIVES.md)
+when playing. AMD FSR uses the modern FSR 4.1/3.1 bundle, independently of the
+Unity NVIDIA runtime ZIPs. TAA, spatial AA and supersampling need no additional native files.
 
 ## Test a release candidate
 
@@ -51,13 +52,17 @@ both need Windows Build Support (Mono). The harness builds against the candidate
 game using the current editor; no additional compiler or SDK is needed.
 
 ```powershell
-pwsh -NoProfile -File tools/Test-Candidate.ps1
+pwsh -NoProfile -File tools/Test-Candidate.ps1 -FsrRuntimeZip 'G:\packages\BetterAA-FSR-Runtime-<version>-win-x64.zip'
 ```
 
 The pipeline requires clean, committed mod and harness source. It copies the
 clean game, installs the latest Redux beta, clones both repositories, and builds
 a complete local release. It installs the mod ZIP, tests without vendor runtimes,
-then extracts the matching runtime ZIP and tests again. Each run retains its
+then extracts the matching NVIDIA runtime ZIP and supplied modern FSR bundle
+and tests again. Without `-FsrRuntimeZip`, AMD-unavailable behavior is tested and
+the run explicitly reports limited vendor coverage; it is not a full vendor
+validation. Build the FSR archive separately using [NATIVES.md](NATIVES.md).
+Each run retains its
 release files, versions, hashes, logs, screenshots and validation results in
 `TEST_WORKSPACE`.
 
@@ -96,7 +101,7 @@ exists. A tag on the current commit is skipped. Unity's first package resolution
 still needs network access. Ordinary builds need only the current editor.
 
 Every release packages both runtime ZIPs from those local files, validates
-their pinned hashes, and includes only three DLLs and one notices file per ZIP.
+their pinned hashes, and includes only two NVIDIA DLLs and one notices file per ZIP.
 When adding support for a new Unity player, review its vendor terms and update
 `tools/runtime-targets.json` from verified official player files.
 The script requires clean source, runs the checks and build, and verifies that
