@@ -71,6 +71,17 @@ lifetime; `CameraProjectionState` owns projection and transparent-jitter fields
 for a render. Restore a value only if it still equals what Better AA applied.
 Cleanup must be idempotent, including partial activation failure.
 
+Both the camera render and early terrain-depth scope share `ProjectionOverride`.
+It records Unity's projection mode as well as the matrix: automatic/physical
+projections release through `ResetProjectionMatrix`, so altitude-dependent clip
+distances, FOV and aspect keep updating after a draw and after switching to Off.
+Explicit projections restore their exact matrix, even when it equals an automatic
+projection. A cached read-only mode delegate avoids per-draw reflection/boxing;
+temporal modes decline activation if that Unity API cannot be bound. Cleanup only
+restores a projection still owned by the scope, preserving external changes.
+The terrain and main passes retain their shared jitter sample and the existing
+transparent-jitter policy for coastlines, map and menu rendering.
+
 History resets on camera/scene changes, significant projection or output changes,
 quickload/revert, vessel changes and floating-origin snaps. Ordinary incremental
 zoom and fast pans retain history. Origin rebasing resets accumulation while

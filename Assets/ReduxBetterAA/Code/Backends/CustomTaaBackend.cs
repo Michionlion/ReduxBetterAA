@@ -151,6 +151,11 @@ namespace ReduxBetterAA.Backends
 
         public bool ProbeSupport(TemporalCameraSet cameras, out string unsupportedReason)
         {
+            if (!ProjectionOverride.Available)
+            {
+                unsupportedReason = "Unity projection ownership is unavailable";
+                return false;
+            }
             if (_lastFailure != null)
             {
                 unsupportedReason = _lastFailure;
