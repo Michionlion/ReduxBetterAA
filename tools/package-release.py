@@ -18,7 +18,7 @@ DOCS = {
     'licenses/Unity-Built-in-Shaders.txt': 'licenses/Unity-Built-in-Shaders.txt',
 }
 SHADERS = {
-    'AaComparison', 'FsrBridgeInputs', 'FrameGenerationInputs', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
+    'AaComparison', 'FsrBridgeInputs', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
     'MotionVectorSanitizer', 'Phase1BufferDebug', 'Phase1MotionStatistics',
     'Phase1MotionVectorPassProbe', 'VegetationMotionVectorRepair',
 }
@@ -35,11 +35,11 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def read_zip(path):
+def read_zip(path, limit=16 * 1024 * 1024):
     result = {}
     seen = set()
     with zipfile.ZipFile(path) as archive:
-        require(sum(e.file_size for e in archive.infolist()) < 16 * 1024 * 1024, 'Archive exceeds the mod payload limit')
+        require(sum(e.file_size for e in archive.infolist()) < limit, 'Archive exceeds the payload limit')
         for entry in archive.infolist():
             # ZipInfo normalizes backslashes on Windows; validate the stored spelling first.
             name = entry.orig_filename
@@ -81,7 +81,7 @@ def validate_payload(files, version):
     bundle_ids = [item for item in ids if item.endswith('.bundle')]
     require(len(bundle_ids) == 1 and bundle_ids[0].replace('\\', '/') == '{SpaceWarpPaths.ReduxBetterAA}/' + bundles[0],
             'Catalog refers to a different bundle')
-    require(set(ids) == shaders | set(bundle_ids), 'Catalog must contain only the declared runtime shaders and bundle')
+    require(set(ids) == shaders | set(bundle_ids), 'Catalog must contain only the nine runtime shaders and bundle')
     require(re.fullmatch(rb'[0-9a-fA-F]{32}\s*', files['addressables/catalog.hash']), 'Invalid catalog hash')
 
 
@@ -125,7 +125,10 @@ def build(sdk, output, commit, root=ROOT):
 
 
 def verify(path, commit, version):
-    files = read_zip(path)
+    return verify_files(read_zip(path), commit, version)
+
+
+def verify_files(files, commit, version):
     require(all(name.startswith(PREFIX) for name in files), 'All files must stay under mods/ReduxBetterAA')
     payload = {name[len(PREFIX):]: data for name, data in files.items()}
     manifest = json.loads(payload.pop('package-manifest.json'))

@@ -40,16 +40,16 @@ namespace ReduxBetterAA.Tests
                 new[]
                 {
                     "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling",
-                    "NVIDIA DLAA", "FSR 3.1 Native AA", "NVIDIA DLSS Upscaling", "FSR 3.1 Upscaling"
+                    "NVIDIA DLAA", "FSR 3.1 Native AA"
                 },
                 UserSettingsPolicy.BuildModeChoices(true, true)
             );
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "NVIDIA DLAA", "NVIDIA DLSS Upscaling" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "NVIDIA DLAA" },
                 UserSettingsPolicy.BuildModeChoices(true, false)
             );
             CollectionAssert.AreEqual(
-                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "FSR 3.1 Native AA", "FSR 3.1 Upscaling" },
+                new[] { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA", "Supersampling", "FSR 3.1 Native AA" },
                 UserSettingsPolicy.BuildModeChoices(false, true)
             );
         }

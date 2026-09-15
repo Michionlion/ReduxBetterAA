@@ -15,5 +15,5 @@
     }
   ],
   "license": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/docs/license.md",
-  "distributionStatus": "Excluded from the main mod package; Build-Native.ps1 creates a separate optional runtime archive with original AMD license and notices."
+  "distributionStatus": "Build-Native.ps1 creates an internal component archive with original AMD license and notices; Release.ps1 includes it in each complete mod download."
 }

@@ -12,7 +12,7 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 namespace ReduxBetterAA.Backends
 {
     /// <summary>
-    /// Native DLAA and DLSS reconstruction. UnityEngine.NVIDIA is reached only
+    /// Equal-input/output DLAA backend. UnityEngine.NVIDIA is reached only
     /// through NvidiaDlaaApi so an absent managed or native module remains non-fatal.
     /// </summary>
     internal sealed class NvidiaDlaaBackend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
@@ -30,14 +30,8 @@ namespace ReduxBetterAA.Backends
         private readonly DepthDisocclusionMask _depthDisocclusionMask;
         private readonly NvidiaDlaaApi _api = new NvidiaDlaaApi();
         private readonly Ppv2ExposureReader _exposureReader;
-        private readonly ResolvedFrameCapture _resolvedCapture = new ResolvedFrameCapture();
 
         private DlaaConfig _config = DlaaConfig.Conservative;
-        private ReconstructionQuality _reconstructionQuality = ReconstructionQuality.Native;
-        private ReconstructionQuality _contextQuality;
-        private DlaaPreset _contextPreset;
-        private bool _contextHdr;
-        private int _reconstructionSequenceLength = 32;
         private Camera _resolveCamera;
         private PostProcessLayer _resolveLayer;
         private Camera _sharedJitterCamera;
@@ -81,10 +75,7 @@ namespace ReduxBetterAA.Backends
             _exposureReader = new Ppv2ExposureReader(logger);
         }
 
-        public string Id => IsSuperResolution ? "NVIDIA DLSS" : "NVIDIA DLAA";
-        private bool IsSuperResolution => _reconstructionQuality != ReconstructionQuality.Native;
-        private BackendSelection Selection => IsSuperResolution
-            ? BackendSelection.NvidiaDlss : BackendSelection.NvidiaDlaa;
+        public string Id => "NVIDIA DLAA";
         internal bool RenderEnabled = true;
         public bool Active => _active && RenderEnabled;
 
@@ -94,7 +85,8 @@ namespace ReduxBetterAA.Backends
             if (!Active || !_projectionJitterSupported || camera == null ||
                 (camera != _resolveCamera && camera != _sharedJitterCamera)) return false;
             CameraProjectionState state = camera == _sharedJitterCamera ? _sharedProjection : _resolveProjection;
-            projection = state.GetRasterProjection(camera, GetJitterOffset());
+            projection = state.GetRasterProjection(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength));
             return true;
         }
         public bool ManagedSurfaceAvailable { get; private set; }
@@ -108,12 +100,9 @@ namespace ReduxBetterAA.Backends
             ? string.Empty
             : _output.graphicsFormat.ToString();
         public bool OutputRandomWrite => _output != null && _output.enableRandomWrite;
-        public bool ContextUsesHdr => _api.ContextCreated && _contextHdr;
         public long EstimatedMemoryBytes => _estimatedMemoryBytes;
         public string LastFailure => _lastFailure;
-        public string ExposureSource => IsSuperResolution
-            ? "post-PPv2 color (HDR processing, pre-exposure 1)"
-            : _usingPpv2Exposure
+        public string ExposureSource => _usingPpv2Exposure
             ? "PPv2 GPU exposure"
             : (_contextUsesVendorAutoExposure
                 ? "NVIDIA auto exposure"
@@ -138,23 +127,6 @@ namespace ReduxBetterAA.Backends
             _config = config;
         }
 
-        public void ConfigureReconstruction(ReconstructionQuality quality)
-        {
-            NvidiaDlaaApi.GetDlssQualityValue(quality); // Reject unknown persisted values.
-            if (_reconstructionQuality == quality) return;
-            _reconstructionQuality = quality;
-            _historyResetPending = true;
-        }
-
-        public bool TryGetOptimalRenderSize(int outputWidth, int outputHeight,
-            ReconstructionQuality quality, out int width, out int height, out string reason) =>
-            _api.TryGetOptimalRenderSize(outputWidth, outputHeight, quality,
-                out width, out height, out reason);
-
-        public bool TryGetRenderPercent(int outputWidth, int outputHeight,
-            ReconstructionQuality quality, out int percent, out string reason) =>
-            _api.TryGetRenderPercent(outputWidth, outputHeight, quality, out percent, out reason);
-
         public void ClearRuntimeFailure()
         {
             _runtimeFailureLatched = false;
@@ -165,7 +137,7 @@ namespace ReduxBetterAA.Backends
         {
             if (_runtimeFailureLatched)
             {
-                unsupportedReason = "previous NVIDIA reconstruction failed: " + _lastFailure;
+                unsupportedReason = "previous DLAA execution failed: " + _lastFailure;
                 return false;
             }
             if (cameras == null || cameras.SceneKind == TemporalSceneKind.Unsupported)
@@ -183,19 +155,13 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = "the final scene camera is disabled";
                 return false;
             }
-            if (IsSuperResolution && (cameras.SceneKind != TemporalSceneKind.Flight &&
-                cameras.SceneKind != TemporalSceneKind.KerbalSpaceCenter))
-            {
-                unsupportedReason = "DLSS upscaling currently requires the flight/KSC scene-output contract";
-                return false;
-            }
-            if (!IsSuperResolution && cameras.RenderScalePercent < 100)
+            if (cameras.RenderScalePercent < 100)
             {
                 unsupportedReason =
                     "DLAA requires at least 100% render scale; lower scales need a DLSS upscaler";
                 return false;
             }
-            if (!IsSuperResolution && cameras.RenderScalePercent > 100 && !_config.AllowSupersampling)
+            if (cameras.RenderScalePercent > 100 && !_config.AllowSupersampling)
             {
                 unsupportedReason =
                     "DLAA supersampling is disabled; use 100% render scale or enable its opt-in setting";
@@ -205,7 +171,7 @@ namespace ReduxBetterAA.Backends
             if (graphicsApi != GraphicsDeviceType.Direct3D11 &&
                 graphicsApi != GraphicsDeviceType.Direct3D12)
             {
-                unsupportedReason = "Unity NVIDIA reconstruction requires Direct3D 11 or Direct3D 12";
+                unsupportedReason = "Unity NVIDIA DLAA requires Direct3D 11 or Direct3D 12";
                 return false;
             }
             if (SystemInfo.graphicsDeviceVendorID != 0x10DE &&
@@ -251,19 +217,6 @@ namespace ReduxBetterAA.Backends
             _sharedJitterLayer = cameras.SharedJitterLayer;
             _projectionJitterSupported = cameras.ProjectionJitterSupported;
             _jitterTransparentRendering = cameras.JitterTransparentRendering;
-            if (IsSuperResolution)
-            {
-                var sceneOutput = ReduxSceneOutput.Current;
-                if (sceneOutput == null)
-                {
-                    failureReason = "DLSS scene-output ownership is unavailable";
-                    return false;
-                }
-                if (!sceneOutput.TryGetFrame(_resolveCamera, out SceneOutputFrame frame, out failureReason))
-                    return false;
-                _reconstructionSequenceLength = GetReconstructionSequenceLength(
-                    frame.RenderWidth, frame.RenderHeight, frame.OutputWidth, frame.OutputHeight);
-            }
             _resolveState.Capture(_resolveCamera, _resolveLayer);
             _sharedState.Capture(
                 _sharedJitterCamera != _resolveCamera ? _sharedJitterCamera : null,
@@ -271,7 +224,7 @@ namespace ReduxBetterAA.Backends
 
             _commandBuffer = new CommandBuffer
             {
-                name = "Redux Better AA " + Id
+                name = "Redux Better AA NVIDIA DLAA"
             };
             _hook = TemporalRenderHook.Attach(_resolveCamera, this);
             _exposureReader.Configure(_resolveLayer);
@@ -279,7 +232,6 @@ namespace ReduxBetterAA.Backends
             Camera.onPostRender += OnCameraPostRender;
             _historyResetPending = true;
             _active = true;
-            _resolvedCapture.Configure(_resolveCamera, Selection);
             failureReason = string.Empty;
             return true;
         }
@@ -291,7 +243,6 @@ namespace ReduxBetterAA.Backends
 
         public void ResetHistory(HistoryResetReason reason)
         {
-            _resolvedCapture.Reset(reason);
             _historyResetPending = true;
             _motionVectorSanitizer.ResetCameraHistory();
         }
@@ -299,7 +250,7 @@ namespace ReduxBetterAA.Backends
         public void Render(RenderTexture source, RenderTexture destination)
         {
             long start = _performanceProfiler.BeginResolve(
-                Selection
+                BackendSelection.NvidiaDlaa
             );
             try
             {
@@ -308,7 +259,7 @@ namespace ReduxBetterAA.Backends
             finally
             {
                 _performanceProfiler.EndResolve(
-                    Selection,
+                    BackendSelection.NvidiaDlaa,
                     start
                 );
             }
@@ -323,48 +274,17 @@ namespace ReduxBetterAA.Backends
             }
             try
             {
-                SceneOutputFrame frame = default;
-                ReduxSceneOutput sceneOutput = null;
-                int outputWidth = source.width;
-                int outputHeight = source.height;
-                if (IsSuperResolution)
-                {
-                    sceneOutput = ReduxSceneOutput.Current;
-                    if (sceneOutput == null)
-                    {
-                        Graphics.Blit(source, destination);
-                        FailRuntime("DLSS scene-output ownership was lost");
-                        return;
-                    }
-                    if (!sceneOutput.TryGetFrame(_resolveCamera, out frame, out string reason))
-                    {
-                        Graphics.Blit(source, destination);
-                        FailRuntime(reason);
-                        return;
-                    }
-                    if (source.width != frame.RenderWidth || source.height != frame.RenderHeight)
-                    {
-                        Graphics.Blit(source, destination);
-                        FailRuntime("DLSS color input does not match the claimed scene render dimensions");
-                        return;
-                    }
-                    outputWidth = frame.OutputWidth;
-                    outputHeight = frame.OutputHeight;
-                }
                 float ppv2Exposure = 1.0f;
-                bool usePpv2Exposure = !IsSuperResolution && _config.AutoExposure &&
+                bool usePpv2Exposure = _config.AutoExposure &&
                     _config.PreferPpv2Exposure &&
                     _exposureReader.TryGetExposure(out ppv2Exposure);
                 bool useVendorAutoExposure =
-                    !IsSuperResolution && _config.AutoExposure && !usePpv2Exposure;
-                // SR runs after PPv2, so no scene pre-exposure is applied again.
-                // HDR processing preserves the input's linear encoding and values
-                // above one; it does not move this hook before tone mapping.
-                _effectivePreExposure = IsSuperResolution ? 1.0f : usePpv2Exposure
+                    _config.AutoExposure && !usePpv2Exposure;
+                _effectivePreExposure = usePpv2Exposure
                     ? Mathf.Clamp(ppv2Exposure, 0.2f, 2.0f)
                     : (_config.AutoExposure ? 1.0f : _config.PreExposure);
 
-                if (!EnsureResources(source, outputWidth, outputHeight, useVendorAutoExposure))
+                if (!EnsureResources(source, useVendorAutoExposure))
                 {
                     Graphics.Blit(source, destination);
                     FailRuntime(_lastFailure);
@@ -378,13 +298,13 @@ namespace ReduxBetterAA.Backends
                 if (!TemporalTextures.Matches(depth, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
-                    FailRuntime("camera depth does not match the NVIDIA color input");
+                    FailRuntime("camera depth does not match the DLAA color input");
                     return;
                 }
                 if (!TemporalTextures.Matches(motionVectors, source.width, source.height))
                 {
                     Graphics.Blit(source, destination);
-                    FailRuntime("camera motion vectors do not match the NVIDIA color input");
+                    FailRuntime("camera motion vectors do not match the DLAA color input");
                     return;
                 }
                 Texture sanitizedMotion;
@@ -430,26 +350,8 @@ namespace ReduxBetterAA.Backends
                     in _config,
                     _historyResetPending
                 );
-                if (IsSuperResolution)
-                {
-                    if (!sceneOutput.Submit(in frame, _output, out string reason))
-                    {
-                        Graphics.Blit(source, destination);
-                        FailRuntime(reason);
-                        return;
-                    }
-                    // Redux presents the full-sized output directly. This copy
-                    // only completes Unity's original low-resolution image chain.
-                    Graphics.Blit(source, destination);
-                }
-                else
-                {
-                    Graphics.Blit(_output, destination);
-                }
-                _resolvedCapture.PublishResolved(_output, depth, sanitizedMotion, _historyResetPending,
-                    _effectivePreExposure, new Vector2(_config.InvertMotionX ? -1 : 1, _config.InvertMotionY ? -1 : 1),
-                    IsSuperResolution, in frame);
                 _historyResetPending = false;
+                Graphics.Blit(_output, destination);
             }
             catch (Exception exception)
             {
@@ -460,7 +362,6 @@ namespace ReduxBetterAA.Backends
 
         public void Deactivate()
         {
-            _resolvedCapture.Deactivate();
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
             _resolveProjection.Restore();
@@ -505,22 +406,13 @@ namespace ReduxBetterAA.Backends
 
         private bool EnsureResources(
             RenderTexture source,
-            int outputWidth,
-            int outputHeight,
             bool useVendorAutoExposure)
         {
-            // NVIDIA requires nonlinear, bounded [0,1] input for LDR processing
-            // (DLSS Programming Guide 3.1.2). Redux's post-PPv2 SR input exceeds
-            // that range. Use high-precision processing while retaining exposure 1.
-            bool hdr = IsSuperResolution || TemporalTextures.IsHdr(source.format);
             if (TemporalTextures.IsCreated(_output) && _api.ContextCreated &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceGraphicsFormat == source.graphicsFormat &&
                 _resourceSrgb == source.sRGB &&
-                _output.width == outputWidth && _output.height == outputHeight &&
-                _contextQuality == _reconstructionQuality && _contextHdr == hdr &&
-                (IsSuperResolution || _contextPreset == _config.Preset) &&
                 _contextUsesVendorAutoExposure == useVendorAutoExposure)
             {
                 return true;
@@ -528,19 +420,19 @@ namespace ReduxBetterAA.Backends
 
             ReleaseResources();
             RenderTextureDescriptor descriptor = BuildOutputDescriptor(
-                source.descriptor, outputWidth, outputHeight
+                source.descriptor
             );
             if (!SystemInfo.IsFormatSupported(
                     descriptor.graphicsFormat,
                     GraphicsFormatUsage.LoadStore))
             {
-                _lastFailure = "NVIDIA output format " +
+                _lastFailure = "DLAA output format " +
                     descriptor.graphicsFormat + " does not support random write";
                 return false;
             }
             _output = new RenderTexture(descriptor)
             {
-                name = "Redux Better AA " + Id + " Output",
+                name = "Redux Better AA NVIDIA DLAA Output",
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp,
                 hideFlags = HideFlags.HideAndDontSave
@@ -549,7 +441,7 @@ namespace ReduxBetterAA.Backends
             if (!_output.IsCreated())
             {
                 TemporalTextures.Release(ref _output);
-                _lastFailure = "NVIDIA output texture creation failed";
+                _lastFailure = "DLAA output texture creation failed";
                 return false;
             }
 
@@ -557,72 +449,41 @@ namespace ReduxBetterAA.Backends
             _resourceHeight = source.height;
             _resourceGraphicsFormat = source.graphicsFormat;
             _resourceSrgb = source.sRGB;
+            bool hdr = TemporalTextures.IsHdr(source.format);
             string reason;
             if (!_api.TryCreateContext(
                     _commandBuffer,
                     source.width,
                     source.height,
-                    outputWidth,
-                    outputHeight,
-                    _reconstructionQuality,
                     hdr,
                     useVendorAutoExposure,
                     _config.Preset,
                     out reason))
             {
                 TemporalTextures.Release(ref _output);
-                _lastFailure = "NVIDIA context creation failed: " + reason;
+                _lastFailure = "DLAA context creation failed: " + reason;
                 return false;
             }
 
-            _estimatedMemoryBytes = (long)outputWidth * outputHeight *
-                TemporalTextures.EstimateColorBytes(_output.format);
-            _contextQuality = _reconstructionQuality;
-            _contextPreset = _config.Preset;
-            _contextHdr = hdr;
+            _estimatedMemoryBytes = (long)source.width * source.height *
+                TemporalTextures.EstimateColorBytes(source.format);
             _contextUsesVendorAutoExposure = useVendorAutoExposure;
             _usingPpv2Exposure =
-                !IsSuperResolution && _config.AutoExposure && !useVendorAutoExposure;
+                _config.AutoExposure && !useVendorAutoExposure;
             _historyResetPending = true;
             _logger.LogInfo(
-                "[ReduxBetterAA/NVIDIA] " + Id + " context created for " +
-                source.width + "x" + source.height + " -> " + outputWidth + "x" + outputHeight +
-                ", quality " + _reconstructionQuality +
-                (IsSuperResolution ? ", vendor preset default" : ", preset " + _config.Preset) +
-                ", output " + _output.graphicsFormat +
+                "[ReduxBetterAA/DLAA] Equal-input/output context created for " +
+                source.width + "x" + source.height + ", preset " +
+                _config.Preset + ", output " + _output.graphicsFormat +
                 " (random-write)" +
                 "; exposure: " + ExposureSource +
-                (!IsSuperResolution && _config.AllowSupersampling ? "; supersampling allowed." : ".")
+                (_config.AllowSupersampling ? "; supersampling allowed." : ".")
             );
             return true;
         }
 
         internal static RenderTextureDescriptor BuildOutputDescriptor(RenderTextureDescriptor source) =>
             TemporalTextures.VendorOutputDescriptor(source);
-
-        internal static RenderTextureDescriptor BuildOutputDescriptor(
-            RenderTextureDescriptor source, int outputWidth, int outputHeight)
-        {
-            if (outputWidth <= 0 || outputHeight <= 0)
-                throw new ArgumentOutOfRangeException(nameof(outputWidth));
-            source = BuildOutputDescriptor(source);
-            source.width = outputWidth;
-            source.height = outputHeight;
-            return source;
-        }
-
-        internal static int GetReconstructionSequenceLength(
-            int renderWidth, int renderHeight, int outputWidth, int outputHeight)
-        {
-            if (renderWidth <= 0 || renderHeight <= 0 || outputWidth <= 0 || outputHeight <= 0)
-                return 32;
-            double ratio = (double)outputWidth / renderWidth * outputHeight / renderHeight;
-            return (int)Math.Min(32, Math.Max(8, Math.Ceiling(8 * ratio)));
-        }
-
-        private Vector2 GetJitterOffset() => SharedJitterSequence.GetCustomOffset(
-            _frameIndex, IsSuperResolution ? 1.0f : _config.JitterSpread,
-            IsSuperResolution ? _reconstructionSequenceLength : _config.SequenceLength);
 
         private void ReleaseResources()
         {
@@ -658,7 +519,11 @@ namespace ReduxBetterAA.Backends
                     ApplyJitter(camera, ref _resolveProjection);
                 }
                 _jitterPixels = _projectionJitterSupported
-                    ? GetJitterOffset()
+                    ? SharedJitterSequence.GetCustomOffset(
+                        _frameIndex,
+                        _config.JitterSpread,
+                        _config.SequenceLength
+                    )
                     : Vector2.zero;
                 CameraProjectionState projectionState = camera == _sharedJitterCamera
                     ? _sharedProjection
@@ -669,8 +534,6 @@ namespace ReduxBetterAA.Backends
                         ? projectionState.Projection
                         : camera.projectionMatrix
                 );
-                _resolvedCapture.Snapshot(camera, _projectionJitterSupported
-                    ? projectionState.Projection : camera.projectionMatrix, _jitterPixels);
             }
         }
 
@@ -688,26 +551,24 @@ namespace ReduxBetterAA.Backends
 
         private void ApplyJitter(Camera camera, ref CameraProjectionState state)
         {
-            state.Apply(camera, GetJitterOffset(),
+            state.Apply(camera, SharedJitterSequence.GetCustomOffset(
+                _frameIndex, _config.JitterSpread, _config.SequenceLength),
                 jitterTransparentRendering: _jitterTransparentRendering);
         }
 
         private void FailRuntime(string reason)
         {
-            // A resize/Redux graph rebuild invalidates the frame, not the GPU.
-            // The coordinator reacquires it before the next vendor context.
-            if (IsSuperResolution && ReduxSceneOutput.Current?.ReacquisitionPending == true) return;
             if (_runtimeFailureLatched)
             {
                 return;
             }
             _runtimeFailureLatched = true;
             _lastFailure = string.IsNullOrEmpty(reason)
-                ? "unknown NVIDIA reconstruction failure"
+                ? "unknown DLAA execution failure"
                 : reason;
             _active = false;
             _logger.LogError(
-                "[ReduxBetterAA/NVIDIA] Disabled after a runtime failure: " +
+                "[ReduxBetterAA/DLAA] Disabled after a runtime failure: " +
                 _lastFailure + "."
             );
             _runtimeFailure?.Invoke(_lastFailure);

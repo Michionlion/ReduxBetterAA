@@ -22,15 +22,11 @@ namespace ReduxBetterAA.Diagnostics
         internal Action RestoreDlaaPreset;
         internal Func<string> DlaaDetails;
         internal Func<long> DlaaMemoryBytes;
-        internal Func<string> DlssDetails;
-        internal Func<long> DlssMemoryBytes;
         internal Func<Fsr2Config> Fsr2Config;
         internal Action<Fsr2Config> SetFsr2Config;
         internal Action RestoreFsr2Preset;
         internal Func<string> Fsr2Details;
         internal Func<long> Fsr2MemoryBytes;
-        internal Func<string> FsrUpscalingDetails;
-        internal Func<long> FsrUpscalingMemoryBytes;
         internal Func<BackendSelection, PerformanceProfileSnapshot>
             PerformanceProfile;
         internal Action<BackendSelection> StartPerformanceProfile;
@@ -44,42 +40,13 @@ namespace ReduxBetterAA.Diagnostics
         internal Action<string> SetDlaaPreset;
         internal Func<int> SupersamplingPercent;
         internal Action<int> SetSupersamplingPercent;
-        internal Func<ReconstructionQuality> UpscalingQuality;
-        internal Action<ReconstructionQuality> SetUpscalingQuality;
-        internal Func<string[]> FrameGenerationChoices;
-        internal Func<string> FrameGeneration;
-        internal Action<string> SetFrameGeneration;
-        internal Func<string> FrameGenerationStatus;
-        private bool _frameGenerationOpen;
         private bool _scaleOpen;
         private static readonly string[] ScaleLabels = { "125%", "150%", "175%", "200%" };
-        private bool _qualityOpen;
-        private static readonly string[] QualityLabels = { "Quality", "Balanced", "Performance" };
         private bool _presetOpen;
 
         internal void DrawBasic(BackendSelection mode)
         {
-            // This setting is independent of AA, including native AA and Off.
-            var frameGenerationChoices = FrameGenerationChoices?.Invoke();
-            if (frameGenerationChoices != null && frameGenerationChoices.Length > 0 &&
-                FrameGeneration != null && SetFrameGeneration != null)
-            {
-                int index = Math.Max(0, Array.IndexOf(frameGenerationChoices, FrameGeneration()));
-                int next = DebugMenu.Dropdown(FrameGenerationPolicy.SettingName, index,
-                    frameGenerationChoices, ref _frameGenerationOpen);
-                if (next != index) SetFrameGeneration(frameGenerationChoices[next]);
-                if (FrameGeneration() != "Off" && !string.IsNullOrEmpty(FrameGenerationStatus?.Invoke()))
-                    GUILayout.Label(FrameGenerationStatus());
-            }
-            if ((mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling) &&
-                UpscalingQuality != null && SetUpscalingQuality != null)
-            {
-                int index = Mathf.Clamp((int)UpscalingQuality() - 1, 0, QualityLabels.Length - 1);
-                int next = DebugMenu.Dropdown("Upscaling quality", index, QualityLabels, ref _qualityOpen);
-                if (next != index) SetUpscalingQuality((ReconstructionQuality)(next + 1));
-            }
-            if ((mode >= BackendSelection.CustomTaa && mode <= BackendSelection.AmdFsr2 ||
-                mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling) && Sharpness != null) {
+            if (mode >= BackendSelection.CustomTaa && mode <= BackendSelection.AmdFsr2 && Sharpness != null) {
                 float value = Sharpness();
                 float next = DrawParameter("Sharpness", value, 0, 1);
                 if (next != value) SetSharpness(next);
@@ -484,24 +451,6 @@ namespace ReduxBetterAA.Diagnostics
             GUILayout.EndHorizontal();
         }
 
-        internal void DrawUpscalingTab(BackendSelection mode)
-        {
-            bool dlss = mode == BackendSelection.NvidiaDlss;
-            GUILayout.Label(DebugMenu.ModeName(mode));
-            Func<string> details = dlss ? DlssDetails : FsrUpscalingDetails;
-            GUILayout.Label(details == null ? "Upscaling runtime details are unavailable." : details());
-            Func<long> memoryBytes = dlss ? DlssMemoryBytes : FsrUpscalingMemoryBytes;
-            long bytes = memoryBytes == null ? 0 : memoryBytes();
-            GUILayout.Label(bytes > 0
-                ? "Project-owned reconstruction buffers: " + (bytes / (1024.0 * 1024.0)).ToString("0.0") + " MiB"
-                : "Reconstruction buffers are allocated when this mode first renders.");
-            GUILayout.Label("Reconstructs the scene to display resolution while the UI stays native. " +
-                "Quality renders more scene detail; Performance renders fewer pixels.");
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = RequestedBackend != null && RequestedBackend() == mode && ResetTemporalHistory != null;
-            if (GUILayout.Button("Reset history", GUILayout.Height(28f))) ResetTemporalHistory();
-            GUI.enabled = previousEnabled;
-        }
 
         internal void DrawPerformanceProfile(BackendSelection mode)
         {

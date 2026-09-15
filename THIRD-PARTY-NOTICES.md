@@ -11,11 +11,10 @@ and Addressables are supplied by the user's Redux installation and are not
 redistributed by this package. Unity editor packages are build dependencies,
 not player payload.
 
-Separate optional Unity runtime ZIPs contain unmodified Unity/NVIDIA player DLLs
-and combined vendor notices from `licenses/Native-Runtimes.txt`. The mod ZIP
-contains none of those DLLs. See `NATIVES.md` for downloads and sources.
+Complete release ZIPs contain unmodified Unity/NVIDIA player DLLs
+and combined vendor notices from `licenses/Native-Runtimes.txt`. See `NATIVES.md` for downloads and sources.
 
-The separate optional AMD FSR runtime archive contains the Better AA native
+Each complete release ZIP also contains the Better AA native
 bridge and the unmodified `amd_fidelityfx_upscaler_dx12.dll` from
 [AMD FSR SDK 2.3.0](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/tree/60f4ea81909200d8542eca14dccb2628b763a9a3),
 commit `60f4ea81909200d8542eca14dccb2628b763a9a3`. The bridge is covered by this
@@ -24,7 +23,6 @@ repository's MIT license. The AMD binary is governed by the SDK's separate
 including the components listed under MIT, and the original
 [third-party notices](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/3rdpartynotice.md).
 The complete original license and notices are embedded in
-`mods/ReduxBetterAA/native/THIRD-PARTY-NOTICES-FSR.txt` inside that archive.
-`fsr-runtime-manifest.json` records the SDK revision and file hashes. The main
-mod ZIP and source checkout contain no AMD SDK binary. Build and installation
+`mods/ReduxBetterAA/native/THIRD-PARTY-NOTICES-FSR.txt` inside the complete release ZIP.
+`fsr-runtime-manifest.json` records the SDK revision and file hashes. The source checkout contains no AMD SDK binary. Build and installation
 instructions are in [NATIVES.md](NATIVES.md).

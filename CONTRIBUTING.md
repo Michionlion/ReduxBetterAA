@@ -29,9 +29,10 @@ with Unity, then validates and packages the result. Extract
 manifest should be `mods/ReduxBetterAA/swinfo.json`. The unversioned ZIP is a
 build intermediate. Logs and test results are in `Logs`.
 
-NVIDIA DLAA/DLSS and AMD FSR require their separate [native libraries](NATIVES.md)
-when playing. AMD FSR uses the modern FSR 4.1/3.1 bundle, independently of the
-Unity NVIDIA runtime ZIPs. TAA, spatial AA and supersampling need no additional native files.
+Ordinary builds produce a managed component ZIP. Public releases include the
+[native libraries](NATIVES.md); TAA, spatial AA and supersampling can also run
+without them. Build the AMD component using [Build-Native.ps1](Native/README.md),
+then pass its archive as `-FsrRuntimeZip` to release and candidate commands.
 
 ## Test a release candidate
 
@@ -52,17 +53,13 @@ both need Windows Build Support (Mono). The harness builds against the candidate
 game using the current editor; no additional compiler or SDK is needed.
 
 ```powershell
-pwsh -NoProfile -File tools/Test-Candidate.ps1 -FsrRuntimeZip 'G:\packages\BetterAA-FSR-Runtime-<version>-win-x64.zip'
+pwsh -NoProfile -File tools/Test-Candidate.ps1 -FsrRuntimeZip 'D:\Builds\BetterAA-FSR-Runtime-0.6.3-win-x64.zip'
 ```
 
 The pipeline requires clean, committed mod and harness source. It copies the
 clean game, installs the latest Redux beta, clones both repositories, and builds
-a complete local release. It installs the mod ZIP, tests without vendor runtimes,
-then extracts the matching NVIDIA runtime ZIP and supplied modern FSR bundle
-and tests again. Without `-FsrRuntimeZip`, AMD-unavailable behavior is tested and
-the run explicitly reports limited vendor coverage; it is not a full vendor
-validation. Build the FSR archive separately using [NATIVES.md](NATIVES.md).
-Each run retains its
+a complete local release. It installs the complete ZIP, temporarily withholds its exact native payload to
+test missing-runtime fallback, then restores the complete ZIP and tests vendor modes. Each run retains its
 release files, versions, hashes, logs, screenshots and validation results in
 `TEST_WORKSPACE`.
 
@@ -75,14 +72,6 @@ Nothing is tagged, pushed or published.
 Moving-image quality and performance still need the checks below.
 
 ## Prepare and publish a release
-
-Public releases use one complete runtime download per engine. Supply
-`-FsrRuntimeZip <built FSR component>` and `-FrameGenerationZip <built both-vendor FG component>`
-to `tools/Release.ps1`; it validates and combines them with the pinned NVIDIA
-player files. Build these intermediate inputs using [NATIVES.md](NATIVES.md).
-Local candidate checks without these inputs retain NVIDIA-only packaging for
-unavailable-backend tests; publishing requires both inputs.
-
 
 Run `pwsh -NoProfile -File tools/Test-Release.ps1` for portable packaging,
 source and script checks. No Python packages need installing. Complete the
@@ -98,27 +87,32 @@ To build a complete release locally, pass your installed game and editor paths:
 ./tools/Release.ps1 -Version X.Y.Z `
     -Unity 'D:\Unity\6000.5.8f1\Editor\Unity.exe' `
     -Ksp2Root 'C:\Games\Kerbal Space Program 2' `
-    -RuntimeEditors @('D:\Unity\6000.5.8f1\Editor', 'D:\Unity\6000.4.1f1\Editor')
+    -RuntimeEditors @('D:\Unity\6000.5.8f1\Editor', 'D:\Unity\6000.4.1f1\Editor') `
+    -FsrRuntimeZip 'D:\Builds\BetterAA-FSR-Runtime-X.Y.Z-win-x64.zip'
 ```
 
 Run this from PowerShell 7.4+. Results go under `Deploy/releases`. Local
 preparation works in a detached checkout and needs no GitHub authentication or
 remote. It does not fetch, push, create tags or contact GitHub. Its changelog starts
-after the nearest ancestor version tag, or at the start of history when none
-exists. A tag on the current commit is skipped. Unity's first package resolution
+after the nearest ancestor version tag. If the published predecessor belongs to
+retired source history, it uses the curated release notes instead of claiming an
+unrelated commit list is the release delta. A tag on the current commit is skipped. Unity's first package resolution
 still needs network access. Ordinary builds need only the current editor.
 
-Every release packages both runtime ZIPs from those local files, validates
-their pinned hashes, and includes all applicable native components and their original notices per ZIP.
+Every release produces one complete mod-and-runtime ZIP per supported Redux
+version. The NVIDIA libraries come from the pinned editors; AMD libraries come
+from the version-matched native bridge build. Packaging validates both components,
+all vendor pins, original notices and a complete payload hash manifest. The internal
+managed/native component ZIPs are not release downloads.
 When adding support for a new Unity player, review its vendor terms and update
 `tools/runtime-targets.json` from verified official player files.
 The script requires clean source, runs the checks and build, and verifies that
 tracked files and HEAD stayed unchanged. To publish, run the same command on
 `main` with `-Publish` and GitHub CLI authentication (`gh auth login`). Publishing
 requires the project's GitHub `origin`, fetches remote history, and pushes main
-and the annotated tag atomically. It uploads the mod ZIP, separate runtime ZIPs,
+and the annotated tag atomically. It uploads the complete ZIPs,
 changelog since the previous published release, build information and checksums
-to a draft, downloads and verifies each file, then publishes the beta. Use
+to a draft, downloads and verifies each file, then publishes the beta. Preparing a local candidate does not publish it. Use
 `-Stable` for a stable release. An existing public release is never overwritten;
 failed draft uploads can be retried from the same commit. No GitHub Actions or
 license secrets are used.

@@ -1,42 +1,21 @@
-For native features, install the single `BetterAA-Runtimes-Redux-<version>.zip`
-matching your Redux version. It contains all applicable NVIDIA/AMD runtimes;
-frame generation is included for Redux 0.2.9.0 only. See [native installation](https://github.com/Michionlion/ReduxBetterAA/blob/main/NATIVES.md).
-
 # Install Redux Better AA
 
-Install KSP2 Redux first, then close the game and extract the mod ZIP into the
+Install KSP2 Redux first, then close the game and extract the complete ZIP matching your Redux version into the
 folder containing `KSP2_x64.exe`. The installed manifest must be at
 `mods/ReduxBetterAA/swinfo.json`.
 
 Open **Settings → Mods → Redux Better AA** and choose a mode. Fresh installs
 start with custom TAA (shown as TAA); updates preserve saved selections, including Off.
-TAA, FXAA, SMAA and supersampling need no extra native files.
-See the included `NATIVES.md` for NVIDIA DLAA/DLSS libraries
-and the bundled FSR 4.1/3.1 runtime. Settings show the actual
-supported FSR provider; unsupported NVIDIA modes are hidden. Existing FSR
-selections migrate to the current provider's name.
-FSR 3.1 handles older supported GPUs. The Unity FSR2 plugin is no longer used;
-if the modern FSR runtime or its graphics bridge is unavailable, AMD choices
-are hidden and portable TAA remains available.
-
-This branch's upscaling is experimental and gated to Redux 0.2.9.0.104521,
-Unity 6000.5.8f1 and D3D11. Native AA is used in scenes without an eligible
-upscaling graph.
-
-Frame generation uses a separate optional companion described in `NATIVES.md`.
-Its single **Frame generation** setting is independent of the AA mode and defaults
-to **Off**; choices appear after the installed providers confirm GPU support.
-FG currently requires windowed/borderless SDR output and an eligible flight/KSC
-camera. Menus, map, VAB and active close-vessel rendering suspend FG. Native
-close-vessel composition remains unavailable; installing the companion does not
-enable it or guarantee a requested frame-rate multiplier.
+The ZIP includes the native libraries for DLAA and FSR Native AA. No separate
+runtime download is required. See the included `NATIVES.md` for engine matching.
 
 To update, move the previous mod folder outside `mods`, extract the new ZIP,
-then restore your configuration and diagnostic reports and reinstall the matching
-combined native runtime package. The main ZIP does not include those runtimes.
-Do not keep a second copy of the same mod under `mods`, even in a backup subfolder.
-To uninstall, first remove the FG companion's manifest-listed files as described
-in `NATIVES.md`, if installed, then remove `mods/ReduxBetterAA`.
+then restore only your configuration and diagnostic reports. Do not keep a
+second copy of the same mod under `mods`, even in a backup subfolder.
+To uninstall, remove `mods/ReduxBetterAA`. Root-level NVIDIA DLLs can be shared
+with other mods; restore any originals you backed up rather than deleting shared files.
+When updating from the withdrawn experimental v0.6.2, do not copy its `native`
+folder into the new mod folder. Its FG libraries and settings are not used here.
 
 For a rendering problem, reproduce it and use **F10 → Issue ZIP**. Review the
 images before sharing the ZIP; visible UI and vessel names can appear.

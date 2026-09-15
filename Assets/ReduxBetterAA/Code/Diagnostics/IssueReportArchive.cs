@@ -27,8 +27,7 @@ namespace ReduxBetterAA.Diagnostics
         public string outputStage = "unavailable";
         public string note = "EXR files contain floating-point samples; PNGs are previews. " +
             "Owned targets are observed after the AA pass. Vendor-internal " +
-            "history is opaque and cannot be exported. For upscaling, resolve-chain-output " +
-            "is the low-resolution image-effect chain and scene-output is the current submitted reconstruction. " +
+            "history is opaque and cannot be exported. " +
             "Screenshots include visible UI. " +
             "Capture stalls are expected and are not performance measurements.";
         public readonly List<BufferCaptureRecord> buffers = new List<BufferCaptureRecord>();

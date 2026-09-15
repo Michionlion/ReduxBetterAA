@@ -61,24 +61,6 @@ namespace ReduxBetterAA.Rendering
         private readonly CustomTaaBackend _customBackend;
         private readonly NvidiaDlaaBackend _dlaaBackend;
         private readonly AmdFsr2Backend _fsr2Backend;
-        private readonly NvidiaDlaaBackend _dlssBackend;
-        private readonly AmdFsr2Backend _fsrUpscalingBackend;
-        private readonly ReduxSceneOutput _sceneOutput = new ReduxSceneOutput();
-        private ReconstructionQuality _reconstructionQuality = ReconstructionQuality.Quality;
-        public ReconstructionQuality UpscalingQuality => _reconstructionQuality;
-
-        private static bool IsUpscaling(BackendSelection mode) =>
-            mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling;
-
-        public void SetReconstructionQuality(ReconstructionQuality quality)
-        {
-            quality = ReconstructionPolicy.Normalize(quality);
-            if (quality == ReconstructionQuality.Native) quality = ReconstructionQuality.Quality;
-            if (_reconstructionQuality == quality) return;
-            _reconstructionQuality = quality;
-            _renderScale.Reclaim();
-            if (IsUpscaling(_requestedBackend)) MarkDirty(HistoryResetReason.RenderScaleChanged);
-        }
         private readonly DisabledBackend _disabledBackend = new DisabledBackend();
         private readonly SupersamplingBackend _supersamplingBackend = new SupersamplingBackend();
         private readonly RenderScaleOwnership _renderScale = new RenderScaleOwnership();
@@ -152,27 +134,17 @@ namespace ReduxBetterAA.Rendering
             );
             _fsr2Backend = new AmdFsr2Backend(
                 logger,
-                reason => OnRuntimeFailure(BackendSelection.AmdFsr2, "AMD FSR", reason),
+                reason => OnRuntimeFailure(BackendSelection.AmdFsr2, "FSR2", reason),
                 _performanceProfiler,
                 _motionVectorSanitizer,
-                _depthDisocclusionMask,
-                OnTemporalResourceAvailabilityChanged
+                _depthDisocclusionMask
             );
-            _dlssBackend = new NvidiaDlaaBackend(logger,
-                reason => OnRuntimeFailure(BackendSelection.NvidiaDlss, "DLSS", reason),
-                _performanceProfiler, _motionVectorSanitizer, _depthDisocclusionMask);
-            _fsrUpscalingBackend = new AmdFsr2Backend(logger,
-                reason => OnRuntimeFailure(BackendSelection.AmdFsrUpscaling, "FSR upscaling", reason),
-                _performanceProfiler, _motionVectorSanitizer, _depthDisocclusionMask, OnTemporalResourceAvailabilityChanged);
-            _dlssBackend.ConfigureReconstruction(_reconstructionQuality);
-            _fsrUpscalingBackend.ConfigureReconstruction(_reconstructionQuality);
             // Keep persisted mode IDs stable. Slot 4 was the removed PPv2 TAA mode;
             // selection normalizes it to Custom TAA without duplicating ownership.
             _backends = new ITemporalBackend[]
             {
                 _disabledBackend, _fxaaLowBackend, _fxaaHighBackend, _smaaBackend,
-                null, _customBackend, _dlaaBackend, _fsr2Backend, _supersamplingBackend,
-                _dlssBackend, _fsrUpscalingBackend
+                null, _customBackend, _dlaaBackend, _fsr2Backend, _supersamplingBackend
             };
             _activeBackend = _disabledBackend;
         }
@@ -182,12 +154,6 @@ namespace ReduxBetterAA.Rendering
         public bool Active => _activeBackend.Active;
         public string SelectedBackend => _activeBackend.Id;
         internal Camera ResolveCamera => _cameras?.ResolveCamera;
-        internal bool FrameGenerationCameraEligible => !_disposed && !_comparisonSuspended && Active &&
-            _cameras != null && (_cameras.SceneKind == TemporalSceneKind.Flight ||
-            _cameras.SceneKind == TemporalSceneKind.KerbalSpaceCenter) &&
-            (_activeBackend == _customBackend || _activeBackend == _dlaaBackend ||
-             _activeBackend == _fsr2Backend || _activeBackend == _dlssBackend || _activeBackend == _fsrUpscalingBackend) &&
-            (_activeBackend != _customBackend || _customConfig.DebugView == CustomTaaDebugView.FinalResolve);
         internal IProjectionJitterSource AuxiliaryProjectionSource =>
             !_disposed && !_comparisonSuspended && Active
                 ? _activeBackend as IProjectionJitterSource : null;
@@ -220,49 +186,44 @@ namespace ReduxBetterAA.Rendering
         public bool DlaaPresetIsMenuOnly => _dlaaSettings.IsMainMenu;
         public Fsr2Config Fsr2Config => _fsr2Config;
         public long CustomEstimatedMemoryBytes => _customBackend.EstimatedMemoryBytes;
-        private NvidiaDlaaBackend NvidiaDiagnostics => _activeBackend == _dlssBackend ? _dlssBackend : _dlaaBackend;
-        private AmdFsr2Backend AmdDiagnostics => _activeBackend == _fsrUpscalingBackend ? _fsrUpscalingBackend : _fsr2Backend;
         public bool DlaaManagedSurfaceAvailable =>
-            NvidiaDiagnostics.ManagedSurfaceAvailable;
-        public bool DlaaContextCreated => NvidiaDiagnostics.ContextCreated;
-        public bool? DlaaContextUsesHdr => NvidiaDiagnostics.ContextCreated
-            ? (bool?)NvidiaDiagnostics.ContextUsesHdr : null;
-        public uint DlaaDeviceVersion => NvidiaDiagnostics.DeviceVersion;
-        public long DlaaEstimatedMemoryBytes => NvidiaDiagnostics.EstimatedMemoryBytes +
+            _dlaaBackend.ManagedSurfaceAvailable;
+        public bool DlaaContextCreated => _dlaaBackend.ContextCreated;
+        public uint DlaaDeviceVersion => _dlaaBackend.DeviceVersion;
+        public long DlaaEstimatedMemoryBytes => _dlaaBackend.EstimatedMemoryBytes +
             _motionVectorSanitizer.EstimatedMemoryBytes +
             _depthDisocclusionMask.EstimatedMemoryBytes;
-        public int DlaaInputWidth => NvidiaDiagnostics.InputWidth;
-        public int DlaaInputHeight => NvidiaDiagnostics.InputHeight;
-        public int DlaaOutputWidth => NvidiaDiagnostics.OutputWidth;
-        public int DlaaOutputHeight => NvidiaDiagnostics.OutputHeight;
-        public string DlaaOutputGraphicsFormat => NvidiaDiagnostics.OutputGraphicsFormat;
-        public bool DlaaOutputRandomWrite => NvidiaDiagnostics.OutputRandomWrite;
-        public string DlaaLastFailure => NvidiaDiagnostics.LastFailure;
-        public string DlaaExposureSource => NvidiaDiagnostics.ExposureSource;
+        public int DlaaInputWidth => _dlaaBackend.InputWidth;
+        public int DlaaInputHeight => _dlaaBackend.InputHeight;
+        public int DlaaOutputWidth => _dlaaBackend.OutputWidth;
+        public int DlaaOutputHeight => _dlaaBackend.OutputHeight;
+        public string DlaaOutputGraphicsFormat => _dlaaBackend.OutputGraphicsFormat;
+        public bool DlaaOutputRandomWrite => _dlaaBackend.OutputRandomWrite;
+        public string DlaaLastFailure => _dlaaBackend.LastFailure;
+        public string DlaaExposureSource => _dlaaBackend.ExposureSource;
         public float DlaaEffectivePreExposure =>
-            NvidiaDiagnostics.EffectivePreExposure;
+            _dlaaBackend.EffectivePreExposure;
         public bool Fsr2ManagedSurfaceAvailable =>
-            AmdDiagnostics.ManagedSurfaceAvailable;
-        public bool Fsr2ContextCreated => AmdDiagnostics.ContextCreated;
-        public bool? Fsr2ContextUsesHdr => AmdDiagnostics.ContextUsesHdr;
-        public uint Fsr2DeviceVersion => AmdDiagnostics.DeviceVersion;
-        public long Fsr2EstimatedMemoryBytes => AmdDiagnostics.EstimatedMemoryBytes +
+            _fsr2Backend.ManagedSurfaceAvailable;
+        public bool Fsr2ContextCreated => _fsr2Backend.ContextCreated;
+        public uint Fsr2DeviceVersion => _fsr2Backend.DeviceVersion;
+        public long Fsr2EstimatedMemoryBytes => _fsr2Backend.EstimatedMemoryBytes +
             _motionVectorSanitizer.EstimatedMemoryBytes +
             _depthDisocclusionMask.EstimatedMemoryBytes;
-        public int Fsr2InputWidth => AmdDiagnostics.InputWidth;
-        public int Fsr2InputHeight => AmdDiagnostics.InputHeight;
-        public int Fsr2OutputWidth => AmdDiagnostics.OutputWidth;
-        public int Fsr2OutputHeight => AmdDiagnostics.OutputHeight;
-        public string Fsr2OutputGraphicsFormat => AmdDiagnostics.OutputGraphicsFormat;
-        public bool Fsr2OutputRandomWrite => AmdDiagnostics.OutputRandomWrite;
-        public string Fsr2LastFailure => AmdDiagnostics.LastFailure;
-        public string Fsr2ExposureSource => AmdDiagnostics.ExposureSource;
+        public int Fsr2InputWidth => _fsr2Backend.InputWidth;
+        public int Fsr2InputHeight => _fsr2Backend.InputHeight;
+        public int Fsr2OutputWidth => _fsr2Backend.OutputWidth;
+        public int Fsr2OutputHeight => _fsr2Backend.OutputHeight;
+        public string Fsr2OutputGraphicsFormat => _fsr2Backend.OutputGraphicsFormat;
+        public bool Fsr2OutputRandomWrite => _fsr2Backend.OutputRandomWrite;
+        public string Fsr2LastFailure => _fsr2Backend.LastFailure;
+        public string Fsr2ExposureSource => _fsr2Backend.ExposureSource;
         public float Fsr2EffectivePreExposure =>
-            AmdDiagnostics.EffectivePreExposure;
+            _fsr2Backend.EffectivePreExposure;
         public Vector2 Fsr2ProjectionJitterPixels =>
-            AmdDiagnostics.ProjectionJitterPixels;
+            _fsr2Backend.ProjectionJitterPixels;
         public Vector2 Fsr2DispatchJitterPixels =>
-            AmdDiagnostics.DispatchJitterPixels;
+            _fsr2Backend.DispatchJitterPixels;
         public string MotionVectorSanitizerStatus => _motionVectorSanitizer.Status;
         public bool MotionVectorSanitizerEnabled =>
             _motionVectorSanitizer.Enabled;
@@ -280,13 +241,13 @@ namespace ReduxBetterAA.Rendering
                 {
                     return _customBackend.CurrentJitterNormalized;
                 }
-                if (_activeBackend == _dlaaBackend || _activeBackend == _dlssBackend)
+                if (_activeBackend == _dlaaBackend)
                 {
-                    return ((NvidiaDlaaBackend)_activeBackend).CurrentJitterNormalized;
+                    return _dlaaBackend.CurrentJitterNormalized;
                 }
-                if (_activeBackend == _fsr2Backend || _activeBackend == _fsrUpscalingBackend)
+                if (_activeBackend == _fsr2Backend)
                 {
-                    return ((AmdFsr2Backend)_activeBackend).CurrentJitterNormalized;
+                    return _fsr2Backend.CurrentJitterNormalized;
                 }
                 return Vector2.zero;
             }
@@ -300,52 +261,55 @@ namespace ReduxBetterAA.Rendering
         {
             get
             {
-                if (NvidiaDiagnostics.ContextCreated)
+                if (_dlaaBackend.ContextCreated)
                 {
-                    return "Context active; API v" + NvidiaDiagnostics.DeviceVersion +
-                        "; input " + NvidiaDiagnostics.InputWidth + "x" +
-                        NvidiaDiagnostics.InputHeight + "; output " +
-                        NvidiaDiagnostics.OutputWidth + "x" +
-                        NvidiaDiagnostics.OutputHeight + " " +
-                        NvidiaDiagnostics.OutputGraphicsFormat +
-                        (NvidiaDiagnostics.OutputRandomWrite ? " UAV; " : " (not UAV); ") +
-                        NvidiaDiagnostics.ExposureSource + " " +
-                        NvidiaDiagnostics.EffectivePreExposure.ToString("0.000") + "; " +
+                    return "Context active; API v" + _dlaaBackend.DeviceVersion +
+                        "; input " + _dlaaBackend.InputWidth + "x" +
+                        _dlaaBackend.InputHeight + "; output " +
+                        _dlaaBackend.OutputWidth + "x" +
+                        _dlaaBackend.OutputHeight + " " +
+                        _dlaaBackend.OutputGraphicsFormat +
+                        (_dlaaBackend.OutputRandomWrite ? " UAV; " : " (not UAV); ") +
+                        _dlaaBackend.ExposureSource + " " +
+                        _dlaaBackend.EffectivePreExposure.ToString("0.000") + "; " +
                         _motionVectorSanitizer.Status + "; " +
                         _depthDisocclusionMask.Status;
                 }
-                if (!string.IsNullOrEmpty(NvidiaDiagnostics.LastFailure))
+                if (!string.IsNullOrEmpty(_dlaaBackend.LastFailure))
                 {
-                    return "Unavailable: " + NvidiaDiagnostics.LastFailure;
+                    return "Unavailable: " + _dlaaBackend.LastFailure;
                 }
-                return NvidiaDiagnostics.ManagedSurfaceAvailable
+                return _dlaaBackend.ManagedSurfaceAvailable
                     ? "Managed Unity NVIDIA API found; context is created on first render."
                     : "Managed Unity NVIDIA API was not found.";
             }
         }
+        public bool? Fsr2ContextUsesHdr => _fsr2Backend.ContextUsesHdr;
         public string Fsr2Details
         {
             get
             {
-                if (AmdDiagnostics.ContextCreated)
+                if (_fsr2Backend.ContextCreated)
                 {
-                    return AmdDiagnostics.Id + " context active; input " + AmdDiagnostics.InputWidth + "x" +
-                        AmdDiagnostics.InputHeight + "; output " +
-                        AmdDiagnostics.OutputWidth + "x" +
-                        AmdDiagnostics.OutputHeight + " " +
-                        AmdDiagnostics.OutputGraphicsFormat +
-                        (AmdDiagnostics.OutputRandomWrite ? " UAV; " : " (not UAV); ") +
-                        AmdDiagnostics.ExposureSource + " " +
-                        AmdDiagnostics.EffectivePreExposure.ToString("0.000") + "; " +
-                        _motionVectorSanitizer.Status;
+                    return "Context active; API v" + _fsr2Backend.DeviceVersion +
+                        "; input " + _fsr2Backend.InputWidth + "x" +
+                        _fsr2Backend.InputHeight + "; output " +
+                        _fsr2Backend.OutputWidth + "x" +
+                        _fsr2Backend.OutputHeight + " " +
+                        _fsr2Backend.OutputGraphicsFormat +
+                        (_fsr2Backend.OutputRandomWrite ? " UAV; " : " (not UAV); ") +
+                        _fsr2Backend.ExposureSource + " " +
+                        _fsr2Backend.EffectivePreExposure.ToString("0.000") + "; " +
+                        _motionVectorSanitizer.Status + "; " +
+                        _depthDisocclusionMask.Status;
                 }
-                if (!string.IsNullOrEmpty(AmdDiagnostics.LastFailure))
+                if (!string.IsNullOrEmpty(_fsr2Backend.LastFailure))
                 {
-                    return "Unavailable: " + AmdDiagnostics.LastFailure;
+                    return "Unavailable: " + _fsr2Backend.LastFailure;
                 }
-                return AmdDiagnostics.ManagedSurfaceAvailable
-                    ? "Modern AMD FSR runtime ready; context is created on first render."
-                    : "Modern AMD FSR runtime is unavailable.";
+                return _fsr2Backend.ManagedSurfaceAvailable
+                    ? "Modern AMD FSR runtime found; context is created on first render."
+                    : "Modern AMD FSR runtime was not found.";
             }
         }
         public string Status => _status;
@@ -378,8 +342,6 @@ namespace ReduxBetterAA.Rendering
             _customBackend.Initialize();
             _dlaaBackend.Initialize();
             _fsr2Backend.Initialize();
-            _dlssBackend.Initialize();
-            _fsrUpscalingBackend.Initialize();
             ScheduleDiscovery();
             _pendingResetReasons =
                 HistoryResetReason.FirstFrame | HistoryResetReason.BackendChanged;
@@ -398,16 +360,6 @@ namespace ReduxBetterAA.Rendering
             }
 
             if (_comparisonSuspended) return;
-            if (_sceneOutput.Active && !string.IsNullOrEmpty(_sceneOutput.FailureReason))
-            {
-                if (_sceneOutput.ReacquisitionPending)
-                    MarkDirty(HistoryResetReason.ResolutionChanged);
-                else
-                {
-                    ActivateOffFallback("Upscaling", _sceneOutput.FailureReason);
-                    return;
-                }
-            }
             if (TraceFrameHitches) TracePreviousFrameHitch();
             PollGameState();
 
@@ -494,9 +446,7 @@ namespace ReduxBetterAA.Rendering
             bool resetHistory = previous.RequiresHistoryReset(in config);
             _performanceProfiler.Invalidate(BackendSelection.NvidiaDlaa);
             _dlaaBackend.ApplyConfig(in config);
-            _dlssBackend.ApplyConfig(in config);
-            _performanceProfiler.Invalidate(BackendSelection.NvidiaDlss);
-            if ((_activeBackend == _dlaaBackend || _activeBackend == _dlssBackend) && _activeBackend.Active)
+            if (_activeBackend == _dlaaBackend && _activeBackend.Active)
             {
                 if (recreate)
                 {
@@ -508,7 +458,7 @@ namespace ReduxBetterAA.Rendering
                     ResetActiveHistory(HistoryResetReason.SettingsChanged);
                 }
             }
-            else if (_requestedBackend == BackendSelection.NvidiaDlaa || _requestedBackend == BackendSelection.NvidiaDlss)
+            else if (_requestedBackend == BackendSelection.NvidiaDlaa)
             {
                 ScheduleDiscovery();
             }
@@ -525,9 +475,7 @@ namespace ReduxBetterAA.Rendering
             _fsr2Config = config;
             _performanceProfiler.Invalidate(BackendSelection.AmdFsr2);
             _fsr2Backend.ApplyConfig(in _fsr2Config);
-            _fsrUpscalingBackend.ApplyConfig(in _fsr2Config);
-            _performanceProfiler.Invalidate(BackendSelection.AmdFsrUpscaling);
-            if ((_activeBackend == _fsr2Backend || _activeBackend == _fsrUpscalingBackend) && _activeBackend.Active)
+            if (_activeBackend == _fsr2Backend && _activeBackend.Active)
             {
                 if (recreate)
                 {
@@ -539,7 +487,7 @@ namespace ReduxBetterAA.Rendering
                     ResetActiveHistory(HistoryResetReason.SettingsChanged);
                 }
             }
-            else if (_requestedBackend == BackendSelection.AmdFsr2 || _requestedBackend == BackendSelection.AmdFsrUpscaling)
+            else if (_requestedBackend == BackendSelection.AmdFsr2)
             {
                 ScheduleDiscovery();
             }
@@ -625,7 +573,7 @@ namespace ReduxBetterAA.Rendering
             if (_disposed) return;
             bool reclaimed = _renderScale.Reclaim();
             requested = UserSettingsPolicy.NormalizeBackend(requested);
-            if (requested < BackendSelection.Off || (int)requested >= _backends.Length)
+            if (requested < BackendSelection.Off || requested > BackendSelection.Supersampling)
                 requested = BackendSelection.Off;
             if (_requestedBackend == requested)
             {
@@ -647,8 +595,6 @@ namespace ReduxBetterAA.Rendering
             {
                 _fsr2Backend.ClearRuntimeFailure();
             }
-            if (requested == BackendSelection.NvidiaDlss) _dlssBackend.ClearRuntimeFailure();
-            if (requested == BackendSelection.AmdFsrUpscaling) _fsrUpscalingBackend.ClearRuntimeFailure();
             ScheduleDiscovery();
             _status = BackendName(requested) +
                 " requested; discovering the final scene camera...";
@@ -686,7 +632,6 @@ namespace ReduxBetterAA.Rendering
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.sceneUnloaded -= OnSceneUnloaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
-            _sceneOutput.Dispose();
             foreach (ITemporalBackend backend in _backends)
                 backend?.Dispose();
             _renderScale.Dispose();
@@ -712,36 +657,9 @@ namespace ReduxBetterAA.Rendering
                 _mapViewAaEnabled
             );
 
-            string transportReason = string.Empty;
-            if (IsUpscaling(effectiveRequest) &&
-                (_cameras == null || (_cameras.SceneKind != TemporalSceneKind.Flight && _cameras.SceneKind != TemporalSceneKind.KerbalSpaceCenter)))
-            {
-                transportReason = "upscaling is not supported in this scene; native AA selected";
-                effectiveRequest = effectiveRequest == BackendSelection.NvidiaDlss
-                    ? BackendSelection.NvidiaDlaa : BackendSelection.AmdFsr2;
-            }
-            if (IsUpscaling(effectiveRequest) && !_sceneOutput.TryAcquire(_cameras.ResolveCamera, out transportReason))
-            {
-                ActivateOffFallback("Upscaling", transportReason);
-                return;
-            }
-            int renderPercent = effectiveRequest == BackendSelection.Supersampling ? _supersamplingPercent :
-                IsUpscaling(effectiveRequest) ? ReconstructionPolicy.RenderPercent(_reconstructionQuality) : 100;
-            if (effectiveRequest == BackendSelection.NvidiaDlss &&
-                !_dlssBackend.TryGetRenderPercent(Screen.width, Screen.height, _reconstructionQuality,
-                    out renderPercent, out string sizingReason))
-            {
-                ActivateOffFallback("DLSS", sizingReason);
-                return;
-            }
-            if (!_renderScale.Apply(renderPercent))
+            if (!_renderScale.Apply(effectiveRequest == BackendSelection.Supersampling ? _supersamplingPercent : 100))
             {
                 ActivateOffFallback("AA", "another render-scale owner changed the scene; reselect a mode to reclaim");
-                return;
-            }
-            if (IsUpscaling(effectiveRequest) && !_sceneOutput.EnsureReady(out transportReason))
-            {
-                ActivateOffFallback("Upscaling", transportReason);
                 return;
             }
             _cameras = TemporalCameraDiscovery.Discover();
@@ -754,23 +672,19 @@ namespace ReduxBetterAA.Rendering
             DlaaConfig dlaaConfig = DlaaConfig;
             _dlaaBackend.ApplyConfig(in dlaaConfig);
             _fsr2Backend.ApplyConfig(in _fsr2Config);
-            _dlssBackend.ApplyConfig(in dlaaConfig);
-            _fsrUpscalingBackend.ApplyConfig(in _fsr2Config);
-            _dlssBackend.ConfigureReconstruction(_reconstructionQuality);
-            _fsrUpscalingBackend.ConfigureReconstruction(_reconstructionQuality);
             ITemporalBackend requestedBackend = GetBackend(effectiveRequest);
 
             string failureReason;
             if (!TryConfigure(requestedBackend, _cameras, out failureReason))
             {
-                if (effectiveRequest == BackendSelection.NvidiaDlaa || effectiveRequest == BackendSelection.NvidiaDlss)
+                if (effectiveRequest == BackendSelection.NvidiaDlaa)
                 {
                     ActivateOffFallback("DLAA", failureReason);
                     return;
                 }
-                if (effectiveRequest == BackendSelection.AmdFsr2 || effectiveRequest == BackendSelection.AmdFsrUpscaling)
+                if (effectiveRequest == BackendSelection.AmdFsr2)
                 {
-                    ActivateOffFallback("AMD FSR", failureReason);
+                    ActivateOffFallback("FSR2", failureReason);
                     return;
                 }
 
@@ -824,7 +738,7 @@ namespace ReduxBetterAA.Rendering
                 (_cameras.SharedJitterCamera != null &&
                  _cameras.SharedJitterCamera != _cameras.ResolveCamera
                     ? " with synchronized " + _cameras.SharedJitterCamera.name
-                    : string.Empty) + (string.IsNullOrEmpty(transportReason) ? string.Empty : "; " + transportReason);
+                    : string.Empty);
             _logger.LogInfo("[ReduxBetterAA/Backend] " + _status + ".");
         }
 
@@ -875,7 +789,6 @@ namespace ReduxBetterAA.Rendering
 
         private void DeactivateTemporalBackends()
         {
-            _sceneOutput.Dispose();
             MapIconOverlay.Detach(ref _mapIcons);
             foreach (ITemporalBackend backend in _backends)
                 backend?.Deactivate();
@@ -953,9 +866,7 @@ namespace ReduxBetterAA.Rendering
                  (_requestedBackend == BackendSelection.NvidiaDlaa &&
                   _activeBackend != _dlaaBackend) ||
                  (_requestedBackend == BackendSelection.AmdFsr2 &&
-                  _activeBackend != _fsr2Backend) ||
-                 (_requestedBackend == BackendSelection.NvidiaDlss && _activeBackend != _dlssBackend) ||
-                 (_requestedBackend == BackendSelection.AmdFsrUpscaling && _activeBackend != _fsrUpscalingBackend)))
+                  _activeBackend != _fsr2Backend)))
             {
                 MarkDirty(HistoryResetReason.None);
             }
@@ -963,7 +874,7 @@ namespace ReduxBetterAA.Rendering
 
         private void OnRuntimeFailure(BackendSelection mode, string label, string reason)
         {
-            if (_disposed || (_requestedBackend != mode && ActiveBackendSelection() != mode))
+            if (_disposed || _requestedBackend != mode)
                 return;
             _status = label + " runtime failure (" + reason + "); switching to Off...";
             ScheduleDiscovery(0);
@@ -977,7 +888,7 @@ namespace ReduxBetterAA.Rendering
         }
 
         internal ITemporalBackend GetBackend(BackendSelection selection) =>
-            selection >= BackendSelection.Off && (int)selection < _backends.Length
+            selection >= BackendSelection.Off && selection <= BackendSelection.Supersampling
                 ? _backends[(int)UserSettingsPolicy.NormalizeBackend(selection)] : _disabledBackend;
 
         private string BackendName(BackendSelection selection) => GetBackend(selection).Id;

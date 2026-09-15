@@ -7,7 +7,7 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class PerformanceTimingTests
     {
-        private const BackendSelection Mode = BackendSelection.NvidiaDlss;
+        private const BackendSelection Mode = BackendSelection.NvidiaDlaa;
 
         private static BackendPerformanceProfiler Warm(ulong timestamp = 0)
         {
@@ -159,7 +159,7 @@ namespace ReduxBetterAA.Tests
             var profiler = Warm();
             Tick(profiler, 1);
             var timing = new FrameTiming { frameStartTimestamp = 2, gpuFrameTime = 6 };
-            profiler.TickSample(Mode, BackendSelection.NvidiaDlaa, true, in timing, 20);
+            profiler.TickSample(Mode, BackendSelection.CustomTaa, true, in timing, 20);
             Tick(profiler, 3);
             Assert.That(profiler.GetSnapshot(Mode).State, Is.EqualTo(PerformanceProfileState.BackendUnavailable));
             Assert.That(profiler.GetSnapshot(Mode).Samples, Is.EqualTo(1));

@@ -14,7 +14,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
-            if (RenderScaleOwnership.Applying || ReduxSceneOutput.Applying) return;
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }
@@ -26,7 +26,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
-            if (RenderScaleOwnership.Applying || ReduxSceneOutput.Applying) return;
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }
@@ -38,7 +38,7 @@ namespace ReduxBetterAA.Patches
         [HarmonyPostfix]
         private static void Postfix()
         {
-            if (RenderScaleOwnership.Applying || ReduxSceneOutput.Applying) return;
+            if (RenderScaleOwnership.Applying) return;
             Phase1ProbeService.Current?.MarkDirty(ProbeDirtyReason.PresenterChanged);
             TemporalCoordinator.Current?.MarkDirty(HistoryResetReason.RenderScaleChanged);
         }

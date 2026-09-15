@@ -13,9 +13,7 @@ namespace ReduxBetterAA.Configuration
         CustomTaa = 5,
         NvidiaDlaa = 6,
         AmdFsr2 = 7,
-        Supersampling = 8,
-        NvidiaDlss = 9,
-        AmdFsrUpscaling = 10
+        Supersampling = 8
     }
 
     internal enum CustomTaaDebugView

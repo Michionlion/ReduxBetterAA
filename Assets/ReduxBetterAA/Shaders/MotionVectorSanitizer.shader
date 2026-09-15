@@ -3,9 +3,6 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
     Properties
     {
         _MainTex ("Raw motion vectors", 2D) = "black" {}
-        _InputMotionComponentSign ("Stored input motion signs", Vector) = (1, 1, 1, 1)
-        _ResetMotionHistory ("Reset frame motion", Float) = 0
-        _DepthRowsReversed ("Depth rows relative to motion", Float) = 0
         _TerrainMotionValid ("Verified procedural terrain motion", Float) = 0
     }
 
@@ -31,9 +28,6 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float _MaximumFallbackMotionSquared;
             float _MaximumCameraDisagreementSquared;
             float2 _MotionComponentSign;
-            float2 _InputMotionComponentSign;
-            float _ResetMotionHistory;
-            float _DepthRowsReversed;
             float2 _CurrentJitter;
             float4x4 _CurrentInverseViewProjection;
             float4x4 _PreviousViewProjection;
@@ -97,7 +91,7 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             {
                 if (_TerrainMotionValid < 0.5 || _MatrixHistoryValid < 0.5 || MotionIsInvalid(motion))
                     return motion;
-                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float2 depthUv = uv;
                 float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
                 float terrainDepth = SAMPLE_DEPTH_TEXTURE(_TerrainDepthTexture, depthUv);
                 #if defined(UNITY_REVERSED_Z)
@@ -139,8 +133,7 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float4 Frag(v2f_img input) : SV_Target
             {
                 float2 uv = SourceUv(input.uv);
-                float2 motion = tex2D(_MainTex, uv).rg * _InputMotionComponentSign;
-                if (_ResetMotionHistory > 0.5) return float4(0.0, 0.0, 0.0, 1.0);
+                float2 motion = tex2D(_MainTex, uv).rg;
                 if (_SanitizationEnabled < 0.5)
                 {
                     // Terrain repair is independent of optional outlier rejection.
@@ -153,7 +146,7 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
                 bool overLimit =
                     dot(pixelMotion, pixelMotion) > _MaximumMotionSquared;
                 float fallbackValid;
-                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float2 depthUv = uv;
                 float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
                 float2 fallback = CalculateCameraMotion(
                     uv,
@@ -213,8 +206,6 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float _MaximumMotionSquared;
             float _MaximumCameraDisagreementSquared;
             float2 _CurrentJitter;
-            float2 _InputMotionComponentSign;
-            float _DepthRowsReversed;
             float4x4 _CurrentInverseViewProjection;
             float4x4 _PreviousViewProjection;
             float _MatrixHistoryValid;
@@ -270,13 +261,13 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float SuspiciousMotionSample(float2 uv)
             {
                 uv = SourceUv(uv);
-                float2 motion = tex2D(_MainTex, uv).rg * _InputMotionComponentSign;
+                float2 motion = tex2D(_MainTex, uv).rg;
                 float2 pixelMotion = motion * max(_SourceDimensions.xy, 1.0.xx);
                 if (MotionIsInvalid(motion))
                     return 1.0;
 
                 float fallbackValid;
-                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float2 depthUv = uv;
                 float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
                 float2 fallback = CalculateCameraMotion(
                     uv,

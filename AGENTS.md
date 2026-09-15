@@ -9,6 +9,7 @@ Read [README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md) and
 - Keep dependencies pinned. Dependency/build changes need a fresh-checkout build
   and package review. Do not modify installed game assemblies or physics.
 - Keep downloaded tools, binaries, captures and one-off experiments outside source.
-  Only the separate runtime ZIPs may contain approved vendor DLLs and their notices.
+  Only validated complete release ZIPs and internal runtime build inputs may contain
+  approved vendor DLLs and their notices.
 - Update the existing documentation when behavior changes. Record design choices
   in the architecture document and past decisions in Git, not new evidence ledgers.

@@ -114,12 +114,6 @@ namespace ReduxBetterAA.Rendering
             Shader.PropertyToID("_CorruptionMinimumSamples");
         private static readonly int SanitizationEnabledProperty =
             Shader.PropertyToID("_SanitizationEnabled");
-        private static readonly int InputMotionComponentSign =
-            Shader.PropertyToID("_InputMotionComponentSign");
-        private static readonly int ResetMotionHistory =
-            Shader.PropertyToID("_ResetMotionHistory");
-        private static readonly int DepthRowsReversed =
-            Shader.PropertyToID("_DepthRowsReversed");
         private static readonly int TerrainMotionValid = Shader.PropertyToID("_TerrainMotionValid");
         private static readonly int TerrainDepthTexture = Shader.PropertyToID("_TerrainDepthTexture");
         private static readonly int TerrainPreviousWorldFromCurrent = Shader.PropertyToID("_TerrainPreviousWorldFromCurrent");
@@ -289,9 +283,6 @@ namespace ReduxBetterAA.Rendering
                     0.0f
                 )
             );
-            _material.SetVector(InputMotionComponentSign, Vector4.one);
-            _material.SetFloat(ResetMotionHistory, 0);
-            _material.SetFloat(DepthRowsReversed, 0);
             _material.SetTexture(DepthTexture, depth);
             _material.SetMatrix(
                 CurrentInverseViewProjection,
@@ -350,55 +341,6 @@ namespace ReduxBetterAA.Rendering
             _material.SetTexture(TerrainDepthTexture, terrain.Depth);
             _material.SetMatrix(TerrainPreviousWorldFromCurrent, terrain.PreviousWorldFromCurrent);
             _material.SetFloat(TerrainMotionValid, 1);
-        }
-
-        // Use on the FG-owned instance only. This consumes the producer's exact
-        // snapshot and never reads/advances the AA sanitizer's camera history or
-        // changes its diagnostic Enabled setting. Output keeps the same stored
-        // signs and bottom-left UV convention as the borrowed AA motion input.
-        internal bool TrySanitizeFrame(in BorrowedResolvedFrame frame, Texture depth, bool depthRowsReversed, out Texture sanitized)
-        {
-            sanitized = null;
-            var request = frame.Request;
-            int width = request.RenderWidth, height = request.RenderHeight;
-            var signs = request.MotionComponentSigns;
-            if (_disposed || !Ready || frame.SanitizedMotion == null || depth == null ||
-                width <= 0 || height <= 0 || Mathf.Abs(signs.x) != 1 || Mathf.Abs(signs.y) != 1 ||
-                !EnsureResources(width, height)) return false;
-            var camera = request.Camera;
-            var current = FrameGenerationNative.Camera.NativeClip(camera.ViewProjection, camera.ProjectionRendersIntoTexture);
-            var previous = FrameGenerationNative.Camera.NativeClip(request.PreviousViewProjection, camera.ProjectionRendersIntoTexture);
-            var inverse = current.inverse;
-            if (!MatrixIsFinite(current) || !MatrixIsFinite(previous) || !MatrixIsFinite(inverse) || MatrixIsZero(inverse))
-                return false;
-            // The producer already repaired terrain before publishing its motion.
-            // An FG-owned filter must never apply that world transform again.
-            _material.SetFloat(TerrainMotionValid, 0);
-            _material.SetTexture(TerrainDepthTexture, null);
-            _material.SetVector(SourceDimensions, new Vector4(width, height, 1f / width, 1f / height));
-            _material.SetVector(CurrentJitter, new Vector4(camera.JitterRenderPixels.x / width, camera.JitterRenderPixels.y / height, 0, 0));
-            _material.SetFloat(MaximumMotionSquared, MaximumMotionPixels * MaximumMotionPixels);
-            _material.SetFloat(MaximumFallbackMotionSquared, MaximumFallbackMotionPixels * MaximumFallbackMotionPixels);
-            _material.SetFloat(MaximumCameraDisagreementSquared, MaximumCameraDisagreementPixels * MaximumCameraDisagreementPixels);
-            var storedSigns = new Vector4(signs.x, signs.y, 0, 0);
-            _material.SetVector(InputMotionComponentSign, storedSigns); // +/-1 is its own inverse.
-            _material.SetVector(MotionComponentSign, storedSigns);
-            // Runtime supplies the exact normalized native-depth slot, avoiding
-            // inherited Unity raw-depth/MSAA texel-sign assumptions. Explicitly
-            // return its top-left rows to the shader's bottom-left motion UVs.
-            _material.SetTexture(DepthTexture, depth);
-            _material.SetFloat(DepthRowsReversed, depthRowsReversed ? 1 : 0);
-            _material.SetMatrix(CurrentInverseViewProjection, inverse);
-            _material.SetMatrix(PreviousViewProjection, previous);
-            _material.SetFloat(MatrixHistoryValid, request.ResetHistory ? 0 : 1);
-            _material.SetFloat(ResetMotionHistory, request.ResetHistory ? 1 : 0);
-            _material.SetFloat(CorruptionMinimumSamplesProperty, CorruptionMinimumSamples);
-            _material.SetFloat(SanitizationEnabledProperty, 1); // Mandatory FG protection, independent of AA diagnostics.
-            Graphics.Blit(frame.SanitizedMotion, _frameCorruption, _material, 1);
-            _material.SetTexture(FrameCorruptionTexture, _frameCorruption);
-            Graphics.Blit(frame.SanitizedMotion, _sanitizedMotion, _material, 0);
-            sanitized = _sanitizedMotion;
-            return true;
         }
 
         public void ResetCameraHistory()

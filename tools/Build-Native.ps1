@@ -6,22 +6,10 @@ param(
     [string]$CMake = 'cmake',
     [switch]$RunTests,
     [string]$PackageDirectory,
-    [switch]$FrameGeneration,
-    [ValidateSet('nvidia', 'amd')][string[]]$FrameGenerationVendors = @('nvidia', 'amd'),
-    [string]$StreamlineSdk,
-    [string]$StreamlineRuntime,
-    [string]$UnityPluginApi,
     [string]$Python = 'python'
 )
 $ErrorActionPreference = 'Stop'
-if ($FrameGeneration) {
-    & (Join-Path $PSScriptRoot 'Build-FrameGeneration.ps1') -BuildDirectory $BuildDirectory -Configuration $Configuration `
-        -Vendors $FrameGenerationVendors -FidelityFxSdk $FidelityFxSdk -StreamlineSdk $StreamlineSdk `
-        -StreamlineRuntime $StreamlineRuntime -UnityPluginApi $UnityPluginApi -CMake $CMake -Python $Python `
-        -RunTests:$RunTests -PackageDirectory $PackageDirectory
-    return
-}
-if (-not $FidelityFxSdk) { throw 'The FSR bridge build requires -FidelityFxSdk; use -FrameGeneration for the separate FG companion.' }
+if (-not $FidelityFxSdk) { throw 'The FSR bridge build requires -FidelityFxSdk.' }
 $sourceRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $nativeSource = Join-Path $sourceRoot 'Native'
 $sdkRoot = (Resolve-Path -LiteralPath $FidelityFxSdk).Path

@@ -849,8 +849,6 @@ namespace ReduxBetterAA.Diagnostics
                         case BackendSelection.CustomTaa: _backendPanel.DrawCustomTab(); break;
                         case BackendSelection.NvidiaDlaa: _backendPanel.DrawDlaaTab(); break;
                         case BackendSelection.AmdFsr2: _backendPanel.DrawFsr2Tab(); break;
-                        case BackendSelection.NvidiaDlss:
-                        case BackendSelection.AmdFsrUpscaling: _backendPanel.DrawUpscalingTab(selected); break;
                         default: GUILayout.Label("No advanced settings for this mode."); break;
                     }
                 }
@@ -946,7 +944,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 GUILayout.Label(
                     "This is the sanitized motion texture actually sent to " +
-                    "Custom, NVIDIA, or AMD. Vendor modes apply their configured " +
+                    "Custom, DLAA, or FSR2. DLAA/FSR2 apply their configured " +
                     "component signs; Custom retains Unity's raw convention. " +
                     "Dark blue means the selected AA mode does not currently own " +
                     "a live sanitizer texture."
@@ -966,7 +964,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 GUILayout.Label(
                     "This is the rasterized depth buffer. With Custom, DLAA, " +
-                    "or AMD FSR active, stationary edges should move by the active " +
+                    "or FSR2 active, stationary edges should move by the active " +
                     "subpixel jitter sequence. This is expected."
                 );
             }

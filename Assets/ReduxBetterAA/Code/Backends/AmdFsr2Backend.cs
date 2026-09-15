@@ -17,13 +17,9 @@ namespace ReduxBetterAA.Backends
     /// </summary>
     internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
     {
-        private ReconstructionQuality _quality = ReconstructionQuality.Native;
-        private bool Upscaling => _quality != ReconstructionQuality.Native;
         private int _outputWidth, _outputHeight;
-        private int _jitterPhaseCount = 8;
-        internal void ConfigureReconstruction(ReconstructionQuality quality) => _quality = ReconstructionPolicy.Normalize(quality);
         private Vector2 Jitter => SharedJitterSequence.GetCustomOffset(_frameIndex,
-            Upscaling ? 1.0f : _config.JitterSpread, Upscaling ? _jitterPhaseCount : _config.SequenceLength);
+            _config.JitterSpread, _config.SequenceLength);
         private static readonly int CameraDepthTexture =
             Shader.PropertyToID("_CameraDepthTexture");
         private static readonly int CameraMotionVectorsTexture =
@@ -35,7 +31,6 @@ namespace ReduxBetterAA.Backends
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
         private readonly AmdFsrNativeApi _nativeApi = new AmdFsrNativeApi();
         private readonly Ppv2ExposureReader _exposureReader;
-        private readonly ResolvedFrameCapture _resolvedCapture = new ResolvedFrameCapture();
         private bool _usingPpv2Exposure;
         private float _effectivePreExposure = 1.0f;
         private readonly Action _availabilityChanged;
@@ -84,7 +79,7 @@ namespace ReduxBetterAA.Backends
             _exposureReader = new Ppv2ExposureReader(logger);
         }
 
-        public string Id => _providerName + (Upscaling ? " Upscaling" : " Native AA");
+        public string Id => _providerName + " Native AA";
         internal bool RenderEnabled = true;
         public bool Active => _active && RenderEnabled;
 
@@ -177,15 +172,10 @@ namespace ReduxBetterAA.Backends
                 unsupportedReason = "the final scene camera is disabled";
                 return false;
             }
-            if (!Upscaling && cameras.RenderScalePercent != 100)
+            if (cameras.RenderScalePercent != 100)
             {
                 unsupportedReason =
                     _providerName + " Native AA requires 100% render scale (equal input/output dimensions)";
-                return false;
-            }
-            if (Upscaling && (ReduxSceneOutput.Current == null || cameras.RenderScalePercent >= 100))
-            {
-                unsupportedReason = "FSR upscaling requires an acquired reduced-resolution scene output";
                 return false;
             }
             GraphicsDeviceType graphicsApi = SystemInfo.graphicsDeviceType;
@@ -218,11 +208,6 @@ namespace ReduxBetterAA.Backends
             }
 
             _resolveCamera = cameras.ResolveCamera;
-            if (Upscaling)
-            {
-                if (!ReduxSceneOutput.Current.TryGetFrame(_resolveCamera, out SceneOutputFrame frame, out failureReason)) return false;
-                _jitterPhaseCount = ReconstructionPolicy.JitterPhaseCount(frame.RenderWidth, frame.OutputWidth);
-            }
             _resolveLayer = cameras.ResolveLayer;
             _sharedJitterCamera = cameras.SharedJitterCamera;
             _sharedJitterLayer = cameras.SharedJitterLayer;
@@ -243,7 +228,6 @@ namespace ReduxBetterAA.Backends
             Camera.onPostRender += OnCameraPostRender;
             _historyResetPending = true;
             _active = true;
-            _resolvedCapture.Configure(_resolveCamera, Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2);
             failureReason = string.Empty;
             return true;
         }
@@ -255,7 +239,6 @@ namespace ReduxBetterAA.Backends
 
         public void ResetHistory(HistoryResetReason reason)
         {
-            _resolvedCapture.Reset(reason);
             _historyResetPending = true;
             _motionVectorSanitizer.ResetCameraHistory();
         }
@@ -263,7 +246,7 @@ namespace ReduxBetterAA.Backends
         public void Render(RenderTexture source, RenderTexture destination)
         {
             long start = _performanceProfiler.BeginResolve(
-                Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2
+                BackendSelection.AmdFsr2
             );
             try
             {
@@ -272,7 +255,7 @@ namespace ReduxBetterAA.Backends
             finally
             {
                 _performanceProfiler.EndResolve(
-                    Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2,
+                    BackendSelection.AmdFsr2,
                     start
                 );
             }
@@ -288,18 +271,8 @@ namespace ReduxBetterAA.Backends
 
             try
             {
-                SceneOutputFrame outputFrame = default;
-                if (Upscaling)
-                {
-                    string outputReason = "scene output ownership was lost";
-                    if (ReduxSceneOutput.Current == null ||
-                        !ReduxSceneOutput.Current.TryGetFrame(_resolveCamera, out outputFrame, out outputReason))
-                    { Graphics.Blit(source, destination); FailRuntime(outputReason); return; }
-                    if (source.width != outputFrame.RenderWidth || source.height != outputFrame.RenderHeight)
-                    { Graphics.Blit(source, destination); FailRuntime("FSR input extent differs from acquired scene target"); return; }
-                }
-                _outputWidth = Upscaling ? outputFrame.OutputWidth : source.width;
-                _outputHeight = Upscaling ? outputFrame.OutputHeight : source.height;
+                _outputWidth = source.width;
+                _outputHeight = source.height;
                 bool hasPpv2Exposure = _config.AutoExposure && _config.PreferPpv2Exposure &&
                     _exposureReader.TryGetExposure(out _);
                 SelectExposure(in _config, hasPpv2Exposure, _exposureReader.Exposure,
@@ -350,16 +323,7 @@ namespace ReduxBetterAA.Backends
                     _jitterPixels, _resolveCamera, _effectivePreExposure, in _config,
                     _historyResetPending, out string nativeReason))
                 { Graphics.Blit(source, destination); FailRuntime(nativeReason); return; }
-                if (Upscaling)
-                {
-                    if (!ReduxSceneOutput.Current.Submit(in outputFrame, _output, out string reason))
-                    { Graphics.Blit(source, destination); FailRuntime(reason); return; }
-                    Graphics.Blit(source, destination);
-                }
-                else Graphics.Blit(_output, destination);
-                _resolvedCapture.PublishResolved(_output, depth, sanitizedMotion, _historyResetPending,
-                    _effectivePreExposure, new Vector2(_config.InvertMotionX ? -1 : 1, _config.InvertMotionY ? -1 : 1),
-                    Upscaling, in outputFrame);
+                Graphics.Blit(_output, destination);
                 _historyResetPending = false;
             }
             catch (Exception exception)
@@ -371,7 +335,6 @@ namespace ReduxBetterAA.Backends
 
         public void Deactivate()
         {
-            _resolvedCapture.Deactivate();
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
             _resolveProjection.Restore();
@@ -541,8 +504,6 @@ namespace ReduxBetterAA.Backends
                         ? projectionState.Projection
                         : camera.projectionMatrix
                 );
-                _resolvedCapture.Snapshot(camera, _projectionJitterSupported
-                    ? projectionState.Projection : camera.projectionMatrix, _jitterPixels);
             }
         }
 
@@ -566,9 +527,6 @@ namespace ReduxBetterAA.Backends
 
         private void FailRuntime(string reason)
         {
-            // A resize/Redux graph rebuild invalidates the frame, not the GPU.
-            // The coordinator reacquires it before the next vendor context.
-            if (Upscaling && ReduxSceneOutput.Current?.ReacquisitionPending == true) return;
             if (_runtimeFailureLatched)
             {
                 return;

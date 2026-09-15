@@ -89,8 +89,8 @@ namespace ReduxBetterAA.Tests
 
         [TestCase("FSR 2", "FSR 3.1", "FSR 3.1 Native AA")]
         [TestCase("FSR 2 Native AA", "FSR 4.1", "FSR 4.1 Native AA")]
-        [TestCase("FSR 2 Upscaling", "FSR 3.1", "FSR 3.1 Upscaling")]
-        [TestCase("FSR 2 Upscaling", "FSR 4.1", "FSR 4.1 Upscaling")]
+        [TestCase("FSR 2 Upscaling", "FSR 3.1", "Off")]
+        [TestCase("FSR 2 Upscaling", "FSR 4.1", "Off")]
         public void LegacyLabelsSelectOnlyTheAvailableModernProvider(string saved, string provider, string expected)
         {
             Assert.That(UserSettingsPolicy.NormalizeMode(saved, false, true, provider), Is.EqualTo(expected));

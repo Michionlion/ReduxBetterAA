@@ -151,22 +151,8 @@ namespace ReduxBetterAA.Diagnostics
         public DlaaSettingsRecord dlaa;
         public Fsr2SettingsRecord fsr2;
         public PerformanceProfilesRecord performance;
-        public FrameGenerationRecord frameGeneration;
     }
 
-    [Serializable]
-    public sealed class FrameGenerationRecord
-    {
-        public string requested;
-        public string selected;
-        public bool active;
-        public string[] availableModes;
-        public string unavailableReason;
-        // Null means unmeasured; Unity's frame count is not displayed FG FPS.
-        public float? renderedFramesPerSecond;
-        public float? displayedFramesPerSecond;
-        public float? inputLatencyMilliseconds;
-    }
 
     [Serializable]
     public sealed class MotionMatrixRecord
@@ -279,8 +265,6 @@ namespace ReduxBetterAA.Diagnostics
         public PerformanceProfileRecord dlaa;
         public PerformanceProfileRecord fsr2;
         public PerformanceProfileRecord supersampling;
-        public PerformanceProfileRecord dlss;
-        public PerformanceProfileRecord fsrUpscaling;
     }
 
     [Serializable]

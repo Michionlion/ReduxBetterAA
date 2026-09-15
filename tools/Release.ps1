@@ -5,8 +5,7 @@ param(
     [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
     [string] $Ksp2Root,
     [string[]] $RuntimeEditors,
-    [string] $FsrRuntimeZip,
-    [string] $FrameGenerationZip,
+    [Parameter(Mandatory)] [string] $FsrRuntimeZip,
     [switch] $Publish,
     [switch] $Stable
 )
@@ -16,19 +15,11 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $RuntimeEditors) {
     $RuntimeEditors = @((Split-Path $Unity), 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor')
 }
-# Public releases always combine every applicable native component per engine.
-if (($Publish -or $FsrRuntimeZip -or $FrameGenerationZip) -and (-not $FsrRuntimeZip -or -not $FrameGenerationZip)) {
-    throw 'Supply both -FsrRuntimeZip and -FrameGenerationZip for complete runtime downloads.'
-}
-$runtimeScript = 'package-runtimes.py'
-$runtimeArguments = @('--editors') + $RuntimeEditors
-if ($FsrRuntimeZip -and $FrameGenerationZip) {
-    $runtimeScript = 'package-all-runtimes.py'
-    $runtimeArguments += @('--fsr-runtime', $FsrRuntimeZip, '--frame-generation', $FrameGenerationZip, '--mod-version', $Version)
-}
-# Local candidate checks may still build NVIDIA-only components without SDK archives.
-& python -X utf8 (Join-Path $PSScriptRoot $runtimeScript) @runtimeArguments
+# Validate all supported runtime sets before building. No downloads or game writes.
+& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors
 if ($LASTEXITCODE -ne 0) { throw 'Runtime source validation failed.' }
+& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --validate-fsr-runtime $FsrRuntimeZip --mod-version $Version
+if ($LASTEXITCODE -ne 0) { throw 'FSR source validation failed.' }
 $commit = Assert-ReleaseSource $repo
 if ((Get-ReleaseVersion $repo) -cne $Version) { throw 'Requested version differs from the source versions.' }
 $tag = "v$Version"
@@ -57,7 +48,6 @@ if ($Publish) {
     $previous = @($allReleases | Where-Object { -not $_.draft -and $_.tag_name -ne $tag } | Sort-Object published_at -Descending | Select-Object -First 1)
     if ($previous.Count) {
         $previousTag = $previous[0].tag_name
-        Invoke-ReleaseGit $repo @('merge-base', '--is-ancestor', "$previousTag^{}", $commit) | Out-Null
     }
     $existingTag = @(Invoke-ReleaseGit $repo @('tag', '--list', $tag))
     if ($existingTag.Count) {
@@ -75,19 +65,32 @@ if ($Publish) {
     if ($tagPatterns.Count) {
         $previousTag = (Invoke-ReleaseGit $repo (@('describe', '--tags', '--abbrev=0') + $tagPatterns + @($commit))) -join ''
     }
+    if (-not $previousTag) {
+        # A source-history cleanup can leave the published tag in old history.
+        # Keep that tag intact and use curated release notes in that case.
+        $previousTag = @(Invoke-ReleaseGit $repo @('tag', '--sort=-version:refname') |
+            Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and $_ -ne $tag } | Select-Object -First 1) -join ''
+    }
 }
 $range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
+$connectedHistory = $true
+if ($previousTag) {
+    & git -C $repo merge-base --is-ancestor "$previousTag^{}" $commit
+    if ($LASTEXITCODE -gt 1) { throw 'Could not inspect the previous release history.' }
+    $connectedHistory = $LASTEXITCODE -eq 0
+}
 
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
 & (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
 [void](Assert-ReleaseSource $repo $commit)
 $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-& (Join-Path $PSScriptRoot 'Package.ps1') -OutputDirectory $output -SourceCommit $commit
-& python -X utf8 (Join-Path $PSScriptRoot $runtimeScript) @runtimeArguments --output $output
-if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed.' }
-$runtimeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'BetterAA-Runtimes-*.zip' -File | Sort-Object Name)
+& python -X utf8 (Join-Path $PSScriptRoot 'package-complete.py') --mod (Join-Path $repo "Deploy\ReduxBetterAA-$Version.zip") `
+    --editors @RuntimeEditors --fsr-runtime $FsrRuntimeZip --output $output --commit $commit --version $Version
+if ($LASTEXITCODE -ne 0) { throw 'Complete release packaging failed.' }
+$completeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'ReduxBetterAA-*.zip' -File | Sort-Object Name)
 $format = "--format=- %s ([%h]($url/commit/%H))"
-$history = @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range))
+$history = if ($connectedHistory) { @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range)) }
+    else { @('The published predecessor predates the source-history cleanup. Changes are described by the curated release notes below.', '', (Get-Content -LiteralPath $notesPath -Raw).TrimEnd()) }
 $heading = if ($previousTag) { "Changes since $previousTag" } else { 'Changes through the first public release' }
 @("# $tag", '', $heading, '') + $history | Set-Content -LiteralPath (Join-Path $output 'CHANGELOG.md') -Encoding utf8NoBOM
 [xml]$tests = Get-Content -LiteralPath (Join-Path $repo 'Logs\beta-editmode.xml') -Raw
@@ -95,9 +98,11 @@ $info = [ordered]@{
     version = $Version; sourceCommit = $commit; sourceClean = $true
     unityEditor = ((Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', '')
     editModePassed = [int]$tests.'test-run'.passed; editModeFailed = [int]$tests.'test-run'.failed
-    portableChecksPassed = $true; nativeLibrariesIncluded = $false
-    separateRuntimePackages = @($runtimeAssets.Name)
+    portableChecksPassed = $true; nativeLibrariesIncluded = $true
+    completePackages = @($completeAssets.Name)
+    fsrRuntimeSha256 = (Get-FileHash -LiteralPath $FsrRuntimeZip).Hash.ToLowerInvariant()
     previousRelease = $previousTag
+    changelogSource = if ($connectedHistory) { 'git-history' } else { 'curated-release-notes' }
 }
 $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
 $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
@@ -107,9 +112,9 @@ $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $expectedHashes = @{}
 foreach ($file in $assets) { $expectedHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName).Hash }
 $notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd() + "`n`n[Full changelog]($url/releases/download/$tag/CHANGELOG.md) · [Source]($url/tree/$tag)`n"
-$notes += "`nExtract the one runtime ZIP matching your Redux version beside KSP2_x64.exe. It contains all native components supported by that engine:`n`n"
-foreach ($runtime in $runtimeAssets) {
-    $notes += "- [$($runtime.Name)]($url/releases/download/$tag/$($runtime.Name))`n"
+$notes += "`nDownload one complete ZIP matching your Redux version and extract beside KSP2_x64.exe. The mod and required native DLLs are included:`n`n"
+foreach ($package in $completeAssets) {
+    $notes += "- [$($package.Name)]($url/releases/download/$tag/$($package.Name))`n"
 }
 $finalNotes = Join-Path $repo "Logs\release-$tag.md"
 $notes | Set-Content -LiteralPath $finalNotes -Encoding utf8NoBOM

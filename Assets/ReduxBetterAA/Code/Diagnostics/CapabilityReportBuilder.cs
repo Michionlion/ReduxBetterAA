@@ -55,17 +55,6 @@ namespace ReduxBetterAA.Diagnostics
             };
         }
 
-        private static FrameGenerationRecord CaptureFrameGeneration() => new FrameGenerationRecord
-        {
-            requested = FrameGenerationPolicy.Label(FrameGenerationAvailability.Requested),
-            selected = FrameGenerationPolicy.Label(FrameGenerationAvailability.Selected),
-            active = FrameGenerationAvailability.Active,
-            availableModes = FrameGenerationAvailability.BuildChoices(),
-            unavailableReason = FrameGenerationAvailability.UnavailableReason,
-            renderedFramesPerSecond = null,
-            displayedFramesPerSecond = null,
-            inputLatencyMilliseconds = null
-        };
 
         internal static TemporalBackendRecord CaptureTemporalBackend()
         {
@@ -79,7 +68,6 @@ namespace ReduxBetterAA.Diagnostics
                     active = false,
                     status = "Temporal coordinator unavailable",
                     fallbackReason = "Temporal coordinator unavailable",
-                    frameGeneration = CaptureFrameGeneration(),
                     lastResetReason = HistoryResetReason.None.ToString()
                 };
             }
@@ -95,7 +83,6 @@ namespace ReduxBetterAA.Diagnostics
             {
                 supersamplingPercent = coordinator.SupersamplingPercent,
                 appliedRenderScalePercent = coordinator.AppliedRenderScalePercent,
-                frameGeneration = CaptureFrameGeneration(),
                 requestedBackend = coordinator.RequestedBackend.ToString(),
                 selectedBackend = coordinator.SelectedBackend,
                 active = coordinator.Active,
@@ -172,7 +159,6 @@ namespace ReduxBetterAA.Diagnostics
                     managedSurfaceAvailable =
                         coordinator.DlaaManagedSurfaceAvailable,
                     contextCreated = coordinator.DlaaContextCreated,
-                    contextUsesHdr = coordinator.DlaaContextUsesHdr,
                     deviceVersion = coordinator.DlaaDeviceVersion,
                     inputWidth = coordinator.DlaaInputWidth,
                     inputHeight = coordinator.DlaaInputHeight,
@@ -255,8 +241,6 @@ namespace ReduxBetterAA.Diagnostics
                         BackendSelection.AmdFsr2
                     ),
                     supersampling = CapturePerformanceProfile(coordinator, BackendSelection.Supersampling),
-                    dlss = CapturePerformanceProfile(coordinator, BackendSelection.NvidiaDlss),
-                    fsrUpscaling = CapturePerformanceProfile(coordinator, BackendSelection.AmdFsrUpscaling)
                 }
             };
         }

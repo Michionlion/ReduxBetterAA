@@ -16,7 +16,7 @@ if not release_native then
 else
     if not initial.dlaa then Test.report.note("DLAA unavailable on this hardware; fallback is tested.") end
 end
-Test.assert.equal(initial.fsr2, release_amd_runtime, "AMD availability requires the separate modern FSR bundle")
+Test.assert.equal(initial.fsr2, release_amd_runtime, "AMD availability requires the included modern FSR libraries")
 if release_amd_runtime then
     if initial.fsrProvider then
         Test.assert.true_(initial.fsrProvider == "FSR 3.1" or initial.fsrProvider == "FSR 4.1", "AMD reports the actual modern provider")

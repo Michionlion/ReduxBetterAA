@@ -26,12 +26,6 @@ namespace ReduxBetterAA
 
         private IConfigEntry _modeEntry;
         private IConfigEntry _supersamplingEntry;
-        private IConfigEntry _upscalingQualityEntry;
-        private IConfigEntry _frameGenerationEntry;
-        private string[] _frameGenerationChoices;
-        private ListConstraint<string> _frameGenerationConstraint;
-        private uint _frameGenerationRevision;
-        private FrameGenerationRuntime _frameGenerationRuntime;
         private IConfigEntry _sharpnessEntry;
         private IConfigEntry _taaStabilityEntry;
         private IConfigEntry _dlaaPresetEntry;
@@ -44,35 +38,25 @@ namespace ReduxBetterAA
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
         private string _fsrProviderName = string.Empty;
-        private bool _upscalingSelectable;
         private bool _syncingConfiguration;
         private bool _pendingPersistentSettings;
-        private bool _pendingFrameGenerationSettings;
         private int _originalMsaaSamples;
         private bool _ownsMsaa;
         private Phase1ProbeService _probeService;
         private TemporalCoordinator _temporalCoordinator;
         private VegetationMotionCompatibility _vegetationMotionCompatibility;
         private Harmony _harmony;
-        private Harmony _frameGenerationSettingsHarmony;
 
         public override void OnPreInitialized()
         {
-            // Redux constructs settings in SpaceWarp InitHooks, before
-            // OnInitialized. Install just this UI factory prefix now; renderer
-            // patches still wait until their owners are initialized below.
-            _frameGenerationSettingsHarmony = Patches.FrameGenerationSettingsPatch.Install();
             string dlaaReason;
             string fsr2Reason;
             _dlaaSelectable = ProbeDlaaAvailability(out dlaaReason);
             _fsr2Selectable = ProbeFsrAvailability(out _fsrProviderName, out fsr2Reason);
-            _upscalingSelectable = ReduxSceneOutput.CompatibleAssembly;
             string[] modeChoices = UserSettingsPolicy.BuildModeChoices(
-                _dlaaSelectable,
-                _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
+                _dlaaSelectable, _fsr2Selectable, _fsrProviderName
             );
             DebugMenu.ConfigureModes(modeChoices);
-            _frameGenerationChoices = FrameGenerationAvailability.BuildChoices();
 
             _modeEntry = SWConfiguration.Bind(
                 "Anti-Aliasing",
@@ -82,14 +66,14 @@ namespace ReduxBetterAA
                 "are KSP's stock spatial modes; SMAA is the highest-quality PPv2 " +
                 "spatial option. TAA is the portable temporal option. NVIDIA DLAA " +
                 "is offered only on supported NVIDIA hardware. AMD FSR chooses the best " +
-                "available runtime and reports its actual provider. Upscaling renders " +
-                "the scene at reduced resolution while keeping the UI native.",
+                "available runtime and reports its actual provider at " +
+                "equal input and output resolution.",
                 new ListConstraint<string>(modeChoices)
             );
             _sharpnessEntry = BindFloat(
                 "Anti-Aliasing", "Sharpness", 0.15f, 0.0f, 1.0f, 100,
                 "Shared post-reconstruction sharpness for supported temporal AA and " +
-                "upscaling modes. " +
+                "native AA modes. " +
                 "Zero disables sharpening."
             );
             _supersamplingEntry = SWConfiguration.Bind(
@@ -97,17 +81,6 @@ namespace ReduxBetterAA
                 "Scene resolution per dimension when Supersampling is selected. UI stays native. " +
                 "200% renders four times as many pixels; other AA modes use 100%.",
                 new ListConstraint<int>(new[] { 125, 150, 175, 200 }));
-            _upscalingQualityEntry = SWConfiguration.Bind(
-                "Anti-Aliasing", "Upscaling quality", "Quality",
-                "Used by DLSS and AMD FSR Upscaling. Quality keeps more scene detail; " +
-                "Performance renders fewer pixels. Unsupported scenes use native AA.",
-                new ListConstraint<string>(new[] { "Quality", "Balanced", "Performance" }));
-            _frameGenerationEntry = SWConfiguration.Bind(
-                "Anti-Aliasing", FrameGenerationPolicy.SettingName, "Off",
-                "Works with native AA or upscaling. Auto prefers DLSS up to 4x, then FSR 2x. " +
-                "Unsupported modes use a compatible fallback without changing AA. Requires the optional FG runtime.",
-                _frameGenerationConstraint = new ListConstraint<string>(_frameGenerationChoices));
-            FrameGenerationSettingsBinding.Entry = _frameGenerationEntry;
             _taaStabilityEntry = BindFloat(
                 "Anti-Aliasing", "TAA stability", 0.93f, 0.0f, 0.99f, 100,
                 "Controls stationary TAA history retention. Higher values reduce " +
@@ -203,8 +176,6 @@ namespace ReduxBetterAA
             _vegetationMotionCompatibility.Initialize();
 
             ApplyPersistentSettings();
-            _frameGenerationRuntime = FrameGenerationRuntime.Create();
-            RefreshFrameGenerationChoices();
 
             _probeService.SetTemporalControls(new BackendSettingsPanel
             {
@@ -239,16 +210,6 @@ namespace ReduxBetterAA
                     _temporalCoordinator.DlaaConfig.WithPreset(ParseDlaaPreset(value))),
                 SupersamplingPercent = () => (int)_supersamplingEntry.Value,
                 SetSupersamplingPercent = value => _supersamplingEntry.Value = value,
-                UpscalingQuality = () => _temporalCoordinator.UpscalingQuality,
-                SetUpscalingQuality = value => _upscalingQualityEntry.Value = value.ToString(),
-                FrameGenerationChoices = () => _frameGenerationChoices,
-                FrameGeneration = () => _frameGenerationEntry.Value as string,
-                SetFrameGeneration = value => _frameGenerationEntry.Value = value,
-                FrameGenerationStatus = () => FrameGenerationAvailability.UnavailableReason,
-                DlssDetails = () => _temporalCoordinator.DlaaDetails,
-                DlssMemoryBytes = () => _temporalCoordinator.DlaaEstimatedMemoryBytes,
-                FsrUpscalingDetails = () => _temporalCoordinator.Fsr2Details,
-                FsrUpscalingMemoryBytes = () => _temporalCoordinator.Fsr2EstimatedMemoryBytes,
             });
             _probeService.SetMotionSanitizerDiagnostics(
                 () => _temporalCoordinator.MotionVectorSanitizedTexture,
@@ -283,7 +244,6 @@ namespace ReduxBetterAA
         private void Update()
         {
             ApplyPendingPersistentSettings();
-            RefreshFrameGenerationChoices();
             if (_cycleKey != KeyCode.None && Input.GetKeyDown(_cycleKey) && !DiagnosticHotkeys.AnyModifierDown())
             {
                 CycleRequestedBackendAndPersist();
@@ -299,12 +259,6 @@ namespace ReduxBetterAA
 
         private void OnDestroy()
         {
-            _frameGenerationRuntime?.RequestShutdown();
-            _frameGenerationRuntime = null;
-            if (ReferenceEquals(FrameGenerationSettingsBinding.Entry, _frameGenerationEntry))
-                FrameGenerationSettingsBinding.Entry = null;
-            _frameGenerationSettingsHarmony?.UnpatchAll(_frameGenerationSettingsHarmony.Id);
-            _frameGenerationSettingsHarmony = null;
             // Comparison claims the same cameras after the normal coordinator.
             // Unwind diagnostics first, then normal rendering, then global state.
             if (ReferenceEquals(Phase1ProbeService.Current, _probeService)) Phase1ProbeService.Current = null;
@@ -392,8 +346,6 @@ namespace ReduxBetterAA
         private void RegisterSettingsCallbacks()
         {
             _supersamplingEntry.RegisterCallback(OnPersistentSettingChanged);
-            _upscalingQualityEntry.RegisterCallback(OnPersistentSettingChanged);
-            _frameGenerationEntry.RegisterCallback(OnFrameGenerationSettingChanged);
             _modeEntry.RegisterCallback(OnPersistentSettingChanged);
             _sharpnessEntry.RegisterCallback(OnPersistentSettingChanged);
             _taaStabilityEntry.RegisterCallback(OnPersistentSettingChanged);
@@ -402,31 +354,6 @@ namespace ReduxBetterAA
             _mapViewAaEntry.RegisterCallback(OnPersistentSettingChanged);
             _hotkeysEntry.RegisterCallback(OnPersistentSettingChanged);
             _cycleKeyEntry.RegisterCallback(OnPersistentSettingChanged);
-        }
-
-        private void OnFrameGenerationSettingChanged(object previous, object current)
-        {
-            if (!_syncingConfiguration) _pendingFrameGenerationSettings = true;
-        }
-
-        private void ApplyFrameGenerationSettings()
-        {
-            if (_frameGenerationEntry == null) return;
-            var requested = FrameGenerationPolicy.Parse(_frameGenerationEntry.Value as string);
-            // Selection is a runtime outcome. Scene changes, missing runtimes or
-            // a lower-capability GPU must never erase the player's preference.
-            // Only invalid spelling/unknown values normalize to Off.
-            Persist(_frameGenerationEntry, FrameGenerationPolicy.Label(requested));
-            FrameGenerationAvailability.SetRequested(_frameGenerationEntry.Value as string);
-        }
-
-        private void RefreshFrameGenerationChoices()
-        {
-            if (_frameGenerationConstraint == null || _frameGenerationRevision == FrameGenerationAvailability.Revision) return;
-            _frameGenerationRevision=FrameGenerationAvailability.Revision;
-            _frameGenerationChoices=FrameGenerationAvailability.BuildMenuChoices();
-            _frameGenerationConstraint.AcceptableValues.Clear();
-            _frameGenerationConstraint.AcceptableValues.AddRange(_frameGenerationChoices);
         }
 
         private void OnPersistentSettingChanged(object previous, object current)
@@ -442,13 +369,6 @@ namespace ReduxBetterAA
 
         internal void ApplyPendingPersistentSettings()
         {
-            if (_pendingFrameGenerationSettings)
-            {
-                _pendingFrameGenerationSettings = false;
-                // FG-only changes must not reclaim AA/render-scale ownership,
-                // reconfigure reconstruction, or reset its temporal history.
-                ApplyFrameGenerationSettings();
-            }
             if (!_pendingPersistentSettings) return;
             _pendingPersistentSettings = false;
             // ReduxLib reset can restore a provider label from another GPU.
@@ -459,7 +379,6 @@ namespace ReduxBetterAA
 
         private void ApplyPersistentSettings()
         {
-            FrameGenerationAvailability.SetRequested(_frameGenerationEntry?.Value as string);
             if (_probeService != null)
                 _probeService.HotkeysEnabled = (bool)_hotkeysEntry.Value;
             if (!Enum.TryParse((string)_cycleKeyEntry.Value, out _cycleKey))
@@ -471,7 +390,6 @@ namespace ReduxBetterAA
 
             float sharpness = (float)_sharpnessEntry.Value;
             _temporalCoordinator.SetSupersamplingPercent((int)_supersamplingEntry.Value);
-            _temporalCoordinator.SetReconstructionQuality(ReconstructionPolicy.Parse((string)_upscalingQualityEntry.Value));
             CustomTaaConfig custom = _temporalCoordinator.CustomConfig;
             _temporalCoordinator.SetCustomConfig(custom.WithUserSettings(
                 (float)_taaStabilityEntry.Value,
@@ -508,7 +426,7 @@ namespace ReduxBetterAA
         {
             _temporalCoordinator?.SetRequestedBackend(backend);
             string label;
-            if (UserSettingsPolicy.TryGetMode(backend, _dlaaSelectable, _fsr2Selectable, out label, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable))
+            if (UserSettingsPolicy.TryGetMode(backend, _dlaaSelectable, _fsr2Selectable, out label, _fsrProviderName))
             {
                 Persist(_modeEntry, label);
             }
@@ -522,8 +440,7 @@ namespace ReduxBetterAA
             }
             BackendSelection next = UserSettingsPolicy.NextBackend(
                 _temporalCoordinator.RequestedBackend,
-                _dlaaSelectable,
-                _fsr2Selectable, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
+                _dlaaSelectable, _fsr2Selectable
             );
             SetRequestedBackendAndPersist(next);
         }
@@ -634,14 +551,12 @@ namespace ReduxBetterAA
 
         private void MigrateUserFacingSettings()
         {
-            ApplyFrameGenerationSettings();
             string mode = _modeEntry.Value as string;
             Persist(
                 _modeEntry,
                 UserSettingsPolicy.NormalizeMode(
                     mode,
-                    _dlaaSelectable,
-                    _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
+                    _dlaaSelectable, _fsr2Selectable, _fsrProviderName
                 )
             );
 
@@ -695,8 +610,7 @@ namespace ReduxBetterAA
         {
             return UserSettingsPolicy.ParseBackend(
                 value,
-                _dlaaSelectable,
-                _fsr2Selectable, _fsrProviderName, _dlaaSelectable && _upscalingSelectable, _fsr2Selectable && _upscalingSelectable
+                _dlaaSelectable, _fsr2Selectable, _fsrProviderName
             );
         }
 

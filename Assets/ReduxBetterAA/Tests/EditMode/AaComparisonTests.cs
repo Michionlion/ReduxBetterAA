@@ -11,10 +11,9 @@ namespace ReduxBetterAA.Tests
         [Test]
         public void DiagnosticChoicesMapLabelsToStableBackendIds()
         {
-            int[] ids = { 0, 1, 2, 3, 5, 8, 6, 7, 9, 10 };
+            int[] ids = { 0, 1, 2, 3, 5, 8, 6, 7 };
             string[] labels = { "Off", "FXAA Low", "FXAA High", "SMAA", "TAA",
-                "Supersampling", "NVIDIA DLAA", "FSR 4.1 Native AA",
-                "NVIDIA DLSS Upscaling", "FSR 4.1 Upscaling" };
+                "Supersampling", "NVIDIA DLAA", "FSR 4.1 Native AA" };
             string[] previous = DebugMenu.Modes;
             try
             {

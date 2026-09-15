@@ -17,6 +17,7 @@ namespace ReduxBetterAA.Backends.Nvidia
         private const string AssemblyName = "UnityEngine.NVIDIAModule";
         private const uint ExpectedDeviceVersion = 0x06;
         private const int FeatureDlss = 0;
+        private const int QualityDlaa = 4;
         private const int FlagIsHdr = 1 << 0;
         private const int FlagMotionVectorsLowResolution = 1 << 1;
         private const int FlagDepthInverted = 1 << 3;
@@ -58,14 +59,6 @@ namespace ReduxBetterAA.Backends.Nvidia
         private MethodInfo _pluginLoad;
         private MethodInfo _createGraphicsDevice;
         private MethodInfo _isFeatureAvailable;
-        private MethodInfo _getOptimalSettings;
-        private PropertyInfo _optimalRenderWidth;
-        private PropertyInfo _optimalRenderHeight;
-        private PropertyInfo _minimumRenderWidth;
-        private PropertyInfo _minimumRenderHeight;
-        private PropertyInfo _maximumRenderWidth;
-        private PropertyInfo _maximumRenderHeight;
-        private bool _optimalSurfaceBound;
         private PropertyInfo _deviceVersion;
         private CreateFeatureDelegate _createFeature;
         private DestroyFeatureDelegate _destroyFeature;
@@ -287,185 +280,6 @@ namespace ReduxBetterAA.Backends.Nvidia
             DlaaPreset preset,
             out string failureReason)
         {
-            return TryCreateContext(commandBuffer, width, height, width, height,
-                ReconstructionQuality.Native, hdr, autoExposure, preset, out failureReason);
-        }
-
-        // Configuration-time query only. Keeping this optional preserves native
-        // DLAA when an otherwise compatible module lacks the optimal-size API.
-        public bool TryGetOptimalRenderSize(
-            int outputWidth,
-            int outputHeight,
-            ReconstructionQuality quality,
-            out int width,
-            out int height,
-            out string failureReason)
-        {
-            width = height = 0;
-            if (!TryGetRenderSizeSettings(outputWidth, outputHeight, quality,
-                out RenderSizeSettings settings, out failureReason)) return false;
-            width = settings.OptimalWidth;
-            height = settings.OptimalHeight;
-            return true;
-        }
-
-        public bool TryGetRenderPercent(int outputWidth, int outputHeight,
-            ReconstructionQuality quality, out int percent, out string failureReason)
-        {
-            percent = 0;
-            if (!TryGetRenderSizeSettings(outputWidth, outputHeight, quality,
-                out RenderSizeSettings settings, out failureReason)) return false;
-            if (quality == ReconstructionQuality.Native)
-            {
-                percent = 100;
-                return true;
-            }
-            if (TryChooseRenderPercent(outputWidth, outputHeight, in settings, out percent)) return true;
-            failureReason = "No Redux integer render scale from 50% to 99% fits DLSS " +
-                quality + " dimensions " + settings.MinimumWidth + "x" + settings.MinimumHeight +
-                " to " + settings.MaximumWidth + "x" + settings.MaximumHeight;
-            return false;
-        }
-
-        internal readonly struct RenderSizeSettings
-        {
-            internal readonly int OptimalWidth, OptimalHeight;
-            internal readonly int MinimumWidth, MinimumHeight, MaximumWidth, MaximumHeight;
-
-            internal RenderSizeSettings(int optimalWidth, int optimalHeight,
-                int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
-            {
-                OptimalWidth = optimalWidth; OptimalHeight = optimalHeight;
-                MinimumWidth = minimumWidth; MinimumHeight = minimumHeight;
-                MaximumWidth = maximumWidth; MaximumHeight = maximumHeight;
-            }
-
-            internal bool Contains(int width, int height) =>
-                width > 0 && height > 0 && width >= MinimumWidth && height >= MinimumHeight &&
-                width <= MaximumWidth && height <= MaximumHeight;
-
-            internal bool IsValid(int outputWidth, int outputHeight) =>
-                outputWidth > 0 && outputHeight > 0 && MinimumWidth > 0 && MinimumHeight > 0 &&
-                OptimalWidth <= outputWidth && OptimalHeight <= outputHeight &&
-                Contains(OptimalWidth, OptimalHeight);
-        }
-
-        internal static bool TryChooseRenderPercent(int outputWidth, int outputHeight,
-            in RenderSizeSettings settings, out int percent)
-        {
-            percent = 0;
-            if (!settings.IsValid(outputWidth, outputHeight)) return false;
-            double closest = double.MaxValue;
-            // Match Redux's float multiplication and CeilToInt per axis. A
-            // percentage that rounds outside either SDK bound is not usable.
-            // Descending order prefers more pixels when two candidates tie.
-            for (int candidate = 99; candidate >= 50; candidate--)
-            {
-                int width = (int)Math.Ceiling(outputWidth * (candidate / 100f));
-                int height = (int)Math.Ceiling(outputHeight * (candidate / 100f));
-                if (!settings.Contains(width, height)) continue;
-                double x = (double)(width - settings.OptimalWidth) / outputWidth;
-                double y = (double)(height - settings.OptimalHeight) / outputHeight;
-                double distance = x * x + y * y;
-                if (distance >= closest) continue;
-                closest = distance;
-                percent = candidate;
-            }
-            return percent != 0;
-        }
-
-        private bool TryGetRenderSizeSettings(int outputWidth, int outputHeight,
-            ReconstructionQuality quality, out RenderSizeSettings settings, out string failureReason)
-        {
-            settings = default;
-            if (outputWidth <= 0 || outputHeight <= 0)
-            {
-                failureReason = "DLSS output dimensions must be positive";
-                return false;
-            }
-            if (quality == ReconstructionQuality.Native)
-            {
-                settings = new RenderSizeSettings(outputWidth, outputHeight,
-                    outputWidth, outputHeight, outputWidth, outputHeight);
-                failureReason = string.Empty;
-                return true;
-            }
-            try
-            {
-                int qualityValue = GetDlssQualityValue(quality);
-                if (!TryInitialize(out failureReason)) return false;
-                if (!_optimalSurfaceBound)
-                {
-                    Type optimalType = RequireType("UnityEngine.NVIDIA.OptimalDLSSSettingsData");
-                    _getOptimalSettings = _deviceType.GetMethod("GetOptimalSettings", PublicInstance,
-                        null, new[] { typeof(uint), typeof(uint), _qualityType,
-                            optimalType.MakeByRefType() }, null);
-                    if (_getOptimalSettings == null || _getOptimalSettings.ReturnType != typeof(bool))
-                        throw new MissingMethodException(_deviceType.FullName, "GetOptimalSettings");
-                    _optimalRenderWidth = RequireProperty(optimalType, "outRenderWidth", PublicInstance);
-                    _optimalRenderHeight = RequireProperty(optimalType, "outRenderHeight", PublicInstance);
-                    _minimumRenderWidth = RequireProperty(optimalType, "minWidth", PublicInstance);
-                    _minimumRenderHeight = RequireProperty(optimalType, "minHeight", PublicInstance);
-                    _maximumRenderWidth = RequireProperty(optimalType, "maxWidth", PublicInstance);
-                    _maximumRenderHeight = RequireProperty(optimalType, "maxHeight", PublicInstance);
-                    _optimalSurfaceBound = true;
-                }
-                object[] arguments = { (uint)outputWidth, (uint)outputHeight,
-                    Enum.ToObject(_qualityType, qualityValue), null };
-                if (!InvokeBoolean(_getOptimalSettings, _device, arguments))
-                {
-                    failureReason = "Unity NVIDIA could not determine optimal DLSS dimensions";
-                    return false;
-                }
-                settings = new RenderSizeSettings(
-                    checked((int)(uint)_optimalRenderWidth.GetValue(arguments[3], null)),
-                    checked((int)(uint)_optimalRenderHeight.GetValue(arguments[3], null)),
-                    checked((int)(uint)_minimumRenderWidth.GetValue(arguments[3], null)),
-                    checked((int)(uint)_minimumRenderHeight.GetValue(arguments[3], null)),
-                    checked((int)(uint)_maximumRenderWidth.GetValue(arguments[3], null)),
-                    checked((int)(uint)_maximumRenderHeight.GetValue(arguments[3], null)));
-                if (!settings.IsValid(outputWidth, outputHeight))
-                {
-                    settings = default;
-                    failureReason = "Unity NVIDIA returned invalid optimal DLSS dimensions or render-size bounds";
-                    return false;
-                }
-                failureReason = string.Empty;
-                return true;
-            }
-            catch (Exception exception)
-            {
-                settings = default;
-                failureReason = DescribeException(exception);
-                return false;
-            }
-        }
-
-        internal static int GetDlssQualityValue(ReconstructionQuality quality)
-        {
-            // Unity's enum values follow NGX, not our persisted quality ordering.
-            switch (quality)
-            {
-                case ReconstructionQuality.Native: return 4;
-                case ReconstructionQuality.Quality: return 2;
-                case ReconstructionQuality.Balanced: return 1;
-                case ReconstructionQuality.Performance: return 0;
-                default: throw new ArgumentOutOfRangeException(nameof(quality));
-            }
-        }
-
-        public bool TryCreateContext(
-            CommandBuffer commandBuffer,
-            int inputWidth,
-            int inputHeight,
-            int outputWidth,
-            int outputHeight,
-            ReconstructionQuality quality,
-            bool hdr,
-            bool autoExposure,
-            DlaaPreset preset,
-            out string failureReason)
-        {
             DestroyContext(commandBuffer);
             if (!_initialized)
             {
@@ -475,35 +289,21 @@ namespace ReduxBetterAA.Backends.Nvidia
 
             try
             {
-                if (inputWidth <= 0 || inputHeight <= 0 || outputWidth <= 0 || outputHeight <= 0)
-                    throw new ArgumentOutOfRangeException(nameof(inputWidth), "DLSS dimensions must be positive");
-                if (quality != ReconstructionQuality.Native)
-                {
-                    if (!TryGetRenderSizeSettings(outputWidth, outputHeight, quality,
-                        out RenderSizeSettings settings, out failureReason)) return false;
-                    if (!settings.Contains(inputWidth, inputHeight))
-                    {
-                        failureReason = "DLSS " + quality + " input " + inputWidth + "x" + inputHeight +
-                            " is outside the runtime range " + settings.MinimumWidth + "x" + settings.MinimumHeight +
-                            " to " + settings.MaximumWidth + "x" + settings.MaximumHeight;
-                        return false;
-                    }
-                }
                 object initialization = Activator.CreateInstance(_initializationType);
-                SetInitializationProperty(initialization, "inputRTWidth", (uint)inputWidth);
-                SetInitializationProperty(initialization, "inputRTHeight", (uint)inputHeight);
-                SetInitializationProperty(initialization, "outputRTWidth", (uint)outputWidth);
-                SetInitializationProperty(initialization, "outputRTHeight", (uint)outputHeight);
+                SetInitializationProperty(initialization, "inputRTWidth", (uint)width);
+                SetInitializationProperty(initialization, "inputRTHeight", (uint)height);
+                SetInitializationProperty(initialization, "outputRTWidth", (uint)width);
+                SetInitializationProperty(initialization, "outputRTHeight", (uint)height);
                 SetInitializationProperty(
                     initialization,
                     "quality",
-                    Enum.ToObject(_qualityType, GetDlssQualityValue(quality))
+                    Enum.ToObject(_qualityType, QualityDlaa)
                 );
-                // SR uses the vendor's per-quality defaults. A saved DLAA preset
-                // is not an SR preset and must not silently override those defaults.
-                if (quality == ReconstructionQuality.Native)
-                    SetInitializationProperty(initialization, "presetDlaaMode",
-                        Enum.ToObject(_presetType, (int)preset));
+                SetInitializationProperty(
+                    initialization,
+                    "presetDlaaMode",
+                    Enum.ToObject(_presetType, (int)preset)
+                );
 
                 int flags = FlagMotionVectorsLowResolution | FlagSharpening;
                 if (hdr)
