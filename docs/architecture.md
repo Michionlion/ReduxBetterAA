@@ -158,6 +158,8 @@ until GPU completion. See [the native bridge](../Native/README.md).
 Both require matching color/depth/motion dimensions, device
 depth direction and explicit motion signs. Dispatch jitter is the negative of
 raster jitter; normalized motion is scaled to pixels once.
+FSR uses unscaled frame time in normal play and Unity's fixed capture timestep
+when offline recording is active, so image-encoding delays do not age its history.
 Vendor output stays linear and random-write capable. The pre-dispatch blit
 initializes the output and establishes its GPU resource transition; retain it.
 

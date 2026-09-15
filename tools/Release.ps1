@@ -57,6 +57,7 @@ if ($Publish) {
 } else {
     $tagPatterns = @()
     foreach ($candidateTag in (Invoke-ReleaseGit $repo @('tag', '--merged', $commit))) {
+        if ($candidateTag -eq $tag) { continue }
         if ($candidateTag -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') { continue }
         if (((Invoke-ReleaseGit $repo @('rev-parse', "$candidateTag^{}")) -join '') -ne $commit) {
             $tagPatterns += @('--match', $candidateTag)
@@ -101,11 +102,11 @@ $checksums | Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Enco
 $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $expectedHashes = @{}
 foreach ($file in $assets) { $expectedHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName).Hash }
-$notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd() + "`n`n[Full changelog]($url/releases/download/$tag/CHANGELOG.md) · [Source]($url/tree/$tag)`n"
-$notes += "`nDownload one complete ZIP matching your Redux version and extract beside KSP2_x64.exe. The mod and required native DLLs are included:`n`n"
+$notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd()
 foreach ($package in $completeAssets) {
-    $notes += "- [$($package.Name)]($url/releases/download/$tag/$($package.Name))`n"
+    $notes = $notes.Replace(('`' + $package.Name + '`'), "[$($package.Name)]($url/releases/download/$tag/$($package.Name))")
 }
+$notes += "`n`n[Source]($url/tree/$tag) · [Checksums]($url/releases/download/$tag/SHA256SUMS.txt)`n"
 $finalNotes = Join-Path $repo "Logs\release-$tag.md"
 $notes | Set-Content -LiteralPath $finalNotes -Encoding utf8NoBOM
 [void](Assert-ReleaseSource $repo $commit)

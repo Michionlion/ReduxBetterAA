@@ -10,6 +10,15 @@ namespace ReduxBetterAA.Tests
 {
     public class AmdFsrNativeAbiTests
     {
+        [TestCase(0f, 0.25f, 250f)]
+        [TestCase(1f / 60f, 0.25f, 1000f / 60f)]
+        [TestCase(0f, 0f, 0.01f)]
+        public void FrameTimeTracksCaptureFramesWithoutChangingNormalTiming(float capture, float unscaled, float expected)
+        {
+            Assert.That(AmdFsrNativeApi.FrameTimeMilliseconds(capture, unscaled),
+                Is.EqualTo(expected).Within(0.001f));
+        }
+
         [Test]
         public void ManagedDescriptionsMatchNativeX64Layout()
         {

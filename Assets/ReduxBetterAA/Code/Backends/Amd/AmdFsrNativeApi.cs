@@ -17,6 +17,10 @@ namespace ReduxBetterAA.Backends.Amd
     {
         internal const uint AbiVersion = 1;
         internal const int StatusSize = 680;
+        internal float LastFrameTimeMilliseconds { get; private set; }
+
+        internal static float FrameTimeMilliseconds(float captureDeltaTime, float unscaledDeltaTime) =>
+            Mathf.Max(0.01f, (captureDeltaTime > 0f ? captureDeltaTime : unscaledDeltaTime) * 1000f);
         private const uint HighDynamicRangeFlag = 1u << 0;
         private const uint InvertedDepthFlag = 1u << 3;
         private const uint AutoExposureFlag = 1u << 5;
@@ -207,6 +211,9 @@ namespace ReduxBetterAA.Backends.Amd
             commands.Blit(source, output);
             if (_lastOutput != output) { _outputPointer = output.GetNativeTexturePtr(); _lastOutput = output; }
             Vector2 jitter = ToDispatchJitter(rasterJitter);
+            // Offline capture advances the scene at its fixed timestep while
+            // unscaledDeltaTime includes the time spent writing each image.
+            LastFrameTimeMilliseconds = FrameTimeMilliseconds(Time.captureDeltaTime, Time.unscaledDeltaTime);
             var dispatch = new DispatchDescription
             {
                 Size = DispatchSize, Abi = AbiVersion, Context = _context,
@@ -216,7 +223,7 @@ namespace ReduxBetterAA.Backends.Amd
                 Exposure = ContextUsesAutoExposure ? IntPtr.Zero : _exposurePointer,
                 JitterX = jitter.x, JitterY = jitter.y,
                 MotionScaleX = _color.width, MotionScaleY = _color.height,
-                DeltaMs = Mathf.Max(0.01f, Time.unscaledDeltaTime * 1000.0f), PreExposure = preExposure,
+                DeltaMs = LastFrameTimeMilliseconds, PreExposure = preExposure,
                 Near = SystemInfo.usesReversedZBuffer ? camera.farClipPlane : camera.nearClipPlane,
                 Far = SystemInfo.usesReversedZBuffer ? camera.nearClipPlane : camera.farClipPlane, Fov = camera.fieldOfView * Mathf.Deg2Rad,
                 ViewSpaceToMeters = 1.0f, Sharpness = config.Sharpness,
