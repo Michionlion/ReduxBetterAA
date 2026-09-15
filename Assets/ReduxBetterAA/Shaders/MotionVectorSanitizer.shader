@@ -3,6 +3,10 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
     Properties
     {
         _MainTex ("Raw motion vectors", 2D) = "black" {}
+        _InputMotionComponentSign ("Stored input motion signs", Vector) = (1, 1, 1, 1)
+        _ResetMotionHistory ("Reset frame motion", Float) = 0
+        _DepthRowsReversed ("Depth rows relative to motion", Float) = 0
+        _TerrainMotionValid ("Verified procedural terrain motion", Float) = 0
     }
 
     SubShader
@@ -20,18 +24,24 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             sampler2D _MainTex;
             sampler2D _DepthTexture;
             sampler2D _FrameCorruptionTexture;
+            sampler2D _TerrainDepthTexture;
             float4 _MainTex_TexelSize;
             float4 _SourceDimensions;
             float _MaximumMotionSquared;
             float _MaximumFallbackMotionSquared;
             float _MaximumCameraDisagreementSquared;
             float2 _MotionComponentSign;
+            float2 _InputMotionComponentSign;
+            float _ResetMotionHistory;
+            float _DepthRowsReversed;
             float2 _CurrentJitter;
             float4x4 _CurrentInverseViewProjection;
             float4x4 _PreviousViewProjection;
             float _MatrixHistoryValid;
             float _CorruptionMinimumSamples;
             float _SanitizationEnabled;
+            float _TerrainMotionValid;
+            float4x4 _TerrainPreviousWorldFromCurrent;
 
             float2 SourceUv(float2 uv)
             {
@@ -83,14 +93,58 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
                 return motion;
             }
 
+            float2 RepairTerrainMotion(float2 uv, float2 motion)
+            {
+                if (_TerrainMotionValid < 0.5 || _MatrixHistoryValid < 0.5 || MotionIsInvalid(motion))
+                    return motion;
+                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
+                float terrainDepth = SAMPLE_DEPTH_TEXTURE(_TerrainDepthTexture, depthUv);
+                #if defined(UNITY_REVERSED_Z)
+                if (!(rawDepth > 0.0 && rawDepth <= 1.0)) return motion;
+                #else
+                if (!(rawDepth >= 0.0 && rawDepth < 1.0)) return motion;
+                #endif
+                // Both depth inputs describe this camera's raster. A relative
+                // float tolerance permits sampling roundoff, not a distance mask.
+                // Nearer vessel/object pixels and uncovered sky keep their vectors.
+                if (!(abs(rawDepth - terrainDepth) <= max(abs(rawDepth) * 0.000002, 0.000000000001)))
+                    return motion;
+                float cameraValid;
+                float2 cameraMotion = CalculateCameraMotion(uv, rawDepth, cameraValid);
+                float2 dimensions = max(_SourceDimensions.xy, 1.0.xx);
+                float2 cameraPixels = cameraMotion * dimensions;
+                // Unity RGHalf rounding scales with the camera-motion magnitude.
+                // Preserve existing object vectors instead of replacing every
+                // depth-covered sample with a rigid-planet assumption.
+                float tolerance = max(0.01, length(cameraPixels) * 0.001);
+                if (cameraValid < 0.5 || length((motion - cameraMotion) * dimensions) > tolerance)
+                    return motion;
+                float deviceDepth = rawDepth;
+                #if !defined(UNITY_REVERSED_Z)
+                deviceDepth = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, rawDepth);
+                #endif
+                float2 currentUv = uv + _CurrentJitter;
+                float4 world = mul(_CurrentInverseViewProjection,
+                    float4(currentUv * 2.0 - 1.0, deviceDepth, 1.0));
+                float4 priorWorld = mul(_TerrainPreviousWorldFromCurrent, world);
+                float4 priorClip = mul(_PreviousViewProjection, priorWorld);
+                if (priorClip.w <= 0.000001) return motion;
+                float2 repaired = currentUv - (priorClip.xy / priorClip.w * 0.5 + 0.5);
+                float2 pixels = repaired * dimensions;
+                return MotionIsInvalid(repaired) || dot(pixels, pixels) > _MaximumFallbackMotionSquared
+                    ? motion : repaired;
+            }
+
             float4 Frag(v2f_img input) : SV_Target
             {
                 float2 uv = SourceUv(input.uv);
-                float2 motion = tex2D(_MainTex, uv).rg;
+                float2 motion = tex2D(_MainTex, uv).rg * _InputMotionComponentSign;
+                if (_ResetMotionHistory > 0.5) return float4(0.0, 0.0, 0.0, 1.0);
                 if (_SanitizationEnabled < 0.5)
                 {
-                    // Keep the texture conversion required by DLAA/FSR while
-                    // bypassing all rejection and camera-motion substitution.
+                    // Terrain repair is independent of optional outlier rejection.
+                    motion = RepairTerrainMotion(uv, motion);
                     motion *= _MotionComponentSign;
                     return float4(motion, 0.0, 1.0);
                 }
@@ -99,7 +153,8 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
                 bool overLimit =
                     dot(pixelMotion, pixelMotion) > _MaximumMotionSquared;
                 float fallbackValid;
-                float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, uv);
+                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
                 float2 fallback = CalculateCameraMotion(
                     uv,
                     rawDepth,
@@ -133,6 +188,7 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
                     motion = fallbackUsable ? fallback : 0.0;
                 }
 
+                motion = RepairTerrainMotion(uv, motion);
                 // The managed vendor APIs now use positive pixel scales. These
                 // explicit component signs are the only motion-direction controls.
                 motion *= _MotionComponentSign;
@@ -157,6 +213,8 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float _MaximumMotionSquared;
             float _MaximumCameraDisagreementSquared;
             float2 _CurrentJitter;
+            float2 _InputMotionComponentSign;
+            float _DepthRowsReversed;
             float4x4 _CurrentInverseViewProjection;
             float4x4 _PreviousViewProjection;
             float _MatrixHistoryValid;
@@ -212,13 +270,14 @@ Shader "Hidden/ReduxBetterAA/MotionVectorSanitizer"
             float SuspiciousMotionSample(float2 uv)
             {
                 uv = SourceUv(uv);
-                float2 motion = tex2D(_MainTex, uv).rg;
+                float2 motion = tex2D(_MainTex, uv).rg * _InputMotionComponentSign;
                 float2 pixelMotion = motion * max(_SourceDimensions.xy, 1.0.xx);
                 if (MotionIsInvalid(motion))
                     return 1.0;
 
                 float fallbackValid;
-                float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, uv);
+                float2 depthUv = float2(uv.x, _DepthRowsReversed > 0.5 ? 1.0 - uv.y : uv.y);
+                float rawDepth = SAMPLE_DEPTH_TEXTURE(_DepthTexture, depthUv);
                 float2 fallback = CalculateCameraMotion(
                     uv,
                     rawDepth,

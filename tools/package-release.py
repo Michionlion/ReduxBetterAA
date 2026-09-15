@@ -18,7 +18,7 @@ DOCS = {
     'licenses/Unity-Built-in-Shaders.txt': 'licenses/Unity-Built-in-Shaders.txt',
 }
 SHADERS = {
-    'AaComparison', 'FsrBridgeInputs', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
+    'AaComparison', 'FsrBridgeInputs', 'FrameGenerationInputs', 'CustomTaa', 'DepthDisocclusionMask', 'IssueBufferCapture',
     'MotionVectorSanitizer', 'Phase1BufferDebug', 'Phase1MotionStatistics',
     'Phase1MotionVectorPassProbe', 'VegetationMotionVectorRepair',
 }

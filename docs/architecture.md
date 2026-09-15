@@ -1,8 +1,7 @@
 # Architecture and rendering fixes
 
-This describes the current source, including changes since the published v0.6.1
-binary. Keep it current when a design changes; Git records earlier choices.
-[Release notes](releases/v0.6.1.md) describe the shipped beta, and
+This describes the v0.6.2 source. Keep it current when a design changes; Git records earlier choices.
+[Release notes](releases/v0.6.2.md) describe the shipped beta, and
 [standard tests](../tests/README.md) define release validation.
 
 ## Modes and ownership
@@ -24,8 +23,9 @@ until Better AA releases ownership.
 | Supersampling | Redux's render-scale presenter at 125–200% per dimension, bounded by texture limits. |
 
 Native AA and spatial modes use 100% scene resolution. Supersampling preserves native UI
-and falls back to Off in map and menu scenes. Better AA uses Redux's presenter
-instead of replacing presentation or pointer-coordinate handling. If another
+and falls back to Off in map and menu scenes. AA/reconstruction uses Redux's scene
+presenter and pointer-coordinate handling. Optional FG adds the child display path
+described below while keeping the original chain progressing. If another
 owner changes render scale, the player must explicitly reselect a mode to reclaim it.
 
 The old PPv2 TAA backend is removed. Its saved name and numeric ID 4 migrate to
@@ -96,10 +96,41 @@ that draw and restores it in a Harmony finalizer, including exceptions. It
 changes only `camera.projectionMatrix`: no extra draw, terrain shader replacement,
 physics change or reduction in temporal sample coverage.
 
+**Procedural terrain motion.** PQS regenerates world-space vertices from the
+planet transform without submitting that transform's previous-frame motion.
+During ascent, camera-only vectors therefore miss visible land and coastline
+movement. `TerrainMotionCompatibility` observes successful generation, depth and
+color submissions on the audited Redux/Unity renderer. It requires a unique
+camera/material pair in adjacent frames, the actual bound PQS depth texture,
+stable generation transforms and matching sanitizer camera history. Skipped or
+failed draws, duplicate submissions, frame gaps, scene changes and origin resets
+decline the correction.
+
+The motion shader reconstructs current world position and projects
+`previousPlanetWorld * inverse(currentPlanetWorld)` through the previous camera.
+It applies this only to nonclear samples matching the terrain depth whose input
+motion agrees with Unity's camera-only field. Foreground vessels and existing
+object vectors retain their motion. The repair is independent of optional outlier
+rejection and is shared by temporal AA, upscaling and their FG consumers; FG does
+not apply it twice. This does not infer a separate motion field for transparent
+water or clouds, and unsupported renderer versions retain ordinary motion.
+
 **Menu and map planet flicker.** Recognized menu and map cameras apply matching
 opaque and transparent jitter. Jittering only opaque rendering left overlapping
 planet passes misaligned. Keeping them coherent permits jittered AA in both
 scenes. The published v0.6.1 binary predates restored map jitter.
+
+**Flight coastline flicker.** The ocean color material renders in the transparent
+queue, while ocean depth runs at `AfterGBuffer` and terrain depth/color use the
+jittered raster projection. Leaving transparent rendering unjittered makes those
+layers disagree along shallow water and the shoreline on every jitter sample.
+The recognized physics/scaled flight stack now shares opaque and transparent
+jitter in flight and KSC. The cameras must be active, ordered, share a target and
+viewport, and use the known depth-preserving resolve. The existing projection
+owner restores the transparent flag on teardown and mode changes. This adds no
+draw, texture or setting and applies equally to TAA, DLAA/DLSS and FSR. It repairs
+the AA input consumed by independent FG; it does not add ocean motion vectors or
+eliminate all animated water, cloud or disocclusion artifacts.
 
 **Map icons.** Map ship icons are scene `SpriteRenderer`s, so ordinary temporal
 AA would accumulate them as geometry. `MapIconOverlay` claims known map sprites
@@ -118,6 +149,8 @@ shader-ownership checks bound this repair. It defaults on for active AA except
 supersampling, and turns off with AA Off. This is separate from the terrain fix.
 
 Sources: [terrain patch](../Assets/ReduxBetterAA/Code/Patches/TerrainDepthJitterPatch.cs),
+[terrain motion observation](../Assets/ReduxBetterAA/Code/Rendering/TerrainMotionCompatibility.cs),
+[terrain motion boundary](../Assets/ReduxBetterAA/Code/Patches/TerrainMotionCompatibilityPatch.cs),
 [projection scope](../Assets/ReduxBetterAA/Code/Rendering/AuxiliaryProjectionScope.cs),
 [map overlay](../Assets/ReduxBetterAA/Code/Rendering/MapIconOverlay.cs),
 [foliage compatibility](../Assets/ReduxBetterAA/Code/Rendering/VegetationMotionCompatibility.cs),
@@ -142,10 +175,11 @@ raster jitter; normalized motion is scaled to pixels once.
 Vendor output stays linear and random-write capable. The pre-dispatch blit
 initializes the output and establishes its GPU resource transition; retain it.
 
-`MotionVectorSanitizer` always provides the required component-sign conversion.
+`MotionVectorSanitizer` provides component-sign conversion and the eligible
+procedural terrain motion correction described above.
 Its optional outlier rejection is **off by default**. When enabled, it can reject
-invalid motion and substitute depth-derived camera reprojection; this is not the
-terrain fix. `DepthDisocclusionMask` biases vendor history at moving solid edges
+invalid motion and substitute depth-derived camera reprojection.
+`DepthDisocclusionMask` biases vendor history at moving solid edges
 and depth breaks while leaving broad no-depth regions unmarked for transparent
 and volumetric accumulation. A missing mask shader is nonfatal.
 
@@ -170,6 +204,13 @@ leave normal rendering alive and mark partial results. Nothing uploads automatic
 Motion telemetry uses the report's capture camera, independent of the selected
 debug view. Closing a debug view restores its camera depth flags only while
 they still match the value the view applied.
+Issue ZIP metadata is finalized in the captured camera's output callback after
+the AA resolve, before diagnostic copies. Its request-time snapshot remains only
+as an explicitly unpaired fallback when rendering is unavailable. The manifest
+records metadata and motion-matrix frame matching separately; a stale matrix
+keeps its original frame. Actual input texture dimensions and the CPU shader-global
+texel-size vectors are separate observations, since another camera can leave
+those global vectors stale even when the bound capture texture is current.
 Live A/B suspends normal AA ownership and renders two independent arms; use
 ordinary mode selection to judge terrain stability or performance.
 
@@ -196,14 +237,15 @@ profile and optional online services disabled. Launcher/profile state is restore
 and exact inputs are recorded. Local
 release preparation needs no GitHub access; publishing is an explicit separate step.
 
-Better AA does not interpolate vessel motion, change physics, edit installed game assemblies,
-control cloud rendering, generate frames or reconstruct rays.
+Better AA does not interpolate simulation state, change physics, edit installed
+game assemblies, control cloud rendering or reconstruct rays. The optional FG
+companion described below generates presentation frames from rendered inputs.
 Temporal quality and performance claims require moving in-game evidence on the
 stated setup; screenshots and unit tests alone do not establish either.
 
 ## Upscaling and frame generation integration
 
-**Implementation branch, 2026-09-12.** The reconstruction providers now share a
+**Implementation branch.** The reconstruction providers share a
 version-gated Redux scene-output adapter. NVIDIA uses the existing Unity module;
 modern AMD FSR uses an optional native bridge to the pinned FSR SDK 2.3.0. The
 SDK selects FSR 4.1.1 on compatible hardware or FSR 3.1.5 where supported. An
@@ -220,9 +262,11 @@ without maintaining another integration. The bridge additionally requires workin
 same-adapter D3D11/D3D12 texture sharing and fences, which the live probe checks.
 [AMD hardware table](https://www.amd.com/en/products/graphics/technologies/fidelityfx/super-resolution.html),
 [current SDK recommendation](https://gpuopen.com/fidelityfx-super-resolution-3/).
-FG remains a separate presentation service to implement. No FG option is exposed.
-DLSS Super Resolution, DLSS FG and multi-frame generation also need independent
-capability checks; successful DLAA initialization proves none of the FG path.
+FG is implemented as a separate optional presentation service, defaulting to
+Off, with a common resolved-frame publisher and NVIDIA/AMD child providers.
+Completed native discovery supplies its independent setting choices; successful
+DLAA/SR initialization proves none of the FG path. Combined-player validation
+remains separate from implemented interfaces and standalone SDK behavior.
 
 The source baseline is `9c6cc80dd2bfd638ce1f664a8b03276d56cf4ae9` (v0.6.2
 candidate). The inspected installed assemblies are Redux
@@ -261,11 +305,26 @@ again. NVIDIA recommends reconstruction before tone mapping; that pipeline chang
 remains separate work. The SR flag correction requires player validation against
 the saved captures. [NVIDIA DLSS Programming Guide, sections 3.1 and 3.1.2, pages 9–10](https://github.com/NVIDIA/DLSS/blob/374959484e79a640feaba44c93ac8cfb0a03f5b5/doc/DLSS_Programming_Guide_Release.pdf).
 Modern FSR likewise declares its converted linear input as high dynamic range,
-for both the startup probe and native-AA/SR contexts. It retains an explicit
-exposure texture of 1 and pre-exposure 1; automatic exposure and nonlinear-color
-flags remain disabled. This preserves the measured input range without applying
-PPv2 exposure again. Both AMD provider guides specify linear input and the HDR
-flag for high-range content. [FSR 3.1.5 HDR support](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/docs/techniques/super-resolution-upscaler.md#hdr-support),
+for both the startup probe and native-AA/SR contexts. Both sizes honor the
+existing `Fsr2Config` exposure settings: prefer the asynchronous PPv2 scalar,
+clamped to 0.2–2, with FSR automatic exposure while it is unavailable; disabling
+automatic exposure uses the configured manual pre-exposure. The scalar is passed
+through the native dispatch ABI rather than multiplying scene color. With vendor
+automatic exposure disabled, the separate algorithm exposure texture is 1; with
+it enabled, the texture is omitted and the context enables the SDK auto-exposure
+flag. Changing that flag recreates the context and resets history. Deactivation
+invalidates the PPv2 reader so a previous camera's sample cannot be reused.
+
+This restores the old native-AA normalization policy that the bridge migration
+had replaced with hard-coded ones, including ignoring manual exposure settings.
+It is a compatibility policy, not proof that PPv2's post-tone-map output has a
+physically removable scene pre-exposure. Moving reconstruction before tone mapping
+still requires the separate pipeline work above. AMD reverses its internal
+exposure processing before writing output; exposure settings affect reconstruction
+and clipping, not a second application brightness pass. Nonlinear-color flags
+remain disabled. Both AMD provider guides specify linear input and the HDR
+flag for high-range content. [FSR 3.1.5 exposure](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/docs/techniques/super-resolution-upscaler.md#exposure),
+[FSR 3.1.5 HDR support](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/docs/techniques/super-resolution-upscaler.md#hdr-support),
 [FSR 4.1.1 HDR support](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/docs/techniques/super-resolution-ml.md#hdr-support).
 Replacing Redux's PPv2 assembly would violate this project's integration contract.
 Its ordinary `BeforeStack` custom-effect slot is not by itself a size-transition
@@ -296,24 +355,27 @@ Rankings describe fit with this mod, not demonstrated visual quality or speed.
 | Direct native NGX/DLSS SR or AMD SDK integration | **Selected for modern AMD FSR.** Unity's managed AMD module exposes FSR 2 only. The owned C ABI bridges D3D11 inputs through same-adapter shared DX12 resources and fences to the official SDK; NVIDIA continues using Unity's existing module. |
 | MIT `ndepoel/FSR3Unity` compute/C# core | **Useful alternative SR provider.** Can remove the AMD native bridge dependency and supports built-in/DX11. It is FSR 3.1 upscaling, not FG. Adapt its algorithm core to our camera contract; do not import its camera/PPv2 ownership wholesale. [Project source](https://github.com/ndepoel/FSR3Unity). |
 | Commercial Unity SR packages | Available, but offer less benefit than reusing the adapters already here. Their camera integration is not automatically compatible with Redux's multiple scene cameras. [Provider](https://thenakeddev.com/). |
-| Commercial Unity DLSS/FSR FG bridge | **First external FG candidate to evaluate.** The published manual describes using a DX12 FG swapchain with DX11 rendering, so a full KSP2 renderer conversion is not necessarily required. Integration and redistribution remain unresolved. [FG manual](https://docs.google.com/document/d/1L8C8H_RGuyip7aI0ckqqiAKeg7RB07yKb8EQNCDSw0Y). |
-| Our own native DX11-to-DX12 presentation bridge | **Credible research route, substantial engineering.** Unity headers expose swapchain access and a present override. Prove a pass-through presenter before adding resource sharing, interpolation or pacing. These interfaces alone do not replace the swapchain or solve SDK interception. |
+| Commercial Unity DLSS/FSR FG bridge | **Alternative requiring licensed source/API review.** Its documented DX12 FG swapchain with DX11 rendering is relevant, but custom-input hooks and redistribution remain unresolved. No licensed package is available in this checkout. [FG manual](https://docs.google.com/document/d/1L8C8H_RGuyip7aI0ckqqiAKeg7RB07yKb8EQNCDSw0Y). |
+| Our own native DX11-to-DX12 presentation bridge | **Implemented route.** Keeps Redux's D3D11 renderer and original chain progressing, copies explicit inputs to the selected provider's D3D12 device and uses an owned disabled child HWND for paced output. The coordinator joins real EOF/capture tickets and owns source Present exactly once; player validation remains separate. |
 | Native D3D12 renderer plus official Streamline / FidelityFX FG | Architecturally conventional, but prerequisite game/shader compatibility is unproven. Treat renderer migration as separate Redux work, not an AA option or a launch-flag fix. |
 | Vulkan renderer / DXVK translation | Experimental compatibility branch only. Requires player, shaders, UI, native-AA and FG integration validation. NVIDIA's current FG guide covers Vulkan; AMD SDK support depends on the pinned revision. |
 | OptiScaler / DLSSG-to-FSR3 wrappers | Useful external experiments, poor core dependency. Upscaler interception does not provide missing camera/presentation contracts. Current OptiFG documentation limits FG to DX12; DX11 SR support is a separate capability. [OptiScaler](https://github.com/optiscaler/OptiScaler), [OptiFG](https://github.com/optiscaler/OptiScaler/wiki/OptiFG). |
 | Driver FG / capture-based interpolation | Useful comparison baselines, not implementations of this mod's DLSS/FSR FG integration. They do not consume Better AA's explicit scene/depth/motion/UI contract. [NVIDIA Smooth Motion](https://www.nvidia.com/en-ph/geforce/news/nvidia-app-global-dlss-overrides-rtx-40-series-smooth-motion/), [AMD AFMF](https://www.amd.com/en/products/software/adrenalin/afmf.html). |
 | Camera viewport tricks, duplicate presentation stacks, CPU image interpolation | Poor default fit: risk competing camera dimensions, input mapping, render order or avoidable transfers. Reuse Redux's existing ownership before inventing another scene camera stack. |
 
-Unity's public sample repository carries older native headers than the locally
-installed editor. In official Unity **6000.4.1f1** `Editor/Data/PluginAPI`,
+The coordinator pins the official Unity **6000.5.8f1** `Editor/Data/PluginAPI`
+headers to match the gated Redux player. In that API,
 `IUnityGraphicsD3D11.h` exposes `GetSwapChain`, `GetSyncInterval` and
 `GetPresentFlags`; `IUnityGraphicsD3D12.h` exposes v8, queue/fence access and
 swapchain access. `IUnityRenderingExtensions.h` provides
 `kUnityRenderingExtQueryOverridePresentFrame`, which tells Unity to skip its
-own Present, and documents the `GfxPlugin` preload naming convention.
-These are useful supported interfaces to investigate, not proof that the exact
-Redux 6000.5.8 player will preload a new mod plugin or honor its callbacks.
-There is no swapchain replacement setter in those inspected interfaces.
+own Present, and documents the `GfxPlugin` preload naming convention. Merely
+copying a new DLL into a built player does not ensure automatic preload.
+`FrameGenerationNative` invokes `RbaFgGetRenderEventFunc` through Unity's DllImport
+loader so Unity supplies `UnityPluginLoad`, then checks the actual module path
+and initialized renderer. Late initialization registers the device callback and
+inspects the existing renderer; it does not manually invoke `UnityPluginLoad`.
+There is no swapchain replacement setter in these interfaces.
 
 The commercial FG manual supports Windows x64 DX11/DX12 and built-in/URP/HDRP,
 but excludes DX11 exclusive fullscreen and Editor testing. It describes global
@@ -341,25 +403,64 @@ both extents; an expired submission cannot be presented.
 ```mermaid
 flowchart LR
     A[Redux scaled-space and physics cameras] --> B[Render-sized color, depth and motion]
-    B --> C[One DLSS or FSR reconstruction]
+    B --> C[One AA resolve: TAA, DLAA, FSR Native AA, or SR]
     C --> D[Display-sized scene and output effects]
     D --> E[Redux scene presenter and native-resolution UI]
     E --> F[Normal Unity presentation]
     D -. HUD-less scene .-> G[Optional FG presentation service]
     B -. frame metadata and retained inputs .-> G
-    E -. UI color and alpha .-> G
+    E -. same-frame final color with UI .-> G
     G --> H[Paced real and generated presents]
 ```
 
-Only one of normal presentation and FG presentation owns Present at a time.
-The FG service receives finished real frames; it never advances the simulation,
-camera jitter or temporal history for generated frames.
+One coordinator decides ownership of every real-frame Present. With FG active,
+it maintains exactly one original Unity swapchain Present per real frame and
+presents real/generated images on its owned child chain. Original-chain calls,
+child calls and SDK-reported generated presentations are separate counters.
+The FG service never advances simulation, camera jitter or temporal history for
+generated frames. Keeping the original chain progressing is necessary for this
+Unity player's frame-latency wait; hiding its surface does not remove that wait.
+
+The D3D12 chain has a separate HWND ownership contract. DXGI permits only
+one flip-model swapchain per HWND; Unity's Present override does not relinquish
+its existing chain or provide a replacement setter. Do not create a second
+flip-model chain against that HWND and assume it is supported.
+[DXGI window/swapchain contract](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgifactory2-createswapchainforhwnd).
+
+Windows also supports a D3D12 **composition** swapchain attached through
+DirectComposition to the existing Unity window, distinct from a second
+HWND-bound flip chain. That API capability is not the selected vendor FG path:
+the pinned AMD wrapper requires an HWND, and Streamline composition interception
+has not established a usable path. Diagnostic composition code stays separate
+from the child-window coordinator.
+[Composition chain](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgifactory2-createswapchainforcomposition),
+[existing-window composition](https://learn.microsoft.com/en-us/windows/win32/api/dcomp/nf-dcomp-idcompositiondevice-createtargetforhwnd).
+
+The selected route is a full-client **disabled child HWND**, owned by the Unity
+window thread, with one intercepted D3D12 child swapchain. The original window
+retains focus, keyboard/mouse input and its existing unhooked chain. The child
+starts hidden and becomes visible only with a fresh completed image; resize,
+missing inputs or disable hide it immediately. Its epoch/lease remains alive
+until every provider and GPU user retires. Never substitute an invented HWND,
+change the parent's styles or forward synthetic input to compensate for ownership.
+
+This supplies the real HWND required by both Streamline's supported interception
+path and the pinned AMD swapchain wrapper. The AMD wrapper cannot directly wrap
+the composition chain; the child route uses its existing pacing code without
+implementing a replacement scheduler. Existing non-FG
+chains are allowed with selective hooking. Unity's original chain does not by
+itself rule out a separate child FG chain.
+[Pinned source findings](../Native/Presentation/README.md).
 
 The shared frame description needs:
 
 - A real-render frame ID, camera-graph generation and reset reason.
 - Actual render dimensions, maximum render allocation, output dimensions and
   viewport; never infer all four from `Screen.width` or a rounded percentage.
+  Unity's screen/reconstruction dimensions can differ from the native borderless
+  swapchain dimensions. The FG owner uses the actual swapchain extent and
+  reproduces any final scene scaling before
+  comparing HUD-less and final-with-UI inputs.
 - Color domain/transfer function, actual exposure convention, depth direction
   and near/far planes, normalized-or-pixel motion convention, jitter in render
   pixels, and non-jittered current/previous transforms.
@@ -405,107 +506,290 @@ changing vendor defaults to conceal bad inputs.
 
 ### Independent frame-generation contract
 
-Introduce `IFrameGenerationProvider` only when a presenter prototype needs it;
-do not add FG as another `ITemporalBackend`. Reconstruction selection and FG
-selection are independent: where supported, FSR FG may pair with DLSS SR, modern FSR
-or native AA. The provider reports its actual runtime, supported multipliers,
-API/device support and failure reason. Do not infer FG/MFG support from an RTX
-name or from successful SR. Failures disable FG while preserving usable SR.
+`FrameGenerationRuntime` is the optional presentation service; it is independent
+of `ITemporalBackend` and Redux's reconstruction scale claim. One shared
+**Frame generation** setting combines provider and total display multiplier:
+**Off**, **Auto**, **DLSS 2x**, **DLSS 3x**, **DLSS 4x**, **FSR 4 2x** and
+**FSR 3.1 2x**. Off is the default. The regular menu and F10 use the same policy
+and persisted value; there are no separate enable/provider/multiplier controls.
+FG-only changes have a separate deferred apply path and do not reconfigure AA
+or acquire render-scale ownership.
 
-The native presentation owner must have a real-frame input lease, display-sized
-HUD-less scene and an explicit UI strategy. Map sprites currently drawn after
-AA are still scene draws; they are not automatically excluded from FG. Move
-their composition into the output/UI contract or leave FG off in map view.
-Likewise audit UI Toolkit, canvas UI, IMGUI/F10, cursor and other overlays.
-Never re-run game UI callbacks or simulation to synthesize extra frames.
+`FrameGenerationNative` binds the installed coordinator through Unity's native
+plugin loader, then verifies the loaded module's exact path, initialized renderer
+and ABI. `FrameGenerationRuntime` discovers each installed provider with a hidden
+child context. `FrameGenerationAvailability` publishes its actual SDK multiplier
+mask and, for AMD, selected family/version only after the probe context and child
+lease retire. File presence, a GPU name and successful DLAA/SR initialization are
+not capability checks. A completed probe makes a development choice available;
+it does not certify combined player image quality, cadence or latency.
 
-Retain GPU inputs until the FG queue completes, including on disable, resize
-and device loss. A DX11-to-DX12 bridge must establish adapter identity,
-shareable resource formats, texture-copy costs, fences, backbuffer ownership,
-window transitions and one Present owner before interpolation is enabled.
-Native resources must not outlive their device or be recycled while asynchronous
-work still references them. A callback that merely generates a texture is not
-a complete FG implementation.
+The saved request is distinct from the effective fallback and temporary scene
+suspension. Invalid strings become Off; a saved unavailable request stays visible
+with its reason while the actual available-provider list remains truthful.
+Diagnostics distinguish request, selected provider and active presentation;
+displayed FPS and latency remain unset until measured rather than inferred from
+the multiplier.
 
-NVIDIA Streamline's FG guide at 2.14.1 integrates through
-presentation interception on D3D12/Vulkan. It needs matching per-frame constants,
-valid inputs through Present, feature support checks and Streamline Reflex integration.
-Plan early native initialization; its manual-hooking mode can use a pre-existing
-D3D device, but `slInit` must precede required intercepted operations, including
-swapchain creation. Loading after Unity's entire presentation stack already
-exists does not satisfy that contract.
-Unity's Present override alone does not supply that interception contract.
-Dynamic MFG is a separate capability and is D3D12-only in that guide.
-[FG integration](https://github.com/NVIDIA-RTX/Streamline/blob/v2.14.1/docs/ProgrammingGuideDLSS_G.md),
+| Requested value | Compatibility order |
+| --- | --- |
+| Auto | Highest supported DLSS multiplier up to 4x, then FSR 4 2x, then FSR 3.1 2x, then Off. |
+| DLSS 4x / 3x / 2x | Highest supported DLSS multiplier no greater than requested, then supported FSR 2x, then Off. |
+| FSR 4 2x | FSR 4 2x, then FSR 3.1 2x, then Off. |
+| FSR 3.1 2x | FSR 3.1 2x, then Off; preserve an explicit compatibility-provider choice. |
+
+NVIDIA's `numFramesToGenerateMax` counts generated frames; the menu counts total
+frames, so 2x means one generated frame. The provider intersects the actual SDK
+mask with the supported 2x–4x scope. This permits ordinary 2x FG on a device that
+cannot run the requested MFG multiplier, without identifying support from an
+RTX model name. AMD best and explicit compatibility probes use the pinned
+SDK's separate FG version selection: FG 4.0.1 where supported, or FG 3.1.6.
+Its swapchain implementation is 3.1.7. An FSR 4.1 SR context does not prove FG 4
+support; AMD's output-array capacity does not prove MFG, so AMD exposes 2x only.
+
+The common publisher permits TAA, DLAA, FSR Native AA or SR to feed either
+available FG provider. Selecting NVIDIA FG does not force DLSS SR or a reduced
+render scale; FSR FG can remain available when NVIDIA FG is unavailable. These
+pairings share capture and presentation code, rather than creating an FG backend
+for each AA mode. Capture/provider failures suspend FG and preserve normal AA.
+
+### Resolved-frame publisher and input ownership
+
+`ResolvedFrameCapture` registers one optional `IResolvedFrameConsumer`. Each
+backend owns its producer lifecycle and sequence; the token also carries the
+actual Unity frame ID for joining its scene to that frame's final backbuffer.
+Native AA has its own producer identity without claiming an SR scale lease.
+No consumer, or a consumer declining `TryBegin`, causes no FG texture copy or
+allocation in the backend. Off may still observe metadata needed for later
+activation; it does not capture pixels.
+
+| Producer seam | Published successful result |
+| --- | --- |
+| `CustomTaaBackend.RenderCore` | The final sharp/plain resolve pass writes an accepted leased target, then blits that actual result to the normal destination. Debug views and a missing/incompatible target decline capture. History color and linearized history depth are never published as final color/device depth. |
+| `NvidiaDlaaBackend.RenderCore` | Actual `_output` after successful execution, with local raw device depth and sanitized motion. |
+| `AmdFsr2Backend.RenderCore` | Actual `_output` after successful native execution, with matching local depth/motion and reset metadata. The class name is retained internally; the algorithm is modern FSR. |
+| Either SR branch | Publication follows an accepted `ReduxSceneOutput.Submit` for the same real-frame token. The ordinary image-effect destination is a low-resolution placeholder and is never used as the resolved SR image. |
+
+The publisher snapshots nonjittered GPU projection, rigid world-to-view,
+current/previous transforms, jitter in render pixels, depth direction, camera
+planes/FOV/aspect, reset state, exposure convention and unscaled frame time before
+advancing history. Wire matrices are row-indexed storage with Unity column-vector
+multiplication. A frame gap resets provider history instead of inventing motion
+across missing Unity frames.
+
+The native FG inputs use top-left texture coordinates. `FrameGenerationSurfaces`
+sets `_NativeFlipY` when converting HUD-less color, raw depth and sanitized motion;
+all three sample `y = 1 - y`. Depth also retains Unity's required source
+`_MainTex_TexelSize` correction before that conversion. The final swapchain copy
+already has native orientation and is not flipped. Flipping sampling positions
+does not change stored motion-vector components.
+
+| Quantity | Conversion at the common FG boundary |
+| --- | --- |
+| Motion | The sanitizer stores `(current UV - previous UV)` in bottom-left coordinates, multiplied by its configured component signs. Native previous-minus-current, top-left motion therefore uses scale `(-signX, +signY)`. AMD then multiplies by the actual render dimensions exactly once. |
+| Projection and transforms | Native AA's GPU projection already has the required clip orientation. `Camera.NativeClip` negates row 1 only for a projection captured with `ProjectionRendersIntoTexture`; apply the same conversion to projection, current view-projection and previous view-projection. World-to-view is unchanged. |
+| Raster jitter | PPv2's perspective jitter adds `2*jX/width` and `2*jY/height` to projection offsets. With Unity's view-space forward convention, the resulting native top-left pixel displacement is `(-jX, +jY)`. This displacement is the FG wire jitter; it is separate from the existing SR dispatch convention. |
+
+The shader tests use asymmetric color/depth/motion patterns; camera tests verify
+signed motion, projection and nonzero jitter analytically. These protect the shared
+coordinate contract but do not establish moving-image quality in the player.
+
+A consumer borrows resolved color, raw device depth and sanitized motion only
+within the callback. It queues its own GPU copies before the borrow closes.
+Producer generations and borrow serials prevent a reentrant callback from
+committing old metadata into a reconfigured producer; failures close the borrow
+idempotently and disable capture while the AA output remains usable.
+
+The publisher's motion surface preserves the AA backend's diagnostic choice:
+with outlier rejection disabled, that surface still converts component signs
+and repairs eligible procedural terrain motion.
+`FrameGenerationRuntime` therefore owns an independent, required motion filter.
+It uses the borrowed frame's exact current/previous matrices, jitter, reset and
+component signs, together with the normalized native depth slot. The filter
+returns depth rows to the motion shader's bottom-left coordinates, rejects
+nonfinite/excessive vectors and detects a broadly corrupted field before using
+bounded camera reprojection. Reset frames discard stale motion. This does not
+change the AA sanitizer setting or advance its history. The repaired motion is
+copied into the immutable FG slot before its native capture event; intermediate
+filter surfaces can be reused in Unity command order. A missing shader or invalid
+snapshot declines FG capture while normal AA continues.
+
+`FrameGenerationSurfaces` owns three managed source slots. Each contains physical
+display-sized RGBA8 encoded-sRGB HUD-less color, render-sized R32 raw depth and
+RG16 normalized motion, plus a TAA final target when needed. The native
+`FrameGenerationInputPool` owns three immutable shared slots on the selected
+provider's actual same-adapter D3D12 device and DIRECT queue. It accepts already
+converted D3D11 inputs; it does not create a second private D3D12 device or copy
+provider output back through D3D11.
+
+The render-thread capture event queues scene copies after Unity's conversion
+commands. At the matching Present query, `CopyFinal` copies the original D3D11
+backbuffer before its source Present. Separate D3D11 copy and D3D12 ready/retirement
+fences govern slot reuse. Retaining a managed or COM reference alone is not a
+pixel lease. Managed surfaces remain immutable until a native source-copy
+acknowledgment; native slots remain immutable through provider retirement and a
+queue-signaled retirement fence. Busy does not permit overwrite, and unknown
+completion after failure/device loss quarantines resources instead of freeing
+them by elapsed time.
+
+### Final UI, color and native presentation
+
+The initial UI strategy supplies retained HUD-less scene color and the same
+real frame's final color including UI. It uses the vendors' basic compatibility
+handling, including AMD's HUD-less configuration; it does not promise exact
+premultiplied alpha extraction. Final UI color must include all rendering before
+the actual Present, while the scene capture must match its scaling and encoding.
+Toolkit/canvas UI, IMGUI/F10, cursors and moving overlays still require player
+validation. Never rerun UI callbacks, physics or simulation for generated frames.
+
+The runtime uses actual native backbuffer dimensions, not `Screen.width`, to size
+the HUD-less copy and final UI input. Redux's reconstruction size and the native
+window size may differ; the scene is scaled to the native extent while preserving
+the validated aspect. The supported output is windowed/borderless RGBA8 SDR with
+actual Unity HDR disabled. A monitor's HDR desktop color space describes the
+composition target, not necessarily the game's swapchain; it does not by itself
+reject an SDR game surface. HDR/scRGB/10-bit game output and exclusive fullscreen
+remain outside this path. The parent client and native backbuffer extents must
+match the full-client child. If a windowed resize leaves Redux's backbuffer at
+another size, FG hides/drains the child and suspends; it can re-arm after matching
+geometry returns. Windowed mode alone does not prove compatible dimensions.
+
+`GfxPluginReduxBetterAAFrameGeneration.dll` owns the exact Unity Present query
+and a full-client `WS_CHILD | WS_DISABLED` HWND on the parent window thread.
+The parent retains focus/input and its existing D3D11 chain; the selected vendor
+owns one D3D12 child chain. The child starts hidden and is shown only for a fresh
+completed image. Epoch changes, invalid inputs and disable stop acceptance and
+hide it; its HWND cannot be destroyed until every provider present permit and
+GPU lease has retired. The UI thread never waits for the render worker.
+
+One real EOF packet is queued after all cameras/UI every Unity frame, including
+Off, menus and retirement. It advances per-frame Present ownership even without
+a scene capture. The coordinator either yields the original Present to Unity or
+claims the ticket, copies final color and calls the original chain exactly once
+with Unity's sync interval/flags before submitting the child frame. Duplicate
+queries and failed owned Present attempts cannot issue a second source Present.
+This source-maintenance contract preserves Unity's frame-latency waitable chain;
+it does not replace or retroactively hook the parent's chain. Supported tearing
+flags must agree with windowed mode, sync interval zero and chain capability.
+
+The initial providers retain one accepted input batch. A valid current captured
+frame may wait on the presentation thread for the preceding batch for at most
+50ms. NVIDIA uses its bounded Poll; AMD polls its worker with a monotonic deadline.
+The wait is excluded from Off, draining, menus and invalid captures. Controls,
+window epoch and scene eligibility are rechecked before continuing. A timeout
+drops the current capture while retaining the previous input/window leases;
+completion permits the next batch and a frame gap resets history. Eligible
+same-epoch backpressure retains an already visible completed image instead of
+alternating between the child and the ordinary source chain. Only a newer
+completed image advances the 250ms progress deadline; repeated polls or dropped
+captures cannot extend it. If that deadline expires, the child hides once and FG
+remains suspended for that selection epoch. The diagnostic reason directs the
+player to select Off, then reselect FG to retry. Invalid captures, scene changes,
+resize and disable still hide/drain immediately. Under heavy load, fewer captures
+may contribute generated frames while ordinary rendering continues. These bounds
+are not latency or frame-rate guarantees.
+
+`StreamlineProvider` initializes pinned Streamline 2.14.1 before creating its
+intercepted D3D12 queue/child chain, with selective manual hooking that leaves
+Unity's existing chain alone. Real PlayerLoop simulation/render boundaries feed
+Reflex markers; constants and four retained textures describe that real frame.
+SDK and queue completion govern retirement. Runtime restart preserves the
+provider's own verified module ownership rather than adopting an unrelated
+preloaded runtime. Healthy Off disables DLSS-G and frees its viewport resources,
+child chain and retained inputs after retirement. It keeps one initialized SDK,
+device and queue session so NGX callbacks never depend on an unloaded/reinitialized
+`sl.common`. Reuse requires the same pinned physical runtime directory and module
+identities, adapter, presentation thread and healthy device. A new child chain and
+viewport are created for the next activation. Terminal initialization or cleanup
+failure poisons the session and requires process restart; it is not retried as a
+healthy cache. Idle and quarantined ownership holders are retained through process
+exit, avoiding SDK calls or COM teardown from DLL static destruction under the
+Windows loader lock. This bounded retention does not keep a healthy Off window or
+input lease alive. [FG integration](https://github.com/NVIDIA-RTX/Streamline/blob/v2.14.1/docs/ProgrammingGuideDLSS_G.md),
 [manual hooking](https://github.com/NVIDIA-RTX/Streamline/blob/v2.14.1/docs/ProgrammingGuideManualHooking.md),
 [Reflex](https://github.com/NVIDIA-RTX/Streamline/blob/v2.14.1/docs/ProgrammingGuideReflex.md).
 
-AMD FSR 3.1 decouples frame generation from upscaling. The inspected SDK 2.3.0
-snapshot is DX12-oriented and explicitly lacks Vulkan support; older FSR 3.1
-documentation describes a Vulkan backend. Choose one exact SDK/backend revision,
-not a mixture of current headers and older compatibility claims. FSR 3 source
-components have MIT terms; current FSR 4 binaries and other SDK components have
-their own terms. NVIDIA Streamline source licensing likewise does not grant
-blanket redistribution rights for NGX/DLSS binaries. Keep exact runtime hashes,
-version compatibility and component notices in the existing runtime packaging
-scheme before distributing any additional provider.
-[AMD SDK](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/tree/60f4ea81909200d8542eca14dccb2628b763a9a3),
-[AMD license](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/docs/license.md),
-[NVIDIA Streamline license](https://github.com/NVIDIA-RTX/Streamline/blob/v2.14.1/license.txt),
-[NVIDIA DLSS license](https://github.com/NVIDIA/DLSS/blob/main/LICENSE.txt).
+`AmdFrameGenerationProvider` uses the official versioned Configure/PrepareV2 and
+swapchain callback path on a persistent worker. The SDK paces generated and real
+child presents; the coordinator does not emit them back-to-back itself. The
+worker retains the four textures and HWND present permit through SDK presentation
+waits, queue completion and restoration of inputs to COMMON. SDK waits that may
+be unbounded stay on that worker; bounded caller polling and asynchronous Destroy
+never claim retirement merely because the caller stopped waiting.
+[AMD SDK and component terms](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/tree/60f4ea81909200d8542eca14dccb2628b763a9a3),
+[FG 4 requirements/call order](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/docs/techniques/frame-interpolation-ml.md).
 
-The alternative open-source upscaler was inspected at FSR3Unity
-`71879e71aa72465a79bdf009d7d71f9f7ab83066` (FSR 3.1.3; default branch last
-updated 2024-12-15). It needs a maintenance/Unity-version review before adoption.
-The inspected AMD SDK 2.3.0 commit contains FG 3.1.6 and its swapchain 3.1.7.
-The SR API headers and signed upscaler DLL are now pinned build/runtime inputs
-for the optional native package. FG binaries are not included.
+### Native modules and packaging
 
-FG should start disabled. Suspend interpolation across loading, scene cuts,
-quickload/revert, vessel changes, origin snaps, resize and unsupported UI states;
-resume only with a valid new frame sequence. Paused gameplay still needs correct
-camera/UI updates, but no interpolated simulation. Track real rendered FPS,
-displayed FPS, CPU/GPU frame times and input latency separately. KSP2's CPU/physics
-limits will not disappear with lower render resolution or extra display frames.
+| Module | Runtime responsibility |
+| --- | --- |
+| [Presentation](../Native/Presentation/README.md) | Unity initialization/query ABI, child HWND lifetime, real EOF/capture tickets, source Present ownership, provider switching and asynchronous retirement. |
+| [Streamline](../Native/Streamline/README.md) | Pinned runtime loading, real capability discovery, Reflex/constants/tagging, intercepted DLSS-G child chain and 2x–4x dispatch. |
+| [AMD FG](../Native/FrameGeneration/README.md) | Shared D3D11-to-provider-D3D12 input pool, actual best/compatibility SDK contexts and paced AMD 2x child provider. Direct texture/round-trip targets remain separate diagnostic tools. |
 
-### Implementation and validation order
+The optional `tools/Build-Native.ps1 -FrameGeneration` route builds the coordinator
+and explicitly selected providers from pinned external inputs. Its companion ZIP
+puts the coordinator in `KSP2_x64_Data/Plugins/x86_64` and providers/runtimes
+under `mods/ReduxBetterAA/native/frame-generation`; it includes exact component
+notices and verifies hashes/ABI exports. It does not download vendor binaries,
+replace game assemblies or add native files to the main mod ZIP. NVIDIA and AMD
+components are independently optional. See [native packaging](../NATIVES.md#frame-generation-companion).
 
-1. **Prove Redux target/output transport.** In a disposable player, instrument
-   actual camera order, frame IDs, texture sizes and the presentation source.
-   Exercise 100% and 50% with a simple spatial copy first. Require native UI,
-   accurate picking, correct scaled-space composition, resize recovery and Off
-   restoration. This experiment can reject a bad presenter design without a
-   vendor algorithm hiding it.
-2. **Prove the resolve color domain.** Capture before/after PPv2 and exposure
-   metadata. Choose a supported pre-tone-map seam or establish the post-PPv2
-   LDR path. Verify that the reconstructed texture reaches the final presenter
-   without a low-resolution round trip or double tone mapping.
-3. **Add DLSS SR and modern FSR SR separately.** Parameterize the provider bridges,
-   then test fixed quality modes on identical camera paths and settings. Keep
-   native-AA baselines, source/display-sized captures and same-frame manifests.
-   Add focused tests for size/flag policy, cache invalidation and rollback;
-   use in-game motion evidence for quality claims.
-4. **Evaluate FG presentation independently.** First verify exact-player native
-   plugin loading and pass-through Present with no generated frames. In parallel,
-   resolve the commercial provider's custom-input and distribution questions.
-   Compare the available implementation with a small owned bridge before taking
-   on a complete native swapchain/interpolation subsystem.
-5. **Enable one FG provider at 2×, then consider MFG.** Establish bounded resource
-   lifetime, correct UI composition and stable pacing. Add multipliers only when
-   the vendor reports support and measured latency/quality justify them.
+FG starts disabled and suspends across unsupported scenes/cameras, loading,
+quickload/revert, vessel changes, resize and other invalidated frame sequences.
+Paused gameplay uses real unscaled timing for camera/UI updates, without generating
+simulation steps. Main-thread Tick and EOF pumping continue during shutdown until
+native tickets, provider work and the child lease retire. KSP2 CPU/physics limits
+remain independent of lower render resolution or extra displayed frames.
 
-Required player coverage includes terrain/struts during pan and launch, plumes,
-clouds and foliage, floating origin, time warp, quickload/revert, vessel switches,
-menu/map/VAB transitions, other mods, minimize/alt-tab, window modes, resolution
-and UI scaling, and repeated mode/provider switches. Test the supported Redux
-versions and both NVIDIA and AMD hardware; existing RTX-only evidence is not
-cross-vendor validation. Use normal mode selection, not F10 live A/B, for timing.
-Present-aware capture/ETW or equivalent is needed to observe generated presents;
-ordinary Unity screenshots and a capture file's FPS do not measure FG cadence.
+### Validation requirements
 
-The exact 6000.5.8f1 editor was found at
-`S:\Development\Unity\6000.5.8f1\Editor\Unity.exe` and is the build target.
-The prototype implements fixed quality reconstruction and its safe restoration;
+The standard checks are maintained in [tests/README.md](../tests/README.md).
+Build the main mod with the pinned Unity 6000.5.8f1 editor, run focused managed
+and native contracts, and review both the main ZIP and optional FG companion.
+Dependency changes need a fresh-checkout build. Keep counts, captures, source
+hashes and run-specific results in release/PR records outside this architecture.
+
+Limited integration checks on RTX 5070 Ti exercise the packaged D3D11 player
+path with DLSS 2x–4x and FSR 3.1 FG 2x. DLSS 4x was exercised with TAA, DLAA,
+FSR Native AA and both SR producers; DLSS 2x/3x with TAA; and FSR 3.1 FG 2x with
+TAA, FSR Native AA and FSR SR. Coverage also includes actual capability-driven
+settings and Auto selection, provider/multiplier switches and Off/re-enable. Captured resolved
+color, final UI color, raw depth and protected motion agree with the common
+orientation and camera/jitter contract. Source-chain ownership counters show one
+original Present per owned real frame; separate SDK/native counters record extra
+vendor presentations. Off retires the child and input pool. These checks establish
+bounded integration behavior, not broad image quality or displayed cadence.
+
+Window/backbuffer extent mismatch correctly suspends FG, and restoring matching
+geometry permits automatic re-creation. This does not establish the provider's
+explicit `WindowChanged` error branch, minimize/alt-tab or device-loss recovery.
+AMD FG 4 and older RTX hardware have not been physically tested. Limited
+PresentMon traces cover native-AA/FG combinations and a heavy scene; broader
+displayed cadence, input latency and moving flight/UI quality remain unvalidated.
+The live traces did not trigger the 250 ms fallback. Its deadline, latched
+ordinary-rendering state and explicit Off/re-enable recovery are covered by
+native contracts. Heavy GPU load can drop current captures while preserving
+pending leases; no requested multiplier implies a measured FPS gain.
+
+Required player coverage includes each native-AA/SR producer with each available
+FG provider, missing-runtime fallback, repeated Off/re-enable and provider changes,
+terrain/struts during pan and launch, plumes/clouds/foliage, floating origin,
+time warp, quickload/revert, vessel changes, menu/map/VAB transitions, other mods,
+minimize/alt-tab, window modes, resolution/UI scaling and device recovery. Inspect
+actual same-frame color/depth/motion and final UI inputs, not only native success
+counters. Use normal mode selection with F10 live A/B stopped for timing.
+
+Track original-chain Present attempts/successes, child real calls and SDK/native
+generated-presentation evidence separately. A per-ticket `GetLastPresentCount`
+delta can detect duplicate source ownership; reset evidence on query failure,
+chain replacement or discontinuity. It does not establish displayed cadence.
+Presentation-aware tracing such as PresentMon/ETW is needed for display and
+latency claims; ordinary Unity screenshots, capture-file FPS and Unity FPS times
+a multiplier do not provide those measurements.
+[Present call counter](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-getlastpresentcount).
+
+The reconstruction adapter implements fixed quality reconstruction and restoration;
 pre-tone-map output effects, scoped texture mip bias and complete reactive masks
 remain follow-up quality work. Close-vessel SR currently fails eligibility with
 an explicit reason because its native-color composition/depth/motion contract is
@@ -513,13 +797,19 @@ not yet proven. Do not expose a native-close toggle that only switches rendering
 order: that would mix raw geometry with post-tone-map color and leave FG blind
 to the close geometry.
 
-`FrameGenerationFrame` describes immutable per-frame resources, color/motion
-conventions, exposure/jitter, producer completion and retained input lifetimes.
+`FrameGenerationFrame` describes immutable metadata for per-frame resources,
+color/motion conventions, exposure/jitter, explicit nonjittered camera transforms,
+FOV/aspect, producer completion and retained input lifetimes. Its texture snapshots
+detect changed descriptors and liveness, not pixel overwrites or every native
+allocation recreation. Only a real native slot/fence lease can guarantee retention.
 `FrameGenerationGate` rejects stale graph/frame tokens, incompatible providers,
 HUD-contaminated color, incomplete UI separation, reset warmup, and native close
-composition without display-sized depth, motion and coverage. These checks are
-input eligibility only. No FG provider is registered, no Present is intercepted,
-and `FrameGenerationInputsComplete` remains false.
+composition without display-sized depth, motion and coverage. These are
+declarative eligibility checks, not the native lease authority. The
+live basic-UI path instead uses `ResolvedFrameCapture`, native capture/EOF tickets
+and actual copy/provider fences. It does not set `FrameGenerationInputsComplete`
+or promote these metadata snapshots into proof of complete close-vessel/UI
+coverage.
 
 The intended optional close-vessel sequence is world reconstruction, native-sized
 close-vessel shading/composition into a common color domain with full depth and
@@ -528,41 +818,3 @@ prepass before world SR may be necessary to keep background history from leaking
 through close silhouettes. A close vessel cannot be treated as a UI overlay or
 painted only on real frames. Until those inputs exist, normal full-scene native
 AA is the compatibility path.
-
-
-### Implementation validation, 2026-09-12
-
-The first combined build passed 221 EditMode tests and 20 portable package tests.
-A separately built official-SDK bridge passed same-adapter D3D11/D3D12 GPU tests
-on RTX 5070 Ti (FSR provider 3.1.5), including native AA, 2x reconstruction,
-LDR/manual exposure, bounded queue overflow, texture lifetime and destruction.
-The shader/package build used the pinned Unity 6000.5.8f1 editor.
-
-A disposable copy of Redux 0.2.9.0.104521 passed an 11-assertion player smoke
-with nine screenshots: menu FSR native AA, menu SR-to-native fallback, flight
-Off/native FSR/FSR SR/DLSS/DLAA, Off restoration and unpaused FSR SR. Captured
-runtime diagnostics report 1287x724 inputs and 1920x1080 output for both FSR
-and DLSS Quality, with no vendor failure. Settings in that process list FSR 3.1
-Native AA/Upscaling, never FSR 4 on the RTX GPU. The original game installation
-was not modified, and the original player profile was restored after testing.
-Local report: `G:\KSP2-ReleaseTesting\upscaling-20260912\smoke\2026-09-12_182302_527_3d28d2a04ddb\smoke\report.json`.
-
-These are execution/transport checks, not a quality or performance claim.
-The post-PPv2 color/exposure contract, unusual grading/disabled-PPv2 states, asymmetric
-depth/motion orientation, transparency, fullscreen/alt-tab transitions and long-run
-pacing require additional coverage. Ordinary window resizing is covered below. Modern FSR reports known Unity conversion
-and three native interop slot allocations; AMD internal history and driver
-allocations remain outside that estimate. There is no FG, latency or AMD
-FSR 4.1 hardware validation in these results.
-
-
-A follow-up player sweep passed 63 assertions with 12 screenshots on the final
-binary. It checked actual selected providers and input/output extents at 50%,
-FSR recovery from 1920x1080 to 1280x720, DLSS recovery from 1280x720 to
-1600x900, camera motion samples, map fallback to same-family native AA, the
-map-Off override, save reload and final Off restoration. Recovery happened
-without reselecting the backend after resize. Expected Redux target invalidation
-now requests reacquisition and does not latch a vendor execution failure.
-The combined Unity build still passes all 221 tests. The player profile and
-window state were restored after the run. Local report:
-`G:\KSP2-ReleaseTesting\upscaling-20260912\sweep\2026-09-12_183556_514_05d9107a31f4\sweep\report.json`.

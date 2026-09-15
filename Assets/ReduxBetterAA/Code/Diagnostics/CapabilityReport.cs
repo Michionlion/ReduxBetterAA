@@ -10,6 +10,7 @@ namespace ReduxBetterAA.Diagnostics
         public int frame;
         public string capturedUtc;
         public string captureReason;
+        public string captureStage;
         public RuntimeRecord runtime;
         public CapabilityRecord capabilities;
         public CameraGraph cameraGraph;
@@ -90,6 +91,9 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     public sealed class MotionSignDiagnosticRecord
     {
+        public string texelSizeProvenance = "CPU shader-global observations at report sampling; " +
+            "these vectors may be stale for another camera. Use captured buffer dimensions, " +
+            "not these vectors, to determine the input extent.";
         public string view;
         public string selectedCamera;
         public bool cameraAvailable;
@@ -147,6 +151,21 @@ namespace ReduxBetterAA.Diagnostics
         public DlaaSettingsRecord dlaa;
         public Fsr2SettingsRecord fsr2;
         public PerformanceProfilesRecord performance;
+        public FrameGenerationRecord frameGeneration;
+    }
+
+    [Serializable]
+    public sealed class FrameGenerationRecord
+    {
+        public string requested;
+        public string selected;
+        public bool active;
+        public string[] availableModes;
+        public string unavailableReason;
+        // Null means unmeasured; Unity's frame count is not displayed FG FPS.
+        public float? renderedFramesPerSecond;
+        public float? displayedFramesPerSecond;
+        public float? inputLatencyMilliseconds;
     }
 
     [Serializable]

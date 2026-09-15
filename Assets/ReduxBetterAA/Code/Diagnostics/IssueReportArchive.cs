@@ -10,13 +10,18 @@ namespace ReduxBetterAA.Diagnostics
     [Serializable]
     internal sealed class IssueReportManifest
     {
-        public int schemaVersion = 3;
+        public int schemaVersion = 4;
         public string id;
         public string capturedUtc;
         public string status;
         public int inputFrame = -1;
         public int outputFrame = -1;
         public int screenshotFrame = -1;
+        public int capabilitiesFrame = -1;
+        public string capabilitiesStage = "unavailable";
+        public bool capabilitiesMatchOutput;
+        public int motionMatrixFrame = -1;
+        public bool motionMatrixMatchesOutput;
         public string camera;
         public string inputStage = "unavailable";
         public string outputStage = "unavailable";
@@ -27,8 +32,25 @@ namespace ReduxBetterAA.Diagnostics
             "Screenshots include visible UI. " +
             "Capture stalls are expected and are not performance measurements.";
         public readonly List<BufferCaptureRecord> buffers = new List<BufferCaptureRecord>();
+        public readonly List<InputBindingRecord> inputBindings = new List<InputBindingRecord>();
         public readonly List<string> errors = new List<string>();
         public readonly List<ReportFileRecord> files = new List<ReportFileRecord>();
+    }
+
+    [Serializable]
+    internal sealed class InputBindingRecord
+    {
+        public string binding;
+        public int frame;
+        public bool requestedByCamera;
+        public int width;
+        public int height;
+        public string format;
+        public float[] cpuGlobalTexelSize;
+        public bool cpuGlobalDimensionsMatchTexture;
+        public string provenance = "Texture dimensions are from the bound input before diagnostic blits. " +
+            "The CPU global texel-size vector is a separate observation and may describe another camera; " +
+            "matching dimensions alone do not establish its orientation or ownership.";
     }
 
     [Serializable]

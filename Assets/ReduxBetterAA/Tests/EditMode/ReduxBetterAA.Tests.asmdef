@@ -14,6 +14,7 @@
     "autoReferenced": false,
     "overrideReferences": true,
     "precompiledReferences": [
+        "0Harmony.dll",
         "Unity.Postprocessing.Runtime.dll",
         "Assembly-CSharp.dll",
         "ReduxLib.dll",

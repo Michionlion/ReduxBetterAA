@@ -27,7 +27,8 @@ Shader "Hidden/ReduxBetterAA/FsrBridgeInputs"
             #pragma vertex vert_img
             #pragma fragment FragExposure
             #include "UnityCG.cginc"
-            // Input is post-PPv2 linear LDR, with no scene pre-exposure.
+            // Neutral algorithm exposure when vendor auto-exposure is disabled.
+            // The normalization scalar is passed separately as preExposure.
             float FragExposure(v2f_img input) : SV_Target { return 1.0; }
             ENDCG
         }

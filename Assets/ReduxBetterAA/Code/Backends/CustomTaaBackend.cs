@@ -60,6 +60,7 @@ namespace ReduxBetterAA.Backends
         private string _lastFailure;
         private readonly BackendPerformanceProfiler _performanceProfiler;
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
+        private readonly ResolvedFrameCapture _resolvedCapture = new ResolvedFrameCapture();
 
         private AsyncOperationHandle<Shader> _shaderHandle;
         private bool _shaderHandleValid;
@@ -228,6 +229,7 @@ namespace ReduxBetterAA.Backends
             Camera.onPostRender += OnCameraPostRender;
             _historyValid = false;
             _active = true;
+            _resolvedCapture.Configure(_resolveCamera, BackendSelection.CustomTaa);
             return true;
         }
 
@@ -238,6 +240,7 @@ namespace ReduxBetterAA.Backends
 
         public void ResetHistory(HistoryResetReason reason)
         {
+            _resolvedCapture.Reset(reason);
             _historyValid = false;
             _matrixHistoryValid = false;
             _motionVectorSanitizer.ResetCameraHistory();
@@ -259,6 +262,7 @@ namespace ReduxBetterAA.Backends
             }
             finally
             {
+                _resolvedCapture.Abort();
                 _performanceProfiler.EndResolve(
                     BackendSelection.CustomTaa,
                     start
@@ -344,13 +348,27 @@ namespace ReduxBetterAA.Backends
                 _material.SetFloat(DebugMode, (float)_config.DebugView);
                 Graphics.Blit(source, destination, _material, DebugPass);
             }
-            else if (_config.Sharpening > 0.0001f)
-            {
-                Graphics.Blit(historyWrite, destination, _material, SharpenPass);
-            }
             else
             {
-                Graphics.Blit(historyWrite, destination);
+                SceneOutputFrame noSceneClaim = default;
+                bool capture = _resolvedCapture.TryBegin(historyWrite, source.width, source.height,
+                    !_historyValid || !_matrixHistoryValid, 1.0f, Vector2.one, true, false,
+                    in noSceneClaim, out RenderTexture captureTarget);
+                // The optional final target must never alias an input/history or
+                // Unity's destination. Only this final pass may write into it.
+                if (capture && (captureTarget == source || captureTarget == destination ||
+                    captureTarget == historyRead || captureTarget == depthRead || captureTarget == depthWrite ||
+                    captureTarget == depth || captureTarget == sanitizedMotion))
+                { _resolvedCapture.Abort(); capture = false; }
+                RenderTexture finalTarget = capture ? captureTarget : destination;
+                if (_config.Sharpening > 0.0001f)
+                    Graphics.Blit(historyWrite, finalTarget, _material, SharpenPass);
+                else Graphics.Blit(historyWrite, finalTarget);
+                if (capture)
+                {
+                    Graphics.Blit(captureTarget, destination);
+                    _resolvedCapture.Publish(captureTarget, depth, sanitizedMotion);
+                }
             }
 
             _historyReadA = !_historyReadA;
@@ -364,6 +382,7 @@ namespace ReduxBetterAA.Backends
 
         public void Deactivate()
         {
+            _resolvedCapture.Deactivate();
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
             _resolveProjection.Restore();
@@ -480,6 +499,7 @@ namespace ReduxBetterAA.Backends
                     camera,
                     nonJitteredProjection
                 );
+                _resolvedCapture.Snapshot(camera, nonJitteredProjection, jitterPixels);
             }
         }
 

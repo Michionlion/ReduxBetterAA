@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.Serialization;
 using NUnit.Framework;
 using ReduxBetterAA.Diagnostics;
 using ReduxBetterAA.Rendering;
@@ -11,6 +12,117 @@ namespace ReduxBetterAA.Tests
 {
     public sealed class BetaDiagnosticsTests
     {
+        [TestCase(true)]
+        [TestCase(false)]
+        public void IssueMetadataIsReplacedAfterTheCapturedResolveAndDoesNotRelabelAnOldMatrix(bool freshMatrix)
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "betteraa-provenance-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            var gameObject = new GameObject("issue-provenance-camera");
+            TemporalCoordinator previousCoordinator = TemporalCoordinator.Current;
+            try
+            {
+                TemporalCoordinator.Current = null;
+                var camera = gameObject.AddComponent<Camera>();
+                camera.depthTextureMode = DepthTextureMode.None;
+                var manifest = new IssueReportManifest();
+                // This test drives the actual input -> resolve -> output callbacks,
+                // without starting Addressables, a coroutine or GPU readbacks.
+                var capture = (IssueReportCapture)FormatterServices.GetUninitializedObject(typeof(IssueReportCapture));
+                const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+                void Set(string name, object value) => typeof(IssueReportCapture).GetField(name, fields).SetValue(capture, value);
+                int sampledFrame = Time.frameCount - 1;
+                int matrixFrame = sampledFrame;
+                string backend = "Off";
+                int reportCalls = 0;
+                Set("_camera", camera);
+                Set("_manifest", manifest);
+                Set("_directory", directory);
+                Set("_expectsTemporalInput", true);
+                Set("_writer", new BufferImageWriter(directory, null, manifest));
+                Set("_report", new Func<Camera, Phase1Report>(observed =>
+                {
+                    Assert.That(observed, Is.SameAs(camera));
+                    reportCalls++;
+                    return new Phase1Report
+                    {
+                        frame = sampledFrame,
+                        temporal = new TemporalBackendRecord
+                        {
+                            selectedBackend = backend,
+                            motionMatrix = new MotionMatrixRecord { frame = matrixFrame }
+                        }
+                    };
+                }));
+                typeof(IssueReportCapture).GetMethod("WriteCapabilityReport", fields)
+                    .Invoke(capture, new object[] { "request-before-camera-render" });
+                Assert.That(manifest.capabilitiesStage, Is.EqualTo("request-before-camera-render"));
+                Assert.That(manifest.capabilitiesMatchOutput, Is.False);
+                Assert.That(manifest.motionMatrixMatchesOutput, Is.False);
+                string file = Path.Combine(directory, "capabilities.json");
+                Assert.That(JsonUtility.FromJson<Phase1Report>(File.ReadAllText(file)).temporal.selectedBackend, Is.EqualTo("Off"));
+
+                var hook = gameObject.AddComponent<TemporalRenderHook>();
+                hook.CaptureInput = capture.CaptureInput;
+                hook.Owner = new MetadataResolve(() =>
+                {
+                    Assert.That(manifest.inputFrame, Is.EqualTo(Time.frameCount));
+                    sampledFrame = Time.frameCount;
+                    matrixFrame = freshMatrix ? sampledFrame : sampledFrame - 1;
+                    backend = "NvidiaDlaa";
+                    capture.CaptureOutput(null);
+                });
+                hook.Render(null, null);
+
+                Phase1Report resolved = JsonUtility.FromJson<Phase1Report>(File.ReadAllText(file));
+                Assert.That(reportCalls, Is.EqualTo(2));
+                Assert.That(resolved.frame, Is.EqualTo(manifest.outputFrame));
+                Assert.That(resolved.captureStage, Is.EqualTo("after-temporal-resolve"));
+                Assert.That(resolved.temporal.selectedBackend, Is.EqualTo("NvidiaDlaa"));
+                Assert.That(resolved.temporal.motionMatrix.frame, Is.EqualTo(matrixFrame));
+                Assert.That(manifest.capabilitiesMatchOutput, Is.True);
+                Assert.That(manifest.motionMatrixMatchesOutput, Is.EqualTo(freshMatrix));
+                Assert.That(manifest.motionMatrixFrame, Is.EqualTo(matrixFrame));
+                Assert.That(manifest.errors, Is.Empty);
+            }
+            finally
+            {
+                TemporalCoordinator.Current = previousCoordinator;
+                UnityEngine.Object.DestroyImmediate(gameObject);
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void CapturedInputDimensionsRemainDistinctFromAStaleCpuGlobalVector()
+        {
+            var texture = new Texture2D(32, 16, TextureFormat.RGBA32, false);
+            try
+            {
+                var global = new Vector4(1f / 512, -1f / 512, 512, 512);
+                InputBindingRecord record = IssueReportCapture.CaptureBinding("_CameraDepthTexture", texture, true, global, 123);
+                Assert.That(record.frame, Is.EqualTo(123));
+                Assert.That(record.width, Is.EqualTo(32));
+                Assert.That(record.height, Is.EqualTo(16));
+                Assert.That(record.cpuGlobalTexelSize, Is.EqualTo(new[] { global.x, global.y, 512f, 512f }));
+                Assert.That(record.cpuGlobalDimensionsMatchTexture, Is.False);
+                StringAssert.Contains("separate observation", record.provenance);
+                InputBindingRecord missing = IssueReportCapture.CaptureBinding("_CameraDepthTexture", null, false, global, 124);
+                Assert.That(missing.width, Is.Zero);
+                Assert.That(missing.cpuGlobalDimensionsMatchTexture, Is.False);
+                Assert.That(missing.requestedByCamera, Is.False);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(texture); }
+        }
+
+        private sealed class MetadataResolve : ISceneResolve
+        {
+            private readonly Action _render;
+            public MetadataResolve(Action render) { _render = render; }
+            public bool Active => true;
+            public void Render(RenderTexture source, RenderTexture destination) => _render();
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void MotionSignReportUsesTheCaptureCameraIndependentlyOfTheSelectedDebugCamera(bool cameraAvailable)

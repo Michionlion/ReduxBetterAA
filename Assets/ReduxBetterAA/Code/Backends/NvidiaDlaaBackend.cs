@@ -30,6 +30,7 @@ namespace ReduxBetterAA.Backends
         private readonly DepthDisocclusionMask _depthDisocclusionMask;
         private readonly NvidiaDlaaApi _api = new NvidiaDlaaApi();
         private readonly Ppv2ExposureReader _exposureReader;
+        private readonly ResolvedFrameCapture _resolvedCapture = new ResolvedFrameCapture();
 
         private DlaaConfig _config = DlaaConfig.Conservative;
         private ReconstructionQuality _reconstructionQuality = ReconstructionQuality.Native;
@@ -278,6 +279,7 @@ namespace ReduxBetterAA.Backends
             Camera.onPostRender += OnCameraPostRender;
             _historyResetPending = true;
             _active = true;
+            _resolvedCapture.Configure(_resolveCamera, Selection);
             failureReason = string.Empty;
             return true;
         }
@@ -289,6 +291,7 @@ namespace ReduxBetterAA.Backends
 
         public void ResetHistory(HistoryResetReason reason)
         {
+            _resolvedCapture.Reset(reason);
             _historyResetPending = true;
             _motionVectorSanitizer.ResetCameraHistory();
         }
@@ -443,6 +446,9 @@ namespace ReduxBetterAA.Backends
                 {
                     Graphics.Blit(_output, destination);
                 }
+                _resolvedCapture.PublishResolved(_output, depth, sanitizedMotion, _historyResetPending,
+                    _effectivePreExposure, new Vector2(_config.InvertMotionX ? -1 : 1, _config.InvertMotionY ? -1 : 1),
+                    IsSuperResolution, in frame);
                 _historyResetPending = false;
             }
             catch (Exception exception)
@@ -454,6 +460,7 @@ namespace ReduxBetterAA.Backends
 
         public void Deactivate()
         {
+            _resolvedCapture.Deactivate();
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
             _resolveProjection.Restore();
@@ -662,6 +669,8 @@ namespace ReduxBetterAA.Backends
                         ? projectionState.Projection
                         : camera.projectionMatrix
                 );
+                _resolvedCapture.Snapshot(camera, _projectionJitterSupported
+                    ? projectionState.Projection : camera.projectionMatrix, _jitterPixels);
             }
         }
 

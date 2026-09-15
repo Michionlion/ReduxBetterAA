@@ -46,6 +46,11 @@ namespace ReduxBetterAA.Diagnostics
         internal Action<int> SetSupersamplingPercent;
         internal Func<ReconstructionQuality> UpscalingQuality;
         internal Action<ReconstructionQuality> SetUpscalingQuality;
+        internal Func<string[]> FrameGenerationChoices;
+        internal Func<string> FrameGeneration;
+        internal Action<string> SetFrameGeneration;
+        internal Func<string> FrameGenerationStatus;
+        private bool _frameGenerationOpen;
         private bool _scaleOpen;
         private static readonly string[] ScaleLabels = { "125%", "150%", "175%", "200%" };
         private bool _qualityOpen;
@@ -54,6 +59,18 @@ namespace ReduxBetterAA.Diagnostics
 
         internal void DrawBasic(BackendSelection mode)
         {
+            // This setting is independent of AA, including native AA and Off.
+            var frameGenerationChoices = FrameGenerationChoices?.Invoke();
+            if (frameGenerationChoices != null && frameGenerationChoices.Length > 0 &&
+                FrameGeneration != null && SetFrameGeneration != null)
+            {
+                int index = Math.Max(0, Array.IndexOf(frameGenerationChoices, FrameGeneration()));
+                int next = DebugMenu.Dropdown(FrameGenerationPolicy.SettingName, index,
+                    frameGenerationChoices, ref _frameGenerationOpen);
+                if (next != index) SetFrameGeneration(frameGenerationChoices[next]);
+                if (FrameGeneration() != "Off" && !string.IsNullOrEmpty(FrameGenerationStatus?.Invoke()))
+                    GUILayout.Label(FrameGenerationStatus());
+            }
             if ((mode == BackendSelection.NvidiaDlss || mode == BackendSelection.AmdFsrUpscaling) &&
                 UpscalingQuality != null && SetUpscalingQuality != null)
             {

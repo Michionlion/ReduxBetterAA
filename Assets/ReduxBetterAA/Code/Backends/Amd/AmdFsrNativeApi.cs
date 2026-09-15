@@ -19,6 +19,7 @@ namespace ReduxBetterAA.Backends.Amd
         internal const int StatusSize = 680;
         private const uint HighDynamicRangeFlag = 1u << 0;
         private const uint InvertedDepthFlag = 1u << 3;
+        private const uint AutoExposureFlag = 1u << 5;
         private const string ShaderAddress = "Assets/ReduxBetterAA/Shaders/FsrBridgeInputs.shader";
         private static NativeExports _exports;
         private static bool _probed;
@@ -53,6 +54,7 @@ namespace ReduxBetterAA.Backends.Amd
         internal static string ProbeReason => _probeReason;
         public bool ContextCreated => _context != IntPtr.Zero;
         public bool ContextUsesHdr => ContextCreated && (_contextFlags & HighDynamicRangeFlag) != 0;
+        public bool ContextUsesAutoExposure => ContextCreated && (_contextFlags & AutoExposureFlag) != 0;
         public bool Ready => _material != null;
         public string FailureReason => _failure;
         // Known converted inputs plus three native interop slot sets. AMD's
@@ -159,7 +161,8 @@ namespace ReduxBetterAA.Backends.Amd
             _availabilityChanged?.Invoke();
         }
 
-        public bool TryCreateContext(CommandBuffer commands, int width, int height, int outputWidth, int outputHeight, out string reason)
+        public bool TryCreateContext(CommandBuffer commands, int width, int height, int outputWidth, int outputHeight,
+            bool autoExposure, out string reason)
         {
             DestroyContext(commands);
             if (!Ready || !Probe(out _, out reason)) { reason = Ready ? _probeReason : "FSR input conversion shader is loading or unavailable"; return false; }
@@ -173,7 +176,7 @@ namespace ReduxBetterAA.Backends.Amd
                 _motionPointer = _motion.GetNativeTexturePtr(); _exposurePointer = _exposure.GetNativeTexturePtr();
                 _providerVerified = false;
                 _displayPixels = (long)outputWidth * outputHeight;
-                CreateDescription description = Describe(width, height, outputWidth, outputHeight);
+                CreateDescription description = Describe(width, height, outputWidth, outputHeight, autoExposure);
                 uint result = _exports.Create(ref description, out _context, IntPtr.Add(_status, 168), 512);
                 if (result != 0 || _context == IntPtr.Zero)
                     throw new InvalidOperationException(Marshal.PtrToStringAnsi(IntPtr.Add(_status, 168)));
@@ -190,7 +193,8 @@ namespace ReduxBetterAA.Backends.Amd
         }
 
         public bool Execute(CommandBuffer commands, Texture source, RenderTexture output, Texture depth,
-            Texture motion, Vector2 rasterJitter, Camera camera, in Fsr2Config config, bool reset, out string reason)
+            Texture motion, Vector2 rasterJitter, Camera camera, float preExposure,
+            in Fsr2Config config, bool reset, out string reason)
         {
             reason = string.Empty;
             if (!CheckStatus(out reason)) return false;
@@ -198,7 +202,8 @@ namespace ReduxBetterAA.Backends.Amd
             commands.Blit(source, _color);
             commands.Blit(depth, _depth, _material, 0);
             commands.Blit(motion, _motion);
-            commands.Blit(Texture2D.whiteTexture, _exposure, _material, 1);
+            if (!ContextUsesAutoExposure)
+                commands.Blit(Texture2D.whiteTexture, _exposure, _material, 1);
             commands.Blit(source, output);
             if (_lastOutput != output) { _outputPointer = output.GetNativeTexturePtr(); _lastOutput = output; }
             Vector2 jitter = ToDispatchJitter(rasterJitter);
@@ -208,9 +213,10 @@ namespace ReduxBetterAA.Backends.Amd
                 FrameId = (ulong)Time.frameCount,
                 Color = _colorPointer, Depth = _depthPointer,
                 Motion = _motionPointer, Output = _outputPointer,
-                Exposure = _exposurePointer, JitterX = jitter.x, JitterY = jitter.y,
+                Exposure = ContextUsesAutoExposure ? IntPtr.Zero : _exposurePointer,
+                JitterX = jitter.x, JitterY = jitter.y,
                 MotionScaleX = _color.width, MotionScaleY = _color.height,
-                DeltaMs = Mathf.Max(0.01f, Time.unscaledDeltaTime * 1000.0f), PreExposure = 1.0f,
+                DeltaMs = Mathf.Max(0.01f, Time.unscaledDeltaTime * 1000.0f), PreExposure = preExposure,
                 Near = SystemInfo.usesReversedZBuffer ? camera.farClipPlane : camera.nearClipPlane,
                 Far = SystemInfo.usesReversedZBuffer ? camera.nearClipPlane : camera.farClipPlane, Fov = camera.fieldOfView * Mathf.Deg2Rad,
                 ViewSpaceToMeters = 1.0f, Sharpness = config.Sharpness,
@@ -289,9 +295,10 @@ namespace ReduxBetterAA.Backends.Amd
         }
 
         // The converted linear color can exceed one after PPv2. Keep the wide
-        // input range; exposure and pre-exposure stay explicitly at one.
-        internal static uint GetContextFlags(bool reversedDepth) =>
-            HighDynamicRangeFlag | (reversedDepth ? InvertedDepthFlag : 0u);
+        // input range independently of the selected exposure policy.
+        internal static uint GetContextFlags(bool reversedDepth, bool autoExposure = false) =>
+            HighDynamicRangeFlag | (reversedDepth ? InvertedDepthFlag : 0u) |
+            (autoExposure ? AutoExposureFlag : 0u);
 
         internal static Vector2 ToDispatchJitter(Vector2 projectionJitterPixels)
         {
@@ -308,12 +315,13 @@ namespace ReduxBetterAA.Backends.Amd
             return library;
         }
 
-        private static CreateDescription Describe(int width, int height, int outputWidth, int outputHeight) => new CreateDescription
+        private static CreateDescription Describe(int width, int height, int outputWidth, int outputHeight,
+            bool autoExposure = false) => new CreateDescription
         {
             Size = (uint)Marshal.SizeOf<CreateDescription>(), Abi = AbiVersion,
             RenderWidth = (uint)width, RenderHeight = (uint)height,
             OutputWidth = (uint)outputWidth, OutputHeight = (uint)outputHeight,
-            Flags = GetContextFlags(SystemInfo.usesReversedZBuffer), GraphicsApi = 11,
+            Flags = GetContextFlags(SystemInfo.usesReversedZBuffer, autoExposure), GraphicsApi = 11,
             RuntimeDirectory = _exports.RuntimeDirectory
         };
 

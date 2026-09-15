@@ -56,6 +56,7 @@ namespace ReduxBetterAA.Rendering
                 false
             );
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
+        private readonly TerrainMotionCompatibility _terrainMotion;
         private readonly DepthDisocclusionMask _depthDisocclusionMask;
         private readonly CustomTaaBackend _customBackend;
         private readonly NvidiaDlaaBackend _dlaaBackend;
@@ -125,6 +126,7 @@ namespace ReduxBetterAA.Rendering
         public TemporalCoordinator(ReduxLogger logger)
         {
             _logger = logger;
+            _terrainMotion = new TerrainMotionCompatibility(logger);
             _gameEvents = new TemporalGameEvents(MarkDirty);
             _motionVectorSanitizer = new MotionVectorSanitizer(
                 logger,
@@ -180,6 +182,12 @@ namespace ReduxBetterAA.Rendering
         public bool Active => _activeBackend.Active;
         public string SelectedBackend => _activeBackend.Id;
         internal Camera ResolveCamera => _cameras?.ResolveCamera;
+        internal bool FrameGenerationCameraEligible => !_disposed && !_comparisonSuspended && Active &&
+            _cameras != null && (_cameras.SceneKind == TemporalSceneKind.Flight ||
+            _cameras.SceneKind == TemporalSceneKind.KerbalSpaceCenter) &&
+            (_activeBackend == _customBackend || _activeBackend == _dlaaBackend ||
+             _activeBackend == _fsr2Backend || _activeBackend == _dlssBackend || _activeBackend == _fsrUpscalingBackend) &&
+            (_activeBackend != _customBackend || _customConfig.DebugView == CustomTaaDebugView.FinalResolve);
         internal IProjectionJitterSource AuxiliaryProjectionSource =>
             !_disposed && !_comparisonSuspended && Active
                 ? _activeBackend as IProjectionJitterSource : null;
@@ -361,6 +369,7 @@ namespace ReduxBetterAA.Rendering
 
         public void Initialize()
         {
+            _terrainMotion.Initialize();
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneManager.sceneUnloaded += OnSceneUnloaded;
             SceneManager.activeSceneChanged += OnActiveSceneChanged;
@@ -594,6 +603,7 @@ namespace ReduxBetterAA.Rendering
 
         public void NotifyOriginRebased()
         {
+            _terrainMotion.Invalidate();
             ComparisonReset?.Invoke(HistoryResetReason.OriginRebased);
             if (_disposed || !_activeBackend.Active)
             {
@@ -646,6 +656,7 @@ namespace ReduxBetterAA.Rendering
 
         public void MarkDirty(HistoryResetReason reason)
         {
+            _terrainMotion.Invalidate();
             ComparisonReset?.Invoke(reason);
             if (_disposed)
             {
@@ -668,6 +679,7 @@ namespace ReduxBetterAA.Rendering
                 return;
             }
             _disposed = true;
+            _terrainMotion.Dispose();
             _performanceProfiler.Cancel();
             MapIconOverlay.Detach(ref _mapIcons);
             _gameEvents.Dispose();
@@ -873,6 +885,7 @@ namespace ReduxBetterAA.Rendering
 
         private void ResetActiveHistory(HistoryResetReason reason)
         {
+            _terrainMotion.Invalidate();
             _lastResetReason = reason;
             _lastResetUnityFrame = Time.frameCount;
             _activeBackend.ResetHistory(reason);

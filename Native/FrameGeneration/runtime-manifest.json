@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "abiVersion": 1,
+  "sdk": {
+    "repository": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git",
+    "commit": "60f4ea81909200d8542eca14dccb2628b763a9a3",
+    "version": "2.3.0"
+  },
+  "graphicsApi": "D3D12 texture generation and official paced child-HWND provider; Unity integration and activation are owned separately",
+  "files": [{
+    "filename": "amd_fidelityfx_framegeneration_dx12.dll",
+    "source": "Kits/FidelityFX/signedbin/amd_fidelityfx_framegeneration_dx12.dll",
+    "sha256": "02297beedd285e822d3a64f314cf00faf378dcec0edc47ff0c4dd71b3a8c2f18"
+  }],
+  "distributionStatus": "Not included in mod or FSR runtime packages. A separately reviewed optional FG package must retain the pinned SDK licenses and notices before distribution."
+}

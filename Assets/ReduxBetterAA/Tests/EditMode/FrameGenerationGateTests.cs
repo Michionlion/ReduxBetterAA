@@ -175,9 +175,8 @@ namespace ReduxBetterAA.Tests
 
         private static FrameGenerationView View(float exposure = 1f, float preExposure = 1f,
             float jitterX = .25f, FrameGenerationColorDomain color = FrameGenerationColorDomain.DisplayLinear) =>
-            new FrameGenerationView(color, FrameGenerationMotionUnits.NormalizedUv,
-                new Vector2(jitterX, -.25f), new Vector2(-1, 1), preExposure, exposure,
-                16.67f, .2f, 100000f, true, Matrix4x4.identity, Matrix4x4.identity);
+            FrameGenerationViewTests.View(exposure: exposure, preExposure: preExposure,
+                jitterX: jitterX, color: color);
 
         private static void AssertAccepted(FrameGenerationFrame frame)
         {

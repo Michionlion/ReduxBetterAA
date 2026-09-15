@@ -26,13 +26,21 @@ namespace ReduxBetterAA.Rendering
         public PostProcessLayer ResolveLayer;
         public Camera SharedJitterCamera;
         public PostProcessLayer SharedJitterLayer;
-        // Scaled planetary rendering needs matching opaque and transparent
-        // raster projections in both map and menu.
+        // Planet/ocean color and the opaque/depth passes must use the same
+        // raster projection before the shared temporal resolve.
         public bool ProjectionJitterSupported =>
             SceneKind == TemporalSceneKind.Flight ||
             SceneKind == TemporalSceneKind.KerbalSpaceCenter ||
             SceneKind == TemporalSceneKind.Vab || JitterTransparentRendering;
         public bool JitterTransparentRendering =>
+            ((SceneKind == TemporalSceneKind.Flight || SceneKind == TemporalSceneKind.KerbalSpaceCenter) &&
+             ResolveCamera != null && SharedJitterCamera != null &&
+             ResolveCamera.name == "FlightCameraPhysics_Main" && SharedJitterCamera.name == "FlightCameraScaled_Main" &&
+             ResolveCamera.isActiveAndEnabled && SharedJitterCamera.isActiveAndEnabled &&
+             ResolveCamera.clearFlags == CameraClearFlags.Depth &&
+             SharedJitterCamera.depth < ResolveCamera.depth &&
+             SharedJitterCamera.targetTexture == ResolveCamera.targetTexture &&
+             SharedJitterCamera.pixelRect == ResolveCamera.pixelRect) ||
             (SceneKind == TemporalSceneKind.Map && ResolveCamera != null &&
              ResolveCamera.isActiveAndEnabled && ResolveCamera.name == "MapCamera" &&
              SharedJitterCamera == null) ||

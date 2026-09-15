@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "coordinatorAbi": 2,
+  "providerAbi": 1,
+  "unityVersion": "6000.5.8f1",
+  "reduxVersion": "0.2.9.0",
+  "coordinatorPath": "KSP2_x64_Data/Plugins/x86_64/GfxPluginReduxBetterAAFrameGeneration.dll",
+  "nativePrefix": "mods/ReduxBetterAA/native/frame-generation/",
+  "unityFiles": [
+    {
+      "source": "IUnityInterface.h",
+      "target": "IUnityInterface.h",
+      "sha256": "e23e267b57c049b438307542d62c30fbcd3fa77b6dac3b08842eae0df10b8239"
+    },
+    {
+      "source": "IUnityGraphics.h",
+      "target": "IUnityGraphics.h",
+      "sha256": "524ca42ff0274feec5aea17a5275b774ffc1a031bdc9378f3e3eb2be787a7fa6"
+    },
+    {
+      "source": "IUnityGraphicsD3D11.h",
+      "target": "IUnityGraphicsD3D11.h",
+      "sha256": "873389c2bc367b7ef7be4809059133b692a1c03eb268cfebf5bcb290c511bace"
+    },
+    {
+      "source": "IUnityRenderingExtensions.h",
+      "target": "IUnityRenderingExtensions.h",
+      "sha256": "dbcb270c5065d9ce98492b4e35d5be91f0f2cfea37be08619c3e03a12604fc37"
+    },
+    {
+      "source": "LICENSE.md",
+      "target": "LICENSE.md",
+      "sha256": "dc34d09c3c3a5057244ba4e6cbb871105ec42cd1130617aceeddb9219da922d1"
+    }
+  ],
+  "vendors": {
+    "nvidia": {
+      "sdkVersion": "2.14.1",
+      "sdkCommit": "2122257e0fce486f91b385aa63b9a09b0a34b363",
+      "sdkRepository": "https://github.com/NVIDIA-RTX/Streamline.git",
+      "runtimeSource": "https://github.com/NVIDIA-RTX/Streamline/releases/tag/v2.14.1",
+      "provider": "ReduxBetterAA.StreamlineProvider.dll",
+      "runtimeSubdirectory": "streamline",
+      "runtimeFiles": [
+        {
+          "source": "bin/x64/sl.interposer.dll",
+          "target": "sl.interposer.dll",
+          "sha256": "8c87c9499461da561edd529aa9bf7831d67d7b94ebb1c1a5ed54ef4934e1ea4c"
+        },
+        {
+          "source": "bin/x64/sl.common.dll",
+          "target": "sl.common.dll",
+          "sha256": "82924a8954dd671e09351c5de0eb87ad0eb25b944cc9f9ab955ca1d9950de15d"
+        },
+        {
+          "source": "bin/x64/sl.pcl.dll",
+          "target": "sl.pcl.dll",
+          "sha256": "f13d51cfa05f4cd514df2026049e2db8adf359221713170ad386fd499915b582"
+        },
+        {
+          "source": "bin/x64/sl.reflex.dll",
+          "target": "sl.reflex.dll",
+          "sha256": "0ce9725e3e03ea9e7f81d008b57f33ee365973d2e349131c8b1c3e3378fe2db0"
+        },
+        {
+          "source": "bin/x64/sl.dlss_g.dll",
+          "target": "sl.dlss_g.dll",
+          "sha256": "f4a6b2b14dcc0b1485989e430d3b4e3a44ac1800b92ba1ad74f476e64fb2b09c"
+        },
+        {
+          "source": "bin/x64/nvngx_dlssg.dll",
+          "target": "nvngx_dlssg.dll",
+          "sha256": "ff6e90eb78b827927dff5b4ecc6b1c870c2e9bca29ed9f48c7d348cc9e170b82"
+        }
+      ],
+      "licenseFiles": [
+        {
+          "source": "license.txt",
+          "target": "license.txt",
+          "sha256": "7b6f23e7d6f3ad6292f9308d2b42cdc3d82ae4e9b2abb55f230279d83bedd43d"
+        },
+        {
+          "source": "3rd-party-licenses.md",
+          "target": "3rd-party-licenses.md",
+          "sha256": "cb251639994465f31d2178c16acedf1ff4f9cef1c370a09782ed36d4c86c1dca"
+        },
+        {
+          "source": "bin/x64/nvngx_dlss.license.txt",
+          "target": "nvngx_dlss.license.txt",
+          "sha256": "3027f23ca5a46dd9cb8183fbd522983a86f64d7daac5982912bf9f214671f294"
+        },
+        {
+          "source": "bin/x64/reflex.license.txt",
+          "target": "reflex.license.txt",
+          "sha256": "ebf83c07fb3b2939908c3795d887afde3161c89a28ba391724efc784ce1bdabe"
+        },
+        {
+          "source": "NVIDIA Nsight Graphics SDK License (Apache 2.0).txt",
+          "target": "NVIDIA Nsight Graphics SDK License (Apache 2.0).txt",
+          "sha256": "44595e5ff02a0f1f0fae737e63ecb6fb70a3e9afac4e8878f9b083565013b893"
+        },
+        {
+          "source": "NVIDIA Nsight Perf SDK License (28Sept2022).pdf",
+          "target": "NVIDIA Nsight Perf SDK License (28Sept2022).pdf",
+          "sha256": "03145b655c109264409f6ec5c170cd3a3c093de1c5e13f7b59b0935fefd4725f"
+        }
+      ]
+    },
+    "amd": {
+      "sdkVersion": "2.3.0",
+      "sdkCommit": "60f4ea81909200d8542eca14dccb2628b763a9a3",
+      "sdkRepository": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK.git",
+      "runtimeSource": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/tree/60f4ea81909200d8542eca14dccb2628b763a9a3/Kits/FidelityFX/signedbin",
+      "provider": "ReduxBetterAA.AmdFrameGeneration.dll",
+      "runtimeSubdirectory": "amd",
+      "runtimeFiles": [
+        {
+          "source": "Kits/FidelityFX/signedbin/amd_fidelityfx_framegeneration_dx12.dll",
+          "target": "amd_fidelityfx_framegeneration_dx12.dll",
+          "sha256": "02297beedd285e822d3a64f314cf00faf378dcec0edc47ff0c4dd71b3a8c2f18"
+        }
+      ],
+      "licenseFiles": [
+        {
+          "source": "docs/license.md",
+          "target": "license.md",
+          "sha256": "f0da09d71ad5c82759a179e774535d4a829e5c96c49294167c1152402b2cb400"
+        },
+        {
+          "source": "3rdpartynotice.md",
+          "target": "3rdpartynotice.md",
+          "sha256": "6caca3366a99063ef3fa5d0a4394e7693ed7834262e5a29f39e3bed572ccd879"
+        }
+      ]
+    }
+  },
+  "unityCompanionLicenseSha256": "4c53b103d10fc772f5669880de82f7b28359df2f58fb38134c34bf2b4fe6d65b",
+  "betterAaLicenseSha256": "66865b5695fd64f0d9148e9757a53fe468ed1b1cbb552f225d40ad2defb978e3"
+}

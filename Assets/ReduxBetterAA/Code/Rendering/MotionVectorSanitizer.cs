@@ -114,6 +114,15 @@ namespace ReduxBetterAA.Rendering
             Shader.PropertyToID("_CorruptionMinimumSamples");
         private static readonly int SanitizationEnabledProperty =
             Shader.PropertyToID("_SanitizationEnabled");
+        private static readonly int InputMotionComponentSign =
+            Shader.PropertyToID("_InputMotionComponentSign");
+        private static readonly int ResetMotionHistory =
+            Shader.PropertyToID("_ResetMotionHistory");
+        private static readonly int DepthRowsReversed =
+            Shader.PropertyToID("_DepthRowsReversed");
+        private static readonly int TerrainMotionValid = Shader.PropertyToID("_TerrainMotionValid");
+        private static readonly int TerrainDepthTexture = Shader.PropertyToID("_TerrainDepthTexture");
+        private static readonly int TerrainPreviousWorldFromCurrent = Shader.PropertyToID("_TerrainPreviousWorldFromCurrent");
         private static readonly int UnityNonJitteredViewProjection =
             Shader.PropertyToID("_NonJitteredVP");
         private static readonly int UnityPreviousViewProjection =
@@ -138,6 +147,8 @@ namespace ReduxBetterAA.Rendering
         private Matrix4x4 _previousViewProjection;
         private bool _currentMatrixValid;
         private bool _matrixHistoryValid;
+        private Camera _capturedCamera, _previousMatrixCamera;
+        private int _capturedCameraFrame = -1, _previousMatrixFrame = -1;
         private float _cameraFieldOfView;
         private float _cameraNearClipPlane;
         private float _cameraFarClipPlane;
@@ -161,8 +172,8 @@ namespace ReduxBetterAA.Rendering
         public bool Enabled => _enabled;
         public string Status => _enabled
             ? _status
-            : "Bypassed: raw motion is passed through with only the configured " +
-              "component-sign conversion.";
+            : "Outlier rejection bypassed; component conversion and eligible " +
+              "terrain motion repair remain enabled.";
         public Texture SanitizedTexture => _sanitizedMotion;
         public Texture CorruptionTexture => _frameCorruption;
         public MotionVectorMatrixSnapshot MatrixSnapshot => _matrixSnapshot;
@@ -190,9 +201,9 @@ namespace ReduxBetterAA.Rendering
             }
             _enabled = enabled;
             ResetCameraHistory();
-            _logger.LogInfo(
+            _logger?.LogInfo(
                 "[ReduxBetterAA/Motion] Motion rejection and camera fallback " +
-                (enabled ? "enabled." : "bypassed; component signs remain active.")
+                (enabled ? "enabled." : "bypassed; component signs and eligible terrain repair remain active.")
             );
             return true;
         }
@@ -204,9 +215,13 @@ namespace ReduxBetterAA.Rendering
             if (_disposed || camera == null)
             {
                 _currentMatrixValid = false;
+                _capturedCamera = null;
+                _capturedCameraFrame = -1;
                 return;
             }
 
+            _capturedCamera = camera;
+            _capturedCameraFrame = Time.frameCount;
             _currentViewProjection = GL.GetGPUProjectionMatrix(
                 nonJitteredProjection,
                 camera.targetTexture != null
@@ -274,6 +289,9 @@ namespace ReduxBetterAA.Rendering
                     0.0f
                 )
             );
+            _material.SetVector(InputMotionComponentSign, Vector4.one);
+            _material.SetFloat(ResetMotionHistory, 0);
+            _material.SetFloat(DepthRowsReversed, 0);
             _material.SetTexture(DepthTexture, depth);
             _material.SetMatrix(
                 CurrentInverseViewProjection,
@@ -292,6 +310,7 @@ namespace ReduxBetterAA.Rendering
                 SanitizationEnabledProperty,
                 _enabled ? 1.0f : 0.0f
             );
+            BindTerrainMotion(depth, width, height);
             CaptureMatrixSnapshot();
             if (_enabled)
             {
@@ -307,7 +326,77 @@ namespace ReduxBetterAA.Rendering
             {
                 _previousViewProjection = _currentViewProjection;
                 _matrixHistoryValid = true;
+                _previousMatrixCamera = _capturedCamera;
+                _previousMatrixFrame = _capturedCameraFrame;
             }
+            sanitized = _sanitizedMotion;
+            return true;
+        }
+
+        private void BindTerrainMotion(Texture depth, int width, int height)
+        {
+            _material.SetFloat(TerrainMotionValid, 0);
+            _material.SetTexture(TerrainDepthTexture, null);
+            var service = TerrainMotionCompatibility.Current;
+            int frame = Time.frameCount;
+            if (service == null || !_currentMatrixValid || !_matrixHistoryValid ||
+                _capturedCamera == null || _capturedCameraFrame != frame ||
+                _previousMatrixFrame != frame - 1 || _previousMatrixCamera != _capturedCamera ||
+                depth == null || depth.width != width || depth.height != height ||
+                !service.TryGetFrame(_capturedCamera, frame, out TerrainMotionFrame terrain) ||
+                terrain.Frame != frame || terrain.PreviousFrame != _previousMatrixFrame ||
+                terrain.Depth == null || terrain.Depth.width != width || terrain.Depth.height != height)
+                return;
+            _material.SetTexture(TerrainDepthTexture, terrain.Depth);
+            _material.SetMatrix(TerrainPreviousWorldFromCurrent, terrain.PreviousWorldFromCurrent);
+            _material.SetFloat(TerrainMotionValid, 1);
+        }
+
+        // Use on the FG-owned instance only. This consumes the producer's exact
+        // snapshot and never reads/advances the AA sanitizer's camera history or
+        // changes its diagnostic Enabled setting. Output keeps the same stored
+        // signs and bottom-left UV convention as the borrowed AA motion input.
+        internal bool TrySanitizeFrame(in BorrowedResolvedFrame frame, Texture depth, bool depthRowsReversed, out Texture sanitized)
+        {
+            sanitized = null;
+            var request = frame.Request;
+            int width = request.RenderWidth, height = request.RenderHeight;
+            var signs = request.MotionComponentSigns;
+            if (_disposed || !Ready || frame.SanitizedMotion == null || depth == null ||
+                width <= 0 || height <= 0 || Mathf.Abs(signs.x) != 1 || Mathf.Abs(signs.y) != 1 ||
+                !EnsureResources(width, height)) return false;
+            var camera = request.Camera;
+            var current = FrameGenerationNative.Camera.NativeClip(camera.ViewProjection, camera.ProjectionRendersIntoTexture);
+            var previous = FrameGenerationNative.Camera.NativeClip(request.PreviousViewProjection, camera.ProjectionRendersIntoTexture);
+            var inverse = current.inverse;
+            if (!MatrixIsFinite(current) || !MatrixIsFinite(previous) || !MatrixIsFinite(inverse) || MatrixIsZero(inverse))
+                return false;
+            // The producer already repaired terrain before publishing its motion.
+            // An FG-owned filter must never apply that world transform again.
+            _material.SetFloat(TerrainMotionValid, 0);
+            _material.SetTexture(TerrainDepthTexture, null);
+            _material.SetVector(SourceDimensions, new Vector4(width, height, 1f / width, 1f / height));
+            _material.SetVector(CurrentJitter, new Vector4(camera.JitterRenderPixels.x / width, camera.JitterRenderPixels.y / height, 0, 0));
+            _material.SetFloat(MaximumMotionSquared, MaximumMotionPixels * MaximumMotionPixels);
+            _material.SetFloat(MaximumFallbackMotionSquared, MaximumFallbackMotionPixels * MaximumFallbackMotionPixels);
+            _material.SetFloat(MaximumCameraDisagreementSquared, MaximumCameraDisagreementPixels * MaximumCameraDisagreementPixels);
+            var storedSigns = new Vector4(signs.x, signs.y, 0, 0);
+            _material.SetVector(InputMotionComponentSign, storedSigns); // +/-1 is its own inverse.
+            _material.SetVector(MotionComponentSign, storedSigns);
+            // Runtime supplies the exact normalized native-depth slot, avoiding
+            // inherited Unity raw-depth/MSAA texel-sign assumptions. Explicitly
+            // return its top-left rows to the shader's bottom-left motion UVs.
+            _material.SetTexture(DepthTexture, depth);
+            _material.SetFloat(DepthRowsReversed, depthRowsReversed ? 1 : 0);
+            _material.SetMatrix(CurrentInverseViewProjection, inverse);
+            _material.SetMatrix(PreviousViewProjection, previous);
+            _material.SetFloat(MatrixHistoryValid, request.ResetHistory ? 0 : 1);
+            _material.SetFloat(ResetMotionHistory, request.ResetHistory ? 1 : 0);
+            _material.SetFloat(CorruptionMinimumSamplesProperty, CorruptionMinimumSamples);
+            _material.SetFloat(SanitizationEnabledProperty, 1); // Mandatory FG protection, independent of AA diagnostics.
+            Graphics.Blit(frame.SanitizedMotion, _frameCorruption, _material, 1);
+            _material.SetTexture(FrameCorruptionTexture, _frameCorruption);
+            Graphics.Blit(frame.SanitizedMotion, _sanitizedMotion, _material, 0);
             sanitized = _sanitizedMotion;
             return true;
         }
@@ -316,6 +405,8 @@ namespace ReduxBetterAA.Rendering
         {
             _currentMatrixValid = false;
             _matrixHistoryValid = false;
+            _capturedCamera = _previousMatrixCamera = null;
+            _capturedCameraFrame = _previousMatrixFrame = -1;
         }
 
         public void ReleaseResources()
@@ -475,7 +566,7 @@ namespace ReduxBetterAA.Rendering
                 "screen-wide corrupt field; coherent camera motion may exceed " +
                 "256 px/frame, while invalid, unverified >256 px, or >96 px " +
                 "camera disagreement uses a <=256 px fallback, otherwise zero.";
-            _logger.LogInfo(
+            _logger?.LogInfo(
                 "[ReduxBetterAA/Motion] Vendor motion sanitizer created for " +
                 width + "x" + height + "; cutoff is " +
                 MaximumMotionPixels + " px/frame; whole-frame threshold is " +
@@ -580,14 +671,14 @@ namespace ReduxBetterAA.Rendering
                 };
                 _status = "Ready: Unity-to-vendor component signs and camera " +
                     "fallback will be applied to vendor motion.";
-                _logger.LogInfo(
+                _logger?.LogInfo(
                     "[ReduxBetterAA/Motion] Temporal motion-vector sanitizer loaded."
                 );
             }
             else
             {
                 _status = "Motion-vector sanitizer shader is unavailable or unsupported.";
-                _logger.LogError(
+                _logger?.LogError(
                     "[ReduxBetterAA/Motion] Motion-vector sanitizer shader failed to load."
                 );
             }

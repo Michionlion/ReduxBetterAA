@@ -17,13 +17,22 @@ are hidden and portable TAA remains available.
 
 This branch's upscaling is experimental and gated to Redux 0.2.9.0.104521,
 Unity 6000.5.8f1 and D3D11. Native AA is used in scenes without an eligible
-upscaling graph. Frame generation and native close-vessel composition are not
-enabled in this build.
+upscaling graph.
+
+Frame generation uses a separate optional companion described in `NATIVES.md`.
+Its single **Frame generation** setting is independent of the AA mode and defaults
+to **Off**; choices appear after the installed providers confirm GPU support.
+FG currently requires windowed/borderless SDR output and an eligible flight/KSC
+camera. Menus, map, VAB and active close-vessel rendering suspend FG. Native
+close-vessel composition remains unavailable; installing the companion does not
+enable it or guarantee a requested frame-rate multiplier.
 
 To update, move the previous mod folder outside `mods`, extract the new ZIP,
-then restore only your configuration and diagnostic reports. Do not keep a
-second copy of the same mod under `mods`, even in a backup subfolder.
-To uninstall, remove `mods/ReduxBetterAA`.
+then restore your configuration and diagnostic reports and reinstall the matching
+optional native packages you use. The main ZIP does not include those runtimes.
+Do not keep a second copy of the same mod under `mods`, even in a backup subfolder.
+To uninstall, first remove the FG companion's manifest-listed files as described
+in `NATIVES.md`, if installed, then remove `mods/ReduxBetterAA`.
 
 For a rendering problem, reproduce it and use **F10 → Issue ZIP**. Review the
 images before sharing the ZIP; visible UI and vessel names can appear.

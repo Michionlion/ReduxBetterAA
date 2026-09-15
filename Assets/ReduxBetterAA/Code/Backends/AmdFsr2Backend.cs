@@ -34,6 +34,10 @@ namespace ReduxBetterAA.Backends
         private readonly BackendPerformanceProfiler _performanceProfiler;
         private readonly MotionVectorSanitizer _motionVectorSanitizer;
         private readonly AmdFsrNativeApi _nativeApi = new AmdFsrNativeApi();
+        private readonly Ppv2ExposureReader _exposureReader;
+        private readonly ResolvedFrameCapture _resolvedCapture = new ResolvedFrameCapture();
+        private bool _usingPpv2Exposure;
+        private float _effectivePreExposure = 1.0f;
         private readonly Action _availabilityChanged;
         private string _providerName = "AMD FSR";
 
@@ -77,6 +81,7 @@ namespace ReduxBetterAA.Backends
             _runtimeFailure = runtimeFailure;
             _performanceProfiler = performanceProfiler;
             _motionVectorSanitizer = motionVectorSanitizer;
+            _exposureReader = new Ppv2ExposureReader(logger);
         }
 
         public string Id => _providerName + (Upscaling ? " Upscaling" : " Native AA");
@@ -107,8 +112,9 @@ namespace ReduxBetterAA.Backends
         public bool OutputRandomWrite => _output != null && _output.enableRandomWrite;
         public long EstimatedMemoryBytes => _estimatedMemoryBytes + _nativeApi.EstimatedMemoryBytes;
         public string LastFailure => _lastFailure;
-        public string ExposureSource => "post-PPv2 linear HDR processing (exposure 1)";
-        public float EffectivePreExposure => 1.0f;
+        public string ExposureSource => _usingPpv2Exposure ? "PPv2 GPU exposure" :
+            _nativeApi.ContextUsesAutoExposure ? "FSR auto exposure" : "manual pre-exposure";
+        public float EffectivePreExposure => _effectivePreExposure;
         public Vector2 ProjectionJitterPixels => _jitterPixels;
         public Vector2 DispatchJitterPixels =>
             AmdFsrNativeApi.ToDispatchJitter(_jitterPixels);
@@ -232,10 +238,12 @@ namespace ReduxBetterAA.Backends
                 name = "Redux Better AA " + Id
             };
             _hook = TemporalRenderHook.Attach(_resolveCamera, this);
+            _exposureReader.Configure(_resolveLayer);
             Camera.onPreCull += OnCameraPreCull;
             Camera.onPostRender += OnCameraPostRender;
             _historyResetPending = true;
             _active = true;
+            _resolvedCapture.Configure(_resolveCamera, Upscaling ? BackendSelection.AmdFsrUpscaling : BackendSelection.AmdFsr2);
             failureReason = string.Empty;
             return true;
         }
@@ -247,6 +255,7 @@ namespace ReduxBetterAA.Backends
 
         public void ResetHistory(HistoryResetReason reason)
         {
+            _resolvedCapture.Reset(reason);
             _historyResetPending = true;
             _motionVectorSanitizer.ResetCameraHistory();
         }
@@ -291,7 +300,11 @@ namespace ReduxBetterAA.Backends
                 }
                 _outputWidth = Upscaling ? outputFrame.OutputWidth : source.width;
                 _outputHeight = Upscaling ? outputFrame.OutputHeight : source.height;
-                if (!EnsureResources(source))
+                bool hasPpv2Exposure = _config.AutoExposure && _config.PreferPpv2Exposure &&
+                    _exposureReader.TryGetExposure(out _);
+                SelectExposure(in _config, hasPpv2Exposure, _exposureReader.Exposure,
+                    out _usingPpv2Exposure, out bool vendorAutoExposure, out _effectivePreExposure);
+                if (!EnsureResources(source, vendorAutoExposure))
                 {
                     Graphics.Blit(source, destination);
                     FailRuntime(_lastFailure);
@@ -334,16 +347,20 @@ namespace ReduxBetterAA.Backends
                 }
 
                 if (!_nativeApi.Execute(_commandBuffer, source, _output, depth, sanitizedMotion,
-                    _jitterPixels, _resolveCamera, in _config, _historyResetPending, out string nativeReason))
+                    _jitterPixels, _resolveCamera, _effectivePreExposure, in _config,
+                    _historyResetPending, out string nativeReason))
                 { Graphics.Blit(source, destination); FailRuntime(nativeReason); return; }
-                _historyResetPending = false;
                 if (Upscaling)
                 {
                     if (!ReduxSceneOutput.Current.Submit(in outputFrame, _output, out string reason))
-                        FailRuntime(reason);
+                    { Graphics.Blit(source, destination); FailRuntime(reason); return; }
                     Graphics.Blit(source, destination);
                 }
                 else Graphics.Blit(_output, destination);
+                _resolvedCapture.PublishResolved(_output, depth, sanitizedMotion, _historyResetPending,
+                    _effectivePreExposure, new Vector2(_config.InvertMotionX ? -1 : 1, _config.InvertMotionY ? -1 : 1),
+                    Upscaling, in outputFrame);
+                _historyResetPending = false;
             }
             catch (Exception exception)
             {
@@ -354,6 +371,7 @@ namespace ReduxBetterAA.Backends
 
         public void Deactivate()
         {
+            _resolvedCapture.Deactivate();
             Camera.onPreCull -= OnCameraPreCull;
             Camera.onPostRender -= OnCameraPostRender;
             _resolveProjection.Restore();
@@ -378,6 +396,9 @@ namespace ReduxBetterAA.Backends
             _jitterPixels = Vector2.zero;
             _historyResetPending = false;
             _motionVectorSanitizer.ResetCameraHistory();
+            _exposureReader.Deactivate();
+            _usingPpv2Exposure = false;
+            _effectivePreExposure = 1.0f;
             _active = false;
         }
 
@@ -390,16 +411,31 @@ namespace ReduxBetterAA.Backends
             _disposed = true;
             Deactivate();
             _nativeApi.Dispose();
+            _exposureReader.Dispose();
         }
 
-        private bool EnsureResources(RenderTexture source)
+        // Retain the established native-AA normalization policy for both FSR
+        // sizes. This is vendor pre-exposure, not another scene brightness pass.
+        internal static void SelectExposure(in Fsr2Config config, bool hasPpv2Exposure,
+            float ppv2Exposure, out bool usePpv2, out bool vendorAutoExposure, out float preExposure)
+        {
+            usePpv2 = config.AutoExposure && config.PreferPpv2Exposure && hasPpv2Exposure &&
+                Ppv2ExposureReader.IsUsableExposure(ppv2Exposure);
+            vendorAutoExposure = config.AutoExposure && !usePpv2;
+            preExposure = usePpv2 ? Mathf.Clamp(ppv2Exposure, 0.2f, 2.0f) :
+                config.AutoExposure ? 1.0f :
+                Ppv2ExposureReader.IsUsableExposure(config.PreExposure) ? config.PreExposure : 1.0f;
+        }
+
+        private bool EnsureResources(RenderTexture source, bool vendorAutoExposure)
         {
             if (TemporalTextures.IsCreated(_output) && ContextCreated &&
                 _output.width == _outputWidth && _output.height == _outputHeight &&
                 _resourceWidth == source.width &&
                 _resourceHeight == source.height &&
                 _resourceGraphicsFormat == source.graphicsFormat &&
-                _resourceSrgb == source.sRGB)
+                _resourceSrgb == source.sRGB &&
+                _nativeApi.ContextUsesAutoExposure == vendorAutoExposure)
             {
                 return true;
             }
@@ -438,7 +474,7 @@ namespace ReduxBetterAA.Backends
             _resourceGraphicsFormat = source.graphicsFormat;
             _resourceSrgb = source.sRGB;
             if (!_nativeApi.TryCreateContext(_commandBuffer, source.width, source.height,
-                _outputWidth, _outputHeight, out string reason))
+                _outputWidth, _outputHeight, vendorAutoExposure, out string reason))
             {
                 TemporalTextures.Release(ref _output);
                 _lastFailure = _providerName + " context creation failed: " + reason;
@@ -505,6 +541,8 @@ namespace ReduxBetterAA.Backends
                         ? projectionState.Projection
                         : camera.projectionMatrix
                 );
+                _resolvedCapture.Snapshot(camera, _projectionJitterSupported
+                    ? projectionState.Projection : camera.projectionMatrix, _jitterPixels);
             }
         }
 

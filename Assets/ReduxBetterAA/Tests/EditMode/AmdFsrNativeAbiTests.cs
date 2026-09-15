@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using NUnit.Framework;
+using ReduxBetterAA.Backends;
 using ReduxBetterAA.Backends.Amd;
 using ReduxBetterAA.Configuration;
 
@@ -29,6 +30,33 @@ namespace ReduxBetterAA.Tests
             // Official FSR API bits: HDR=0, inverted depth=3. Auto-exposure,
             // nonlinear input and display-resolution motion must remain disabled.
             Assert.That(AmdFsrNativeApi.GetContextFlags(reversedDepth), Is.EqualTo(expected));
+        }
+
+        [TestCase(false, 33u)]
+        [TestCase(true, 41u)]
+        public void AutomaticExposurePreservesLinearHdrAndDepthFlags(bool reversedDepth, uint expected) =>
+            Assert.That(AmdFsrNativeApi.GetContextFlags(reversedDepth, true), Is.EqualTo(expected));
+
+        [TestCase(true, true, true, 1.68f, 4f, true, false, 1.68f)]
+        [TestCase(true, true, true, 0.01f, 4f, true, false, 0.2f)]
+        [TestCase(true, true, true, 8f, 4f, true, false, 2f)]
+        [TestCase(true, true, false, 1.68f, 4f, false, true, 1f)]
+        [TestCase(true, false, true, 1.68f, 4f, false, true, 1f)]
+        [TestCase(false, true, true, 1.68f, 4f, false, false, 4f)]
+        [TestCase(true, true, true, float.NaN, 4f, false, true, 1f)]
+        [TestCase(true, true, true, float.PositiveInfinity, 4f, false, true, 1f)]
+        [TestCase(false, true, true, 1.68f, float.NaN, false, false, 1f)]
+        public void ExposureSelectionHonorsSettingsAndFallsBackFromMissingOrInvalidSamples(
+            bool automatic, bool preferPpv2, bool available, float sample, float manual,
+            bool expectedPpv2, bool expectedAuto, float expectedPreExposure)
+        {
+            Fsr2Config config = Fsr2Config.Conservative.WithUserSettings(0.15f, manual, automatic)
+                .WithExposurePreference(preferPpv2);
+            AmdFsr2Backend.SelectExposure(in config, available, sample,
+                out bool ppv2, out bool vendorAuto, out float preExposure);
+            Assert.That(ppv2, Is.EqualTo(expectedPpv2));
+            Assert.That(vendorAuto, Is.EqualTo(expectedAuto));
+            Assert.That(preExposure, Is.EqualTo(expectedPreExposure));
         }
 
         [TestCase("3.1.5", "FSR 3.1")]

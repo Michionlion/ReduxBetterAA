@@ -12,6 +12,25 @@ The bridge does not own Unity's swapchain, presentation, cameras, or UI. It does
 not implement frame generation. Direct D3D12 and Vulkan Unity rendering are not
 supported by this bridge.
 
+Separate FG targets are documented in
+[FrameGeneration](FrameGeneration/README.md) (AMD paced provider and shared inputs),
+[Streamline](Streamline/README.md) (NVIDIA paced provider/capability queries), and
+[Presentation](Presentation/README.md) (Unity coordinator and child-window host).
+They build independently from pinned external headers. `Build-Native.ps1
+-FrameGeneration` explicitly builds the ABI2 coordinator and selected providers
+and can package their separate optional companion. Ordinary FSR/mod builds do
+not include it. Native execution is distinct from player quality validation.
+
+The FG command, exact install paths, optional vendor selection, pinned runtime
+and license inputs, and CPU-only `-RunTests` behavior are documented in
+[NATIVES.md](../NATIVES.md#frame-generation-companion). The coordinator is installed
+in `KSP2_x64_Data/Plugins/x86_64`; the managed host invokes Unity's native plugin
+loading and checks the actual module path and initialized status. Its filename
+alone is not an automatic-preload guarantee. Providers/runtimes are installed
+under `mods/ReduxBetterAA/native/frame-generation`, with separate `streamline`
+and `amd` runtime directories. The standalone probe and diagnostic test DLLs are
+excluded from that package.
+
 ## Build and package
 
 Use an external checkout of
@@ -62,8 +81,12 @@ serialize context lifetime with its command stream.
 Required inputs are linear RGBA16F color/output, R32F **device depth**, and
 RG16F/RG32F unjittered motion vectors. Only mip 1, array size 1, sample count 1,
 and matching dimensions/device are accepted. Optional masks are render-sized
-R8; manual exposure is a 1x1 R32F texture. Use exposure 1 and pre-exposure 1 for
-the existing post-processing input, with HDR/auto exposure flags disabled.
+R8; manual exposure is a 1x1 R32F texture. The managed backend retains linear HDR
+processing for the post-processing input and supplies its selected pre-exposure
+through the dispatch. It uses an exposure texture of 1 when vendor auto exposure
+is disabled, or omits that texture and sets the auto-exposure context flag when
+enabled. The inherited PPv2/manual normalization policy and its post-tone-map
+limits are documented in `docs/architecture.md` in the repository root.
 Dispatch jitter is the negative raster jitter in render pixels; normalized
 motion is scaled once to render pixels. Near/far values are forwarded unchanged.
 All frame parameters must be finite, with positive timing/exposure/projection

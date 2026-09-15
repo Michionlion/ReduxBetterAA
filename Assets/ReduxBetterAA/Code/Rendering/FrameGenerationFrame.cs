@@ -6,9 +6,12 @@ namespace ReduxBetterAA.Rendering
 {
     internal enum FrameGenerationColorDomain { Unknown, SceneLinearHdr, DisplayLinear, DisplaySrgb }
     internal enum FrameGenerationMotionUnits { Unknown, NormalizedUv, RenderPixels, DisplayPixels }
+    internal enum FrameGenerationMatrixConvention { Unknown, UnityColumnVectorGpuProjection }
 
     // A frame reference does not own the underlying GPU allocation. The future
     // presentation provider must retain it until its final consumer has finished.
+    // StorageIsCurrent detects descriptor/liveness changes, not same-object
+    // recreation or pixel overwrites. Neither this snapshot nor AddRef is a lease.
     internal readonly struct FrameGenerationBuffer
     {
         internal readonly RenderTexture Texture;
@@ -43,21 +46,36 @@ namespace ReduxBetterAA.Rendering
     {
         internal readonly FrameGenerationColorDomain ColorDomain;
         internal readonly FrameGenerationMotionUnits MotionUnits;
+        internal readonly FrameGenerationMatrixConvention MatrixConvention;
         internal readonly Vector2 JitterRenderPixels, MotionComponentSigns;
         internal readonly float PreExposure, Exposure, FrameTimeMilliseconds, NearPlane, FarPlane;
+        internal readonly float VerticalFovRadians, AspectRatio, ViewSpaceToMeters;
         internal readonly bool ReversedDepth;
+        // Nonjittered Unity column-vector matrices: clip = projection * view * world.
+        // View is rigid, with camera forward along negative view Z. Projection is
+        // perspective with device depth in [0,1]; GPU Y flips/off-center lenses are
+        // allowed. Near/far and view positions share units; ViewSpaceToMeters maps
+        // one such unit to meters. SDK adapters must explicitly convert/transcribe
+        // these conventions (Streamline documents row-major matrices).
+        internal readonly Matrix4x4 CurrentProjection, CurrentWorldToView;
         internal readonly Matrix4x4 CurrentViewProjection, PreviousViewProjection;
 
         internal FrameGenerationView(FrameGenerationColorDomain colorDomain,
             FrameGenerationMotionUnits motionUnits, Vector2 jitterRenderPixels,
             Vector2 motionComponentSigns, float preExposure, float exposure,
             float frameTimeMilliseconds, float nearPlane, float farPlane, bool reversedDepth,
+            float verticalFovRadians, float aspectRatio, float viewSpaceToMeters,
+            FrameGenerationMatrixConvention matrixConvention,
+            Matrix4x4 currentProjection, Matrix4x4 currentWorldToView,
             Matrix4x4 currentViewProjection, Matrix4x4 previousViewProjection)
         {
             ColorDomain = colorDomain; MotionUnits = motionUnits;
             JitterRenderPixels = jitterRenderPixels; MotionComponentSigns = motionComponentSigns;
             PreExposure = preExposure; Exposure = exposure; FrameTimeMilliseconds = frameTimeMilliseconds;
             NearPlane = nearPlane; FarPlane = farPlane; ReversedDepth = reversedDepth;
+            VerticalFovRadians = verticalFovRadians; AspectRatio = aspectRatio;
+            ViewSpaceToMeters = viewSpaceToMeters; MatrixConvention = matrixConvention;
+            CurrentProjection = currentProjection; CurrentWorldToView = currentWorldToView;
             CurrentViewProjection = currentViewProjection; PreviousViewProjection = previousViewProjection;
         }
     }

@@ -11,6 +11,43 @@ namespace ReduxBetterAA.Tests
         private const BindingFlags InstancePrivate = BindingFlags.Instance | BindingFlags.NonPublic;
 
         [Test]
+        public void FrameGenerationResetDoesNotReplayUiValueOrApplyAntiAliasingSettings()
+        {
+            var gameObject = new GameObject("BetterAA FG callback test");
+            try
+            {
+                var mod = gameObject.AddComponent<ReduxBetterAAMod>();
+                var file = new JsonConfigFile(System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".json"));
+                var entry = new JsonConfigEntry(file, typeof(string), "", "DLSS 4x");
+                entry.Value = "Off";
+                Set(mod, "_frameGenerationEntry", entry);
+                int callbacks = 0;
+                entry.RegisterCallback((previous, current) => {
+                    if (++callbacks > 12) throw new InvalidOperationException("Recursive FG callback");
+                });
+                entry.RegisterCallback((Action<object, object>)Delegate.CreateDelegate(
+                    typeof(Action<object, object>), mod,
+                    typeof(ReduxBetterAAMod).GetMethod("OnFrameGenerationSettingChanged", InstancePrivate)));
+                var ui = Redux.UI.Settings.Utility.WrapConfigValue<string>(entry);
+                entry.Value = entry.Default;
+                Assert.That(entry.Value, Is.EqualTo("DLSS 4x"), "Setter must unwind before normalization");
+                Assert.That(typeof(ReduxBetterAAMod).GetField("_pendingPersistentSettings", InstancePrivate).GetValue(mod),
+                    Is.False, "FG must not queue AA changes or reclaim render scale");
+                // Deliberately no AA entries/coordinator: touching their apply
+                // path here would fail as well as violating ownership.
+                Assert.DoesNotThrow(mod.ApplyPendingPersistentSettings);
+                Assert.That(entry.Value, Is.EqualTo("DLSS 4x"), "Unavailable hardware must not erase user intent");
+                Assert.That(ui.GetValue(), Is.EqualTo("DLSS 4x"));
+                Assert.That(Rendering.FrameGenerationAvailability.Selected, Is.EqualTo(Configuration.FrameGenerationMode.Off));
+                Assert.That(callbacks, Is.EqualTo(1));
+                mod.ApplyPendingPersistentSettings();
+                Assert.That(callbacks, Is.EqualTo(1));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(gameObject); }
+        }
+
+        [Test]
         public void ResetNormalizesAfterReduxUiCallbackAndDoesNotReplayStaleValue()
         {
             var gameObject = new GameObject("BetterAA settings callback test");

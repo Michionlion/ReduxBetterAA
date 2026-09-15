@@ -55,6 +55,18 @@ namespace ReduxBetterAA.Diagnostics
             };
         }
 
+        private static FrameGenerationRecord CaptureFrameGeneration() => new FrameGenerationRecord
+        {
+            requested = FrameGenerationPolicy.Label(FrameGenerationAvailability.Requested),
+            selected = FrameGenerationPolicy.Label(FrameGenerationAvailability.Selected),
+            active = FrameGenerationAvailability.Active,
+            availableModes = FrameGenerationAvailability.BuildChoices(),
+            unavailableReason = FrameGenerationAvailability.UnavailableReason,
+            renderedFramesPerSecond = null,
+            displayedFramesPerSecond = null,
+            inputLatencyMilliseconds = null
+        };
+
         internal static TemporalBackendRecord CaptureTemporalBackend()
         {
             TemporalCoordinator coordinator = TemporalCoordinator.Current;
@@ -67,6 +79,7 @@ namespace ReduxBetterAA.Diagnostics
                     active = false,
                     status = "Temporal coordinator unavailable",
                     fallbackReason = "Temporal coordinator unavailable",
+                    frameGeneration = CaptureFrameGeneration(),
                     lastResetReason = HistoryResetReason.None.ToString()
                 };
             }
@@ -82,6 +95,7 @@ namespace ReduxBetterAA.Diagnostics
             {
                 supersamplingPercent = coordinator.SupersamplingPercent,
                 appliedRenderScalePercent = coordinator.AppliedRenderScalePercent,
+                frameGeneration = CaptureFrameGeneration(),
                 requestedBackend = coordinator.RequestedBackend.ToString(),
                 selectedBackend = coordinator.SelectedBackend,
                 active = coordinator.Active,

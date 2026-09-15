@@ -71,7 +71,9 @@ namespace ReduxBetterAA.Diagnostics
                     _shader.Status == AsyncOperationStatus.Succeeded && _shader.Result.isSupported)
                     _material = new Material(_shader.Result) { hideFlags = HideFlags.HideAndDontSave };
                 _writer = new BufferImageWriter(_directory, _material, _manifest);
-                WriteCapabilityReport();
+                // Preserve an explicitly unpaired fallback if rendering never reaches
+                // this request. Successful capture replaces it after the actual AA pass.
+                WriteCapabilityReport("request-before-camera-render");
                 if (_camera != null && _camera.isActiveAndEnabled)
                 {
                     // Destroy is deferred; a disabled hook from a previous mode can
@@ -114,14 +116,20 @@ namespace ReduxBetterAA.Diagnostics
             {
                 _manifest.inputFrame = Time.frameCount;
                 if (_expectsTemporalInput) TemporalInputCaptureCount++;
-                _writer.Capture("scene-input", source);
                 // Do not enable missing flags just to obtain a nicer diagnostic.
                 // A global texture without a request on this camera can belong to another camera.
                 bool depth = (_camera.depthTextureMode & DepthTextureMode.Depth) != 0;
                 bool motion = (_camera.depthTextureMode & DepthTextureMode.MotionVectors) != 0;
-                _writer.Capture("depth-device", depth ? Shader.GetGlobalTexture("_CameraDepthTexture") : null,
+                Texture depthTexture = depth ? Shader.GetGlobalTexture("_CameraDepthTexture") : null;
+                Texture motionTexture = motion ? Shader.GetGlobalTexture("_CameraMotionVectorsTexture") : null;
+                _manifest.inputBindings.Add(CaptureBinding("_CameraDepthTexture", depthTexture, depth,
+                    Shader.GetGlobalVector("_CameraDepthTexture_TexelSize"), _manifest.inputFrame));
+                _manifest.inputBindings.Add(CaptureBinding("_CameraMotionVectorsTexture", motionTexture, motion,
+                    Shader.GetGlobalVector("_CameraMotionVectorsTexture_TexelSize"), _manifest.inputFrame));
+                _writer.Capture("scene-input", source);
+                _writer.Capture("depth-device", depthTexture,
                     1, "Resolve camera did not request depth; global ownership is unproven");
-                _writer.Capture("motion-raw", motion ? Shader.GetGlobalTexture("_CameraMotionVectorsTexture") : null,
+                _writer.Capture("motion-raw", motionTexture,
                     2, "Resolve camera did not request motion vectors; global ownership is unproven");
             }
             catch (Exception exception) { RecordFailure("Input capture", exception); }
@@ -133,9 +141,13 @@ namespace ReduxBetterAA.Diagnostics
                 return;
             try
             {
+                _manifest.outputFrame = Time.frameCount;
+                // This hook runs after the resolve. Take camera/settings/matrix state
+                // now, before our own copies can alter shader-global observations.
+                try { WriteCapabilityReport(_expectsTemporalInput ? "after-temporal-resolve" : "after-ppv2"); }
+                catch (Exception exception) { RecordFailure("Resolved metadata capture", exception); }
                 if (!_expectsTemporalInput)
                     CaptureInput(source);
-                _manifest.outputFrame = Time.frameCount;
                 ReduxSceneOutput sceneOutput = ReduxSceneOutput.Current;
                 if (sceneOutput != null && sceneOutput.Active)
                 {
@@ -155,7 +167,7 @@ namespace ReduxBetterAA.Diagnostics
                 if (coordinator != null)
                 {
                     foreach (object owner in coordinator.CaptureBufferOwners())
-                        CaptureOwnedTextures(owner, owner.GetType().Name);
+                        if (owner != null) CaptureOwnedTextures(owner, owner.GetType().Name);
                 }
             }
             catch (Exception exception) { RecordFailure("Output capture", exception); }
@@ -262,10 +274,33 @@ namespace ReduxBetterAA.Diagnostics
             _camera = null;
         }
 
-        private void WriteCapabilityReport()
+        private void WriteCapabilityReport(string stage)
         {
+            Phase1Report report = _report(_camera);
+            report.captureStage = stage;
             File.WriteAllText(Path.Combine(_directory, "capabilities.json"),
-                JsonConvert.SerializeObject(_report(_camera), Formatting.Indented));
+                JsonConvert.SerializeObject(report, Formatting.Indented));
+            _manifest.capabilitiesFrame = report.frame;
+            _manifest.capabilitiesStage = stage;
+            _manifest.capabilitiesMatchOutput = _manifest.outputFrame >= 0 && report.frame == _manifest.outputFrame;
+            _manifest.motionMatrixFrame = report.temporal?.motionMatrix?.frame ?? -1;
+            _manifest.motionMatrixMatchesOutput = _manifest.capabilitiesMatchOutput &&
+                _manifest.motionMatrixFrame == _manifest.outputFrame;
+        }
+
+        internal static InputBindingRecord CaptureBinding(string binding, Texture texture,
+            bool requested, Vector4 cpuGlobalTexelSize, int frame)
+        {
+            return new InputBindingRecord
+            {
+                binding = binding, frame = frame, requestedByCamera = requested,
+                width = texture == null ? 0 : texture.width,
+                height = texture == null ? 0 : texture.height,
+                format = texture == null ? null : texture.graphicsFormat.ToString(),
+                cpuGlobalTexelSize = new[] { cpuGlobalTexelSize.x, cpuGlobalTexelSize.y, cpuGlobalTexelSize.z, cpuGlobalTexelSize.w },
+                cpuGlobalDimensionsMatchTexture = texture != null &&
+                    cpuGlobalTexelSize.z == texture.width && cpuGlobalTexelSize.w == texture.height
+            };
         }
 
         private void RecordFailure(string operation, Exception exception)

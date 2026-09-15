@@ -75,6 +75,57 @@ namespace ReduxBetterAA.Tests
             finally { Object.DestroyImmediate(scene); Object.DestroyImmediate(sky); Object.DestroyImmediate(target); }
         }
 
+        [TestCase((int)TemporalSceneKind.Flight)]
+        [TestCase((int)TemporalSceneKind.KerbalSpaceCenter)]
+        public void FlightOceanJitterRequiresTheMatchingPreUiStack(int sceneKind)
+        {
+            var scene = new GameObject("FlightCameraPhysics_Main");
+            var scaled = new GameObject("FlightCameraScaled_Main");
+            var target = new RenderTexture(32, 32, 0);
+            try
+            {
+                var camera = scene.AddComponent<Camera>();
+                var background = scaled.AddComponent<Camera>();
+                camera.clearFlags = CameraClearFlags.Depth;
+                camera.depth = 0; background.depth = -1;
+                var graph = new TemporalCameraSet { SceneKind = (TemporalSceneKind)sceneKind,
+                    ResolveCamera = camera, SharedJitterCamera = background };
+                Assert.That(graph.JitterTransparentRendering, Is.True);
+                background.targetTexture = target;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                camera.targetTexture = target;
+                Assert.That(graph.JitterTransparentRendering, Is.True,
+                    "Matching offscreen stacks used by upscaling also need coherent water jitter");
+                camera.targetTexture = null; background.targetTexture = null;
+                background.rect = new Rect(0, 0, .5f, 1);
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                background.rect = camera.rect;
+                background.depth = camera.depth;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                background.depth = -1;
+                background.enabled = false;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                background.enabled = true; camera.enabled = false;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                camera.enabled = true; camera.clearFlags = CameraClearFlags.Color;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                camera.clearFlags = CameraClearFlags.Depth;
+                background.name = "UnknownScaledCamera";
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                background.name = "FlightCameraScaled_Main";
+                camera.name = "UnknownPhysicsCamera";
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                camera.name = "FlightCameraPhysics_Main";
+                graph.SharedJitterCamera = null;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+                graph.SharedJitterCamera = background;
+                Assert.That(graph.JitterTransparentRendering, Is.True);
+                graph.SceneKind = TemporalSceneKind.Vab;
+                Assert.That(graph.JitterTransparentRendering, Is.False);
+            }
+            finally { Object.DestroyImmediate(scene); Object.DestroyImmediate(scaled); Object.DestroyImmediate(target); }
+        }
+
         [Test]
         public void MapJitterRequiresTheRecognizedSingleCamera()
         {
