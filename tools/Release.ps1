@@ -72,14 +72,6 @@ if ($Publish) {
             Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and $_ -ne $tag } | Select-Object -First 1) -join ''
     }
 }
-$range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
-$connectedHistory = $true
-if ($previousTag) {
-    & git -C $repo merge-base --is-ancestor "$previousTag^{}" $commit
-    if ($LASTEXITCODE -gt 1) { throw 'Could not inspect the previous release history.' }
-    $connectedHistory = $LASTEXITCODE -eq 0
-}
-
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
 & (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
 [void](Assert-ReleaseSource $repo $commit)
@@ -88,11 +80,9 @@ $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format '
     --editors @RuntimeEditors --fsr-runtime $FsrRuntimeZip --output $output --commit $commit --version $Version
 if ($LASTEXITCODE -ne 0) { throw 'Complete release packaging failed.' }
 $completeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'ReduxBetterAA-*.zip' -File | Sort-Object Name)
-$format = "--format=- %s ([%h]($url/commit/%H))"
-$history = if ($connectedHistory) { @(Invoke-ReleaseGit $repo @('log', '--reverse', $format, $range)) }
-    else { @('The published predecessor predates the source-history cleanup. Changes are described by the curated release notes below.', '', (Get-Content -LiteralPath $notesPath -Raw).TrimEnd()) }
-$heading = if ($previousTag) { "Changes since $previousTag" } else { 'Changes through the first public release' }
-@("# $tag", '', $heading, '') + $history | Set-Content -LiteralPath (Join-Path $output 'CHANGELOG.md') -Encoding utf8NoBOM
+# Public changelogs describe player-visible changes; Git retains development history.
+@("# $tag", '', (Get-Content -LiteralPath $notesPath -Raw).TrimEnd()) |
+    Set-Content -LiteralPath (Join-Path $output 'CHANGELOG.md') -Encoding utf8NoBOM
 [xml]$tests = Get-Content -LiteralPath (Join-Path $repo 'Logs\beta-editmode.xml') -Raw
 $info = [ordered]@{
     version = $Version; sourceCommit = $commit; sourceClean = $true
@@ -102,7 +92,7 @@ $info = [ordered]@{
     completePackages = @($completeAssets.Name)
     fsrRuntimeSha256 = (Get-FileHash -LiteralPath $FsrRuntimeZip).Hash.ToLowerInvariant()
     previousRelease = $previousTag
-    changelogSource = if ($connectedHistory) { 'git-history' } else { 'curated-release-notes' }
+    changelogSource = 'curated-release-notes'
 }
 $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
 $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)

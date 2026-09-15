@@ -53,7 +53,7 @@ both need Windows Build Support (Mono). The harness builds against the candidate
 game using the current editor; no additional compiler or SDK is needed.
 
 ```powershell
-pwsh -NoProfile -File tools/Test-Candidate.ps1 -FsrRuntimeZip 'D:\Builds\BetterAA-FSR-Runtime-0.6.3-win-x64.zip'
+pwsh -NoProfile -File tools/Test-Candidate.ps1 -FsrRuntimeZip 'D:\Builds\BetterAA-FSR-Runtime-0.6.2-win-x64.zip'
 ```
 
 The pipeline requires clean, committed mod and harness source. It copies the
@@ -79,7 +79,8 @@ source and script checks. No Python packages need installing. Complete the
 
 Update the version in `Copied/swinfo.json` and
 `Code/AssemblyInfo.cs` under `Assets/ReduxBetterAA`. Write
-`docs/releases/vX.Y.Z.md`, record the checklist results there, and commit.
+`docs/releases/vX.Y.Z.md` with player-facing changes and known limitations, then
+commit. Put detailed checklist results in the commit or PR.
 
 To build a complete release locally, pass your installed game and editor paths:
 
@@ -93,10 +94,9 @@ To build a complete release locally, pass your installed game and editor paths:
 
 Run this from PowerShell 7.4+. Results go under `Deploy/releases`. Local
 preparation works in a detached checkout and needs no GitHub authentication or
-remote. It does not fetch, push, create tags or contact GitHub. Its changelog starts
-after the nearest ancestor version tag. If the published predecessor belongs to
-retired source history, it uses the curated release notes instead of claiming an
-unrelated commit list is the release delta. A tag on the current commit is skipped. Unity's first package resolution
+remote. It does not fetch, push, create tags or contact GitHub. Its changelog uses the curated release notes. Keep build steps, test counts,
+internal implementation details and branch history out of player-facing documents.
+Unity's first package resolution
 still needs network access. Ordinary builds need only the current editor.
 
 Every release produces one complete mod-and-runtime ZIP per supported Redux
@@ -111,7 +111,7 @@ tracked files and HEAD stayed unchanged. To publish, run the same command on
 `main` with `-Publish` and GitHub CLI authentication (`gh auth login`). Publishing
 requires the project's GitHub `origin`, fetches remote history, and pushes main
 and the annotated tag atomically. It uploads the complete ZIPs,
-changelog since the previous published release, build information and checksums
+curated changelog, build information and checksums
 to a draft, downloads and verifies each file, then publishes the beta. Preparing a local candidate does not publish it. Use
 `-Stable` for a stable release. An existing public release is never overwritten;
 failed draft uploads can be retried from the same commit. No GitHub Actions or
@@ -125,7 +125,7 @@ marker and no compiler/shader errors.
 Read [the architecture and fixes](docs/architecture.md) before changing rendering.
 Keep source, build configuration and lasting regression tests here; keep captures,
 private saves, decompiled code and investigation scripts outside the checkout.
-Record validation in the PR or release, with scene, backend, Redux/Unity version,
+Record validation in the PR or commit, with scene, backend, Redux/Unity version,
 GPU and resolution. Use Git history for past decisions; update the architecture
 when a design changes. Preserve [third-party notices](THIRD-PARTY-NOTICES.md).
 
