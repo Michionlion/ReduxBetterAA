@@ -110,7 +110,7 @@ namespace ReduxBetterAA.Tests
                 FileNotFoundException failure = Assert.Throws<FileNotFoundException>(
                     () => AmdFsrNativeApi.FindRuntimeLibrary(directory));
                 Assert.That(failure.FileName, Is.EqualTo(Path.Combine(directory, "ReduxBetterAA.FsrBridge.dll")));
-                Assert.That(failure.Message, Does.Contain("FSR 4.1/3.1 runtime"));
+                Assert.That(failure.Message, Does.Contain("complete Better AA ZIP"));
             }
             finally
             {

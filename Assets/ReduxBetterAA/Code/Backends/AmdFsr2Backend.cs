@@ -12,7 +12,7 @@ using ReduxLogger = ReduxLib.Logging.ILogger;
 namespace ReduxBetterAA.Backends
 {
     /// <summary>
-    /// AMD native AA and reconstruction through the optional FSR SDK bridge.
+    /// AMD native AA through the bundled FSR SDK bridge.
     /// The stable class/selection names remain for saved-setting compatibility.
     /// </summary>
     internal sealed class AmdFsr2Backend : ITemporalBackend, ISceneResolve, IProjectionJitterSource
@@ -154,7 +154,7 @@ namespace ReduxBetterAA.Backends
             if (!ManagedSurfaceAvailable)
             {
                 unsupportedReason = string.IsNullOrEmpty(_lastFailure)
-                    ? "the optional AMD FSR runtime is unavailable" : _lastFailure;
+                    ? "the bundled AMD FSR runtime is unavailable" : _lastFailure;
                 return false;
             }
             if (cameras == null || cameras.SceneKind == TemporalSceneKind.Unsupported)

@@ -1,4 +1,5 @@
 import hashlib
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -62,6 +63,16 @@ class InGameTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, error):
                 ingame.snapshot(data, row, HASH)
             target[key] = old
+
+        flight = copy.deepcopy(data)
+        flight['cameraGraph']['gameState'] = 'FlightView'
+        flight['cameraGraph']['cameras'][0]['name'] = 'FlightCameraPhysics_Main'
+        flight['temporal'].update(resolveCamera='FlightCameraPhysics_Main', sharedJitterCamera='FlightCameraScaled_Main')
+        flight_row = row | {'scene': 'FlightView'}
+        self.assertEqual(ingame.snapshot(flight, flight_row, HASH), (1280, 720))
+        flight['temporal']['jitterTransparentRendering'] = False
+        with self.assertRaisesRegex(ValueError, 'jitterTransparentRendering'):
+            ingame.snapshot(flight, flight_row, HASH)
 
         default = ingame.coverage({'dlaa': False, 'fsr2': False}, 'core')[0]
         self.assertEqual(default['label'], 'new-install')

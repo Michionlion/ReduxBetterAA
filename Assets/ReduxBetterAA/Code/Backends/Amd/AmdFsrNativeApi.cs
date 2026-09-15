@@ -311,7 +311,7 @@ namespace ReduxBetterAA.Backends.Amd
         {
             string library = Path.Combine(runtimeDirectory, "ReduxBetterAA.FsrBridge.dll");
             if (!File.Exists(library))
-                throw new FileNotFoundException("optional FSR 4.1/3.1 runtime package is not installed", library);
+                throw new FileNotFoundException("bundled FSR native libraries are missing; reinstall the complete Better AA ZIP", library);
             return library;
         }
 

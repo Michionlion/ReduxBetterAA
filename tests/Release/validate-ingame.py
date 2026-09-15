@@ -102,9 +102,10 @@ def snapshot(data, row, assembly_hash):
     requested = {'4': 'CustomTaa', '999': 'Off'}.get(row['requested'], row['requested'])
     camera_name, shared = CAMERAS[scene]
     scale = temporal['supersamplingPercent'] if selected == 'Supersampling' else 100
+    # All fixture stacks are recognized; flight must retain the water jitter fix.
     expected = dict(requestedBackend=requested, selectedBackend=selected, active=selected != 'Off',
                     resolveCamera=camera_name, sharedJitterCamera=shared, projectionJitterSupported=True,
-                    jitterTransparentRendering=scene != 'FlightView', appliedRenderScalePercent=scale,
+                    jitterTransparentRendering=True, appliedRenderScalePercent=scale,
                     mapViewAaEnabled=row['mapEnabled'],
                     mapViewAaOverrideActive=scene == 'Map3DView' and not row['mapEnabled'] and requested != 'Off')
     require(data['captureReason'] == 'Manual', 'Not a production manual capture')
