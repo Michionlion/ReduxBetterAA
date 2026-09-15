@@ -1,8 +1,38 @@
-# Optional native runtimes
+# Native runtime downloads
 
-Frame generation has its own optional companion, separate from the AA/upscaler
-runtimes below and the main mod ZIP. Build and installation are explicit;
-copying vendor SDK DLLs alone does not enable a backend.
+Install the main mod ZIP plus **one runtime ZIP matching your Redux version**.
+Each runtime download includes all native components supported by that engine;
+there is no GPU-vendor or feature selection when downloading.
+
+| Redux | Unity | Download | Included |
+| --- | --- | --- | --- |
+| 0.2.9.0 | 6000.5.8f1 | `BetterAA-Runtimes-Redux-0.2.9.0.zip` | NVIDIA DLAA/DLSS, AMD FSR, NVIDIA and AMD frame generation |
+| 0.2.8.5 | 6000.4.1f1 | `BetterAA-Runtimes-Redux-0.2.8.5.zip` | NVIDIA DLAA/DLSS and AMD FSR; FG requires the newer engine |
+
+Download from [Releases](https://github.com/Michionlion/ReduxBetterAA/releases/tag/v0.6.2).
+Close KSP2 and extract beside `KSP2_x64.exe`, preserving archive paths. Back up
+any different existing files first. Updates from the earlier split downloads
+use the same DLL paths; no settings changes or additional feature ZIPs are needed.
+TAA and spatial AA still work without native downloads. Hardware/runtime probes
+control which features are available; bundling a component does not establish
+support on untested hardware.
+
+Each combined archive preserves original vendor licenses and component manifests,
+plus `BetterAA-Runtimes-manifest.json` with every payload hash and engine version.
+The build instructions below create intermediate components for maintainers;
+these are combined into the two downloads above before publication.
+
+## Build combined downloads
+
+Build the FSR and both-vendor FG components below, then run:
+
+```powershell
+python tools/package-all-runtimes.py --editors 'S:/Development/Unity/6000.5.8f1/Editor' 'C:/Program Files/Unity/Hub/Editor/6000.4.1f1/Editor' --fsr-runtime 'G:/packages/BetterAA-FSR-Runtime-0.6.2-win-x64.zip' --frame-generation 'G:/packages/BetterAA-FrameGeneration-0.6.2-Redux-0.2.9.0-amd-nvidia-win-x64.zip' --mod-version 0.6.2 --output 'G:/packages/combined'
+```
+
+Packaging validates the pinned NVIDIA files, FSR manifest and both FG providers,
+rejects overlapping component paths, and includes the FG Unity plugin only for
+its pinned engine. It preserves payload bytes and refuses to overwrite archives.
 
 ## Frame generation companion
 
@@ -10,7 +40,7 @@ The local companion targets Redux **0.2.9.0 / Unity 6000.5.8f1**, Windows x64,
 and the D3D11 player. It contains the ABI2 coordinator, selected ABI1 providers,
 unmodified pinned vendor runtimes, original notices/licenses, and a hash manifest.
 Its name is `BetterAA-FrameGeneration-<mod-version>-Redux-0.2.9.0-<vendors>-win-x64.zip`.
-Download the optional companion from the v0.6.2 release. The local build path
+This component is included in the combined runtime download for Redux 0.2.9.0. The local build path
 does not publish files or change the main mod package.
 
 Close KSP2 and extract beside `KSP2_x64.exe`, preserving the archive paths and
@@ -91,7 +121,7 @@ validation remains outstanding.
 Frame generation is not provided by this runtime bridge.
 
 The optional archive is `BetterAA-FSR-Runtime-<mod-version>-win-x64.zip` and is
-built separately and attached to the v0.6.2 release.
+built separately as an input to the combined runtime downloads.
 Close KSP2 and extract it beside `KSP2_x64.exe`. Its four files belong under
 `mods/ReduxBetterAA/native/`:
 
@@ -131,8 +161,8 @@ Use the NVIDIA runtime ZIP matching your installed Redux version:
 | 0.2.9.0 | 6000.5.8f1 | `BetterAA-Runtimes-Redux-0.2.9.0.zip` |
 | 0.2.8.5 | 6000.4.1f1 | `BetterAA-Runtimes-Redux-0.2.8.5.zip` |
 
-Close KSP2 and extract the ZIP beside `KSP2_x64.exe`. It contains only
-`NVUnityPlugin.dll`, `nvngx_dlss.dll` and their notices.
+Close KSP2 and extract the ZIP beside `KSP2_x64.exe`. The combined archive includes
+`NVUnityPlugin.dll`, `nvngx_dlss.dll`, AMD components and their notices.
 Back up any different existing copies before replacing them. Install the
 Better AA mod separately, then select NVIDIA DLAA or DLSS in its settings.
 Download these companion ZIPs from the matching release; see release preparation in the source checkout's `CONTRIBUTING.md`.

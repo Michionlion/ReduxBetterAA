@@ -76,6 +76,14 @@ Moving-image quality and performance still need the checks below.
 
 ## Prepare and publish a release
 
+Public releases use one complete runtime download per engine. Supply
+`-FsrRuntimeZip <built FSR component>` and `-FrameGenerationZip <built both-vendor FG component>`
+to `tools/Release.ps1`; it validates and combines them with the pinned NVIDIA
+player files. Build these intermediate inputs using [NATIVES.md](NATIVES.md).
+Local candidate checks without these inputs retain NVIDIA-only packaging for
+unavailable-backend tests; publishing requires both inputs.
+
+
 Run `pwsh -NoProfile -File tools/Test-Release.ps1` for portable packaging,
 source and script checks. No Python packages need installing. Complete the
 [in-game release checklist](tests/README.md) before publishing.
@@ -101,7 +109,7 @@ exists. A tag on the current commit is skipped. Unity's first package resolution
 still needs network access. Ordinary builds need only the current editor.
 
 Every release packages both runtime ZIPs from those local files, validates
-their pinned hashes, and includes only two NVIDIA DLLs and one notices file per ZIP.
+their pinned hashes, and includes all applicable native components and their original notices per ZIP.
 When adding support for a new Unity player, review its vendor terms and update
 `tools/runtime-targets.json` from verified official player files.
 The script requires clean source, runs the checks and build, and verifies that

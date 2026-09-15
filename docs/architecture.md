@@ -818,3 +818,12 @@ prepass before world SR may be necessary to keep background history from leaking
 through close silhouettes. A close vessel cannot be treated as a UI overlay or
 painted only on real frames. Until those inputs exist, normal full-scene native
 AA is the compatibility path.
+
+## Runtime distribution
+
+Public downloads combine all applicable native components into one archive per
+Redux/Unity version. NVIDIA player libraries retain their engine pins; the FSR
+component is shared, and the FG Unity plugin/providers are included only for the
+pinned Redux 0.2.9.0 / Unity 6000.5.8f1 integration. Component build archives are
+maintainer intermediates. The combined packager validates each input, rejects
+path collisions and records all payload hashes without changing runtime behavior.

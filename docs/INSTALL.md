@@ -1,3 +1,7 @@
+For native features, install the single `BetterAA-Runtimes-Redux-<version>.zip`
+matching your Redux version. It contains all applicable NVIDIA/AMD runtimes;
+frame generation is included for Redux 0.2.9.0 only. See [native installation](https://github.com/Michionlion/ReduxBetterAA/blob/main/NATIVES.md).
+
 # Install Redux Better AA
 
 Install KSP2 Redux first, then close the game and extract the mod ZIP into the
@@ -8,7 +12,7 @@ Open **Settings → Mods → Redux Better AA** and choose a mode. Fresh installs
 start with custom TAA (shown as TAA); updates preserve saved selections, including Off.
 TAA, FXAA, SMAA and supersampling need no extra native files.
 See the included `NATIVES.md` for NVIDIA DLAA/DLSS libraries
-and the separate FSR 4.1/3.1 runtime. Settings show the actual
+and the bundled FSR 4.1/3.1 runtime. Settings show the actual
 supported FSR provider; unsupported NVIDIA modes are hidden. Existing FSR
 selections migrate to the current provider's name.
 FSR 3.1 handles older supported GPUs. The Unity FSR2 plugin is no longer used;
@@ -29,7 +33,7 @@ enable it or guarantee a requested frame-rate multiplier.
 
 To update, move the previous mod folder outside `mods`, extract the new ZIP,
 then restore your configuration and diagnostic reports and reinstall the matching
-optional native packages you use. The main ZIP does not include those runtimes.
+combined native runtime package. The main ZIP does not include those runtimes.
 Do not keep a second copy of the same mod under `mods`, even in a backup subfolder.
 To uninstall, first remove the FG companion's manifest-listed files as described
 in `NATIVES.md`, if installed, then remove `mods/ReduxBetterAA`.

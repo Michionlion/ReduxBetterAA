@@ -106,3 +106,6 @@ Record source commit, Redux/Unity versions, GPU/driver, resolution, tested modes
 scene setup and results in the release notes or linked PR. Mark unsupported or
 untested cases explicitly. Keep selected before/after images in release assets,
 not the source tree. Capture frame rate is not a performance measurement.
+
+Combined runtime packaging tests cover engine-specific FG inclusion, complete
+manifest coverage, deterministic output, collision rejection and overwrite protection.

@@ -17,10 +17,10 @@ Most recent testing uses Redux 0.2.9.0, D3D11 and an RTX 5070 Ti at 1440p.
 3. From v0.6.2, new installs start with custom TAA (shown as **TAA**). Change modes in
    **Settings → Mods → Redux Better AA**. Updates preserve your saved selection, including Off.
 
-DLAA/DLSS need matching Unity NVIDIA native libraries. FSR 4.1/3.1 uses a
-separate optional FSR runtime package. Frame generation uses its own optional
-native companion, with NVIDIA and AMD components selected when building it.
-[Native packages and installation](NATIVES.md).
+For native features, download **one runtime ZIP matching your Redux version**.
+It includes NVIDIA DLAA/DLSS, AMD FSR and, on Redux 0.2.9.0, NVIDIA/AMD frame
+generation. Extract beside `KSP2_x64.exe`; no feature-specific downloads are needed.
+[Runtime downloads and installation](NATIVES.md).
 The mod ZIP contains no game or vendor DLLs. Better Clouds is optional.
 For updates, move the old mod folder outside `mods`, install the new one,
 then restore your configuration and reports. Keep only one Better AA installation.

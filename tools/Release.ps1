@@ -5,6 +5,8 @@ param(
     [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
     [string] $Ksp2Root,
     [string[]] $RuntimeEditors,
+    [string] $FsrRuntimeZip,
+    [string] $FrameGenerationZip,
     [switch] $Publish,
     [switch] $Stable
 )
@@ -14,8 +16,18 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $RuntimeEditors) {
     $RuntimeEditors = @((Split-Path $Unity), 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor')
 }
-# Validate all supported runtime sets before building. No downloads or game writes.
-& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors
+# Public releases always combine every applicable native component per engine.
+if (($Publish -or $FsrRuntimeZip -or $FrameGenerationZip) -and (-not $FsrRuntimeZip -or -not $FrameGenerationZip)) {
+    throw 'Supply both -FsrRuntimeZip and -FrameGenerationZip for complete runtime downloads.'
+}
+$runtimeScript = 'package-runtimes.py'
+$runtimeArguments = @('--editors') + $RuntimeEditors
+if ($FsrRuntimeZip -and $FrameGenerationZip) {
+    $runtimeScript = 'package-all-runtimes.py'
+    $runtimeArguments += @('--fsr-runtime', $FsrRuntimeZip, '--frame-generation', $FrameGenerationZip, '--mod-version', $Version)
+}
+# Local candidate checks may still build NVIDIA-only components without SDK archives.
+& python -X utf8 (Join-Path $PSScriptRoot $runtimeScript) @runtimeArguments
 if ($LASTEXITCODE -ne 0) { throw 'Runtime source validation failed.' }
 $commit = Assert-ReleaseSource $repo
 if ((Get-ReleaseVersion $repo) -cne $Version) { throw 'Requested version differs from the source versions.' }
@@ -71,7 +83,7 @@ $range = if ($previousTag) { "$previousTag..$commit" } else { $commit }
 [void](Assert-ReleaseSource $repo $commit)
 $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 & (Join-Path $PSScriptRoot 'Package.ps1') -OutputDirectory $output -SourceCommit $commit
-& python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors --output $output
+& python -X utf8 (Join-Path $PSScriptRoot $runtimeScript) @runtimeArguments --output $output
 if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed.' }
 $runtimeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'BetterAA-Runtimes-*.zip' -File | Sort-Object Name)
 $format = "--format=- %s ([%h]($url/commit/%H))"
@@ -95,7 +107,7 @@ $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $expectedHashes = @{}
 foreach ($file in $assets) { $expectedHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName).Hash }
 $notes = (Get-Content -LiteralPath $notesPath -Raw).TrimEnd() + "`n`n[Full changelog]($url/releases/download/$tag/CHANGELOG.md) · [Source]($url/tree/$tag)`n"
-$notes += "`nFor NVIDIA DLAA or DLSS, extract the NVIDIA runtime ZIP matching your Redux version beside KSP2_x64.exe:`n`n"
+$notes += "`nExtract the one runtime ZIP matching your Redux version beside KSP2_x64.exe. It contains all native components supported by that engine:`n`n"
 foreach ($runtime in $runtimeAssets) {
     $notes += "- [$($runtime.Name)]($url/releases/download/$tag/$($runtime.Name))`n"
 }
