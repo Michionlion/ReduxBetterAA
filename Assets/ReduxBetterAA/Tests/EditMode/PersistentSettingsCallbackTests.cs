@@ -26,7 +26,6 @@ namespace ReduxBetterAA.Tests
                 mode.Value = "FSR 3.1 Native AA";
                 Set(mod, "_modeEntry", mode);
                 Set(mod, "_dlaaPresetEntry", new JsonConfigEntry(file, typeof(string), "", "K"));
-                Set(mod, "_cycleKeyEntry", new JsonConfigEntry(file, typeof(string), "", "None"));
                 Set(mod, "_dlaaSelectable", true);
                 Set(mod, "_fsr2Selectable", true);
                 Set(mod, "_fsrProviderName", "FSR 3.1");

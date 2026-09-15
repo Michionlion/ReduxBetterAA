@@ -32,9 +32,7 @@ namespace ReduxBetterAA
         private IConfigEntry _foliageMotionRepairEntry;
         private IConfigEntry _mapViewAaEntry;
         private IConfigEntry _hotkeysEntry;
-        private IConfigEntry _cycleKeyEntry;
         private IConfigEntry _issueReportEntry;
-        private KeyCode _cycleKey = KeyCode.None;
         private bool _dlaaSelectable;
         private bool _fsr2Selectable;
         private string _fsrProviderName = string.Empty;
@@ -116,9 +114,6 @@ namespace ReduxBetterAA
 
             _hotkeysEntry = SWConfiguration.Bind("Diagnostics", "Enable diagnostic hotkeys", true,
                 "F10 opens the AA menu; Issue ZIP captures a report; Shift+F10 takes a screenshot.");
-            _cycleKeyEntry = SWConfiguration.Bind("Diagnostics", "Cycle AA mode key", "None",
-                "Optional mode-cycle key. Disabled by default to avoid Steam's F12 screenshot shortcut.",
-                new ListConstraint<string>(new[] { "None", "F6", "F7", "F9", "F11", "F12" }));
             _issueReportEntry = SWConfiguration.Bind("Diagnostics", "Generate issue report ZIP", false,
                 "Turn on to capture the current scene, available buffers and settings. Resets immediately. " +
                 "Capture may pause the game briefly. The resulting ZIP stays local; review its images before sending it.");
@@ -237,17 +232,13 @@ namespace ReduxBetterAA
         {
             _probeService.MarkDirty(ProbeDirtyReason.ModsInitialized);
             SWLogger.LogInfo(
-                "[ReduxBetterAA/Probe] Controls: F10 AA menu; Issue ZIP button; Shift+F10 screenshot; optional cycle key in settings; Ctrl+Alt+F8 report."
+                "[ReduxBetterAA/Probe] Controls: F10 AA menu; Issue ZIP button; Shift+F10 screenshot; Ctrl+Alt+F8 report."
             );
         }
 
         private void Update()
         {
             ApplyPendingPersistentSettings();
-            if (_cycleKey != KeyCode.None && Input.GetKeyDown(_cycleKey) && !DiagnosticHotkeys.AnyModifierDown())
-            {
-                CycleRequestedBackendAndPersist();
-            }
             _temporalCoordinator?.Tick();
             _probeService?.Tick();
         }
@@ -353,7 +344,6 @@ namespace ReduxBetterAA
             _foliageMotionRepairEntry.RegisterCallback(OnPersistentSettingChanged);
             _mapViewAaEntry.RegisterCallback(OnPersistentSettingChanged);
             _hotkeysEntry.RegisterCallback(OnPersistentSettingChanged);
-            _cycleKeyEntry.RegisterCallback(OnPersistentSettingChanged);
         }
 
         private void OnPersistentSettingChanged(object previous, object current)
@@ -381,8 +371,6 @@ namespace ReduxBetterAA
         {
             if (_probeService != null)
                 _probeService.HotkeysEnabled = (bool)_hotkeysEntry.Value;
-            if (!Enum.TryParse((string)_cycleKeyEntry.Value, out _cycleKey))
-                _cycleKey = KeyCode.None;
             if (_temporalCoordinator == null)
             {
                 return;
@@ -430,19 +418,6 @@ namespace ReduxBetterAA
             {
                 Persist(_modeEntry, label);
             }
-        }
-
-        private void CycleRequestedBackendAndPersist()
-        {
-            if (_temporalCoordinator == null)
-            {
-                return;
-            }
-            BackendSelection next = UserSettingsPolicy.NextBackend(
-                _temporalCoordinator.RequestedBackend,
-                _dlaaSelectable, _fsr2Selectable
-            );
-            SetRequestedBackendAndPersist(next);
         }
 
         private void SetCustomConfigAndPersist(CustomTaaConfig config)

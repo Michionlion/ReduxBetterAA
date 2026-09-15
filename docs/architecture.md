@@ -185,7 +185,8 @@ Sources: [TAA shader](../Assets/ReduxBetterAA/Shaders/CustomTaa.shader),
 ## Diagnostics and distribution
 
 F10 controls, buffer views, motion statistics, performance profiles and Issue
-ZIPs are supported features. Reports identify capture stage/frame, selected and
+ZIPs are supported features. AA mode selection uses the settings menu or F10;
+there is no mode-cycle hotkey. Reports identify capture stage/frame, selected and
 active backend, settings, runtime versions and file hashes. Capture failures
 leave normal rendering alive and mark partial results. Nothing uploads automatically.
 Motion telemetry uses the report's capture camera, independent of the selected
