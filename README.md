@@ -1,6 +1,6 @@
 # Redux Better AA
 
-Better AA adds anti-aliasing options to KSP2 Redux. Choose TAA, NVIDIA DLAA, FSR Native AA, FXAA, SMAA or supersampling. Supports Windows x64 with Redux **0.2.9.0** or **0.2.8.5**. Check the [latest release](https://github.com/Michionlion/ReduxBetterAA/releases/latest) for downloads.
+Better AA adds anti-aliasing options to KSP2 Redux. Choose TAA, NVIDIA DLAA, FSR Native AA, FXAA, SMAA or supersampling. Supports Windows x64 with Redux **0.2.9.0**+ or **0.2.8.5**. Check the [latest release](https://github.com/Michionlion/ReduxBetterAA/releases/latest) for downloads.
 
 https://github.com/user-attachments/assets/5ee785f9-2401-4c36-a9f2-39612660a2c7
 
@@ -13,13 +13,9 @@ https://github.com/user-attachments/assets/5ee785f9-2401-4c36-a9f2-39612660a2c7
    `mods/ReduxBetterAA/swinfo.json`.
 4. Open **Settings → Mods → Redux Better AA** to choose a mode.
 
-Each ZIP includes the mod and the libraries needed for DLAA and FSR. You only
-need one download.
+Each ZIP includes the mod and the libraries needed for DLAA and FSR. You only need one download.
 
-New installs start with **TAA** selected. Updates keep your saved selection, including
-Off. To update, move the old `ReduxBetterAA` folder outside `mods` before
-extracting the ZIP, then restore your configuration if desired.
-See [installation and removal](docs/INSTALL.md) for details.
+New installs start with **TAA** selected. Updates keep your saved selection, including Off. To update, move the old `ReduxBetterAA` folder outside `mods` before extracting the ZIP, then restore your configuration if desired.
 
 ## Modes
 
@@ -37,19 +33,15 @@ TAA, DLAA and FSR work at native resolution--there is no upscaling. Map AA and f
 
 ## Known limitations
 
-DLAA requires a supported NVIDIA RTX GPU. Unavailable modes are hidden. If a
-mode fails to start, Better AA switches to Off; F10 (when enabled in settings) shows the reason.
+DLAA requires a supported NVIDIA RTX GPU. Unavailable modes are hidden. If a mode fails to start, Better AA switches to Off; F10 (when enabled in settings) shows the reason.
 
-Most testing has been on Redux 0.2.9.0 with an RTX 5070 Ti. AMD hardware,
-FSR 4, Redux 0.2.8.5 and long sessions need more testing.
+Most testing has been on Redux 0.2.9.0 with an RTX 5070 Ti. AMD hardware, FSR 4, Redux 0.2.8.5 and long sessions need more testing.
 
 F10's live A/B comparison will show terrain differently (possibly completely absent) than normal play and costs extra performance. Close it when comparing modes or checking flicker.
 
 ## Report a problem
 
-With the problem visible, press **F10 → Issue ZIP**. Review the images and
-attach the ZIP with reproduction steps to an
-[issue](https://github.com/Michionlion/ReduxBetterAA/issues).
+With the problem visible, press **F10 → Issue ZIP**. Review the images and attach the ZIP with reproduction steps to an [issue](https://github.com/Michionlion/ReduxBetterAA/issues).
 
 Reports are saved in `mods/ReduxBetterAA/diagnostics/reports`. Nothing is uploaded automatically. Capturing a report can pause the game, and its images may include vessel names and visible UI.
 

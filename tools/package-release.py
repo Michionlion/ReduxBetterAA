@@ -13,8 +13,8 @@ PREFIX = 'mods/ReduxBetterAA/'
 REQUIRED = {'ReduxBetterAA.dll', 'swinfo.json', 'addressables/catalog.json', 'addressables/catalog.hash'}
 BUILD_ONLY = {'addressables/settings.json', 'addressables/AddressablesLink/link.xml'}
 DOCS = {
-    'INSTALL.md': 'docs/INSTALL.md', 'NATIVES.md': 'NATIVES.md',
-    'LICENSE': 'LICENSE', 'THIRD-PARTY-NOTICES.md': 'THIRD-PARTY-NOTICES.md',
+    'LICENSE': 'LICENSE',
+    'THIRD-PARTY-NOTICES.md': 'THIRD-PARTY-NOTICES.md',
     'licenses/Unity-Built-in-Shaders.txt': 'licenses/Unity-Built-in-Shaders.txt',
 }
 SHADERS = {

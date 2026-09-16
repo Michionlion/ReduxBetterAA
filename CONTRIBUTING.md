@@ -29,10 +29,10 @@ with Unity, then validates and packages the result. Extract
 manifest should be `mods/ReduxBetterAA/swinfo.json`. The unversioned ZIP is a
 build intermediate. Logs and test results are in `Logs`.
 
-Ordinary builds produce a managed component ZIP. Public releases include the
-[native libraries](NATIVES.md); TAA, spatial AA and supersampling can also run
-without them. Build the AMD component using [Build-Native.ps1](Native/README.md),
-then pass its archive as `-FsrRuntimeZip` to release and candidate commands.
+Ordinary builds produce a managed component ZIP. Public releases include the native
+libraries; TAA, spatial AA and supersampling can also run without them. Build the AMD
+component using [Build-Native.ps1](Native/README.md), then pass its archive as
+`-FsrRuntimeZip` to release and candidate commands.
 
 ## Test a release candidate
 
