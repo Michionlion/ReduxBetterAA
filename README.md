@@ -1,9 +1,8 @@
 # Redux Better AA
 
-Better AA adds anti-aliasing options to KSP2 Redux. Choose TAA, NVIDIA DLAA, FSR Native AA, FXAA, SMAA or supersampling.
+Better AA adds anti-aliasing options to KSP2 Redux. Choose TAA, NVIDIA DLAA, FSR Native AA, FXAA, SMAA or supersampling. Supports Windows x64 with Redux **0.2.9.0** or **0.2.8.5**. See [what's new in v0.6.2](docs/releases/v0.6.2.md).
 
-Supports Windows x64 with Redux **0.2.9.0** or **0.2.8.5**.
-See [what's new in v0.6.2](docs/releases/v0.6.2.md).
+https://github.com/user-attachments/assets/5ee785f9-2401-4c36-a9f2-39612660a2c7
 
 ## Install
 
