@@ -100,9 +100,10 @@ bundles only load in players of the editor version that built them, so each
 Redux version gets its own mod build: the pinned editor builds in this checkout
 against `-Ksp2Root`, then [Build-Legacy.ps1](tools/Build-Legacy.ps1) builds the
 same commit with the 6000.4.1f1 editor against an installed Redux 0.2.8.5 player
-(`-LegacyKsp2Root`) in a clone under `Library/BetterAA`. Both installs are only
-read. Packaging refuses a bundle whose Unity version differs from its target
-engine. Local
+(`-LegacyKsp2Root`) in a clone under `Library/BetterAA` (or `-LegacyWorkspace`;
+keep it under 86 characters so the staged bundle path fits `MAX_PATH`). Both
+installs are only read. Packaging refuses a bundle whose Unity version differs
+from its target engine. Local
 preparation works in a detached checkout and needs no GitHub authentication or
 remote. It does not fetch, push, create tags or contact GitHub. Its changelog uses the curated release notes. Keep build steps, test counts,
 internal implementation details and branch history out of player-facing documents.

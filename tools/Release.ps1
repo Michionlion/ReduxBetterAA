@@ -6,6 +6,7 @@ param(
     [string] $Ksp2Root,
     [string] $LegacyUnity = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor\Unity.exe',
     [Parameter(Mandatory)] [string] $LegacyKsp2Root,
+    [string] $LegacyWorkspace,
     [string[]] $RuntimeEditors,
     [Parameter(Mandatory)] [string] $FsrRuntimeZip,
     [switch] $Publish,
@@ -88,7 +89,9 @@ if ($Publish) {
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
 & (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
 [void](Assert-ReleaseSource $repo $commit)
-& (Join-Path $PSScriptRoot 'Build-Legacy.ps1') -Unity $LegacyUnity -Ksp2Root $LegacyKsp2Root -Commit $commit
+$legacyArguments = @{ Unity = $LegacyUnity; Ksp2Root = $LegacyKsp2Root; Commit = $commit }
+if ($LegacyWorkspace) { $legacyArguments.Workspace = $LegacyWorkspace }
+& (Join-Path $PSScriptRoot 'Build-Legacy.ps1') @legacyArguments
 [void](Assert-ReleaseSource $repo $commit)
 $components = @{
     $engine = Join-Path $repo "Deploy\ReduxBetterAA-$Version.zip"

@@ -136,6 +136,7 @@ try {
     Invoke-Checked git @('-C', $source, 'checkout', '--detach', $commit) (Join-Path $run 'checkout.log')
     & (Join-Path $source 'tools\Release.ps1') -Version $version -Unity $paths.UNITY_EDITOR -Ksp2Root $game `
         -LegacyUnity $paths.UNITY_EDITOR_LEGACY -LegacyKsp2Root $paths.KSP2_LEGACY_ROOT -FsrRuntimeZip $FsrRuntimeZip `
+        -LegacyWorkspace (Join-Path $run 'legacy') `
         -RuntimeEditors @((Split-Path $paths.UNITY_EDITOR), (Split-Path $paths.UNITY_EDITOR_LEGACY)) *>&1 |
         Tee-Object -FilePath (Join-Path $run 'release.log') | Out-Host
     $releases = @(Get-ChildItem -LiteralPath (Join-Path $source 'Deploy\releases') -Directory)

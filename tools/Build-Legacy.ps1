@@ -23,7 +23,10 @@ if (-not $targets.ContainsKey($engine)) { throw "No verified runtime target for 
 Assert-PlayerEngine $Ksp2Root $engine
 if (-not $Commit) { $Commit = (Invoke-ReleaseGit $repo @('rev-parse', 'HEAD')) -join '' }
 if (-not $Workspace) { $Workspace = Join-Path $repo "Library\BetterAA\engine-$engine" }
-$Workspace = [IO.Path]::GetFullPath($Workspace)
+$Workspace = [IO.Path]::GetFullPath($Workspace).TrimEnd('\')
+# Unity's Mono cannot open the staged bundle beyond MAX_PATH: the deepest build path is
+# Library\BetterAA\<32-hex>\payload\addressables\StandaloneWindows64\<81-char bundle> (172 chars).
+if ($Workspace.Length -gt 86) { throw "Legacy workspace path is too long for Unity's staged bundle; pass a shorter -Workspace than $Workspace" }
 if (Get-Process Unity -ErrorAction SilentlyContinue) { throw 'Close Unity before running the batch pipeline.' }
 
 if (Test-Path -LiteralPath (Join-Path $Workspace '.git')) {
