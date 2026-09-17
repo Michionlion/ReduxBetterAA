@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$Ksp2Root,
-    [string]$UnityEditorRoot = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor'
+    [string]$UnityEditorRoot = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor',
+    [string]$EditorVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -165,11 +166,16 @@ finally {
     $md5.Dispose()
 }
 
+# The compatibility field must not exceed the editor that resolves this package.
+if (-not $EditorVersion) {
+    $EditorVersion = (Get-Item -LiteralPath (Join-Path $UnityEditorRoot 'Unity.exe')).VersionInfo.ProductVersion
+}
+if ($EditorVersion -notmatch '^(\d+\.\d+)\.') { throw "Unrecognized Unity editor version: $EditorVersion" }
 $packageManifest = @{
     name = 'ksp2_x64'
     displayName = 'KSP2 x64'
     version = '0.0.1'
-    unity = '6000.5'
+    unity = $Matches[1]
     description = 'Local compile references copied from the installed Redux player.'
     author = @{ name = 'Intercept Games' }
 } | ConvertTo-Json -Depth 3 -Compress

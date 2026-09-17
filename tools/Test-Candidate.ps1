@@ -45,7 +45,7 @@ foreach ($line in Get-Content -LiteralPath $EnvFile) {
     if ([IO.Path]::GetFullPath($value) -eq [IO.Path]::GetPathRoot($value)) { throw "$key must not be a drive root." }
     $paths[$key] = [IO.Path]::GetFullPath($value).TrimEnd('\')
 }
-$required = @('KSP2_SOURCE', 'TEST_WORKSPACE', 'REDUX_CLI', 'REDUX_CONFIG', 'UNITY_EDITOR', 'UNITY_EDITOR_LEGACY', 'TEST_HARNESS', 'TEST_FIXTURE', 'KSP2_PROFILE')
+$required = @('KSP2_SOURCE', 'KSP2_LEGACY_ROOT', 'TEST_WORKSPACE', 'REDUX_CLI', 'REDUX_CONFIG', 'UNITY_EDITOR', 'UNITY_EDITOR_LEGACY', 'TEST_HARNESS', 'TEST_FIXTURE', 'KSP2_PROFILE')
 foreach ($key in $required) {
     if (-not $paths.ContainsKey($key)) { throw "Set $key in $EnvFile." }
     $existing = $paths[$key]
@@ -58,12 +58,12 @@ foreach ($key in $required) {
         $item = if ($item -is [IO.DirectoryInfo]) { $item.Parent } else { $item.Directory }
     }
 }
-$separate = @($repo, $paths.KSP2_SOURCE, $paths.TEST_WORKSPACE, $paths.KSP2_PROFILE)
+$separate = @($repo, $paths.KSP2_SOURCE, $paths.KSP2_LEGACY_ROOT, $paths.TEST_WORKSPACE, $paths.KSP2_PROFILE)
 for ($i = 0; $i -lt $separate.Count; $i++) {
     for ($j = $i + 1; $j -lt $separate.Count; $j++) {
         $a = $separate[$i].TrimEnd('\') + '\'
         $b = $separate[$j].TrimEnd('\') + '\'
-        if ($a.StartsWith($b, 'OrdinalIgnoreCase') -or $b.StartsWith($a, 'OrdinalIgnoreCase')) { throw 'Source, test workspace, player profile and repository must not overlap.' }
+        if ($a.StartsWith($b, 'OrdinalIgnoreCase') -or $b.StartsWith($a, 'OrdinalIgnoreCase')) { throw 'Source, legacy game, test workspace, player profile and repository must not overlap.' }
     }
 }
 foreach ($name in @('mods', 'BepInEx', 'Redux', 'KSP2_x64_Data\Managed\ReduxLib.dll', 'AMDUnityPlugin.dll', 'NVUnityPlugin.dll', 'nvngx_dlss.dll')) {
@@ -72,6 +72,9 @@ foreach ($name in @('mods', 'BepInEx', 'Redux', 'KSP2_x64_Data\Managed\ReduxLib.
 foreach ($file in @('KSP2_x64.exe', 'KSP2_x64_Data\Managed\Assembly-CSharp.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $paths.KSP2_SOURCE $file))) { throw "KSP2_SOURCE is missing $file" }
 }
+# The legacy component compiles against an installed Redux player of the older engine;
+# it is only read, never launched or modified here.
+Assert-PlayerEngine $paths.KSP2_LEGACY_ROOT (Get-EditorEngine $paths.UNITY_EDITOR_LEGACY)[0]
 if (Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq 'KSP2_x64' -or $_.ProcessName -like 'Ksp2Redux*' -or $_.ProcessName -eq 'Unity' }) { throw 'Close KSP2, the Redux updater and Unity first.' }
 if (Get-NetTCPConnection -State Listen -LocalPort 28542 -ErrorAction SilentlyContinue) { throw 'The test bridge port 28542 is already in use.' }
 $harnessCli = Join-Path $paths.TEST_HARNESS 'redux-test.ps1'
@@ -132,7 +135,7 @@ try {
     Invoke-Checked git @('clone', '--no-local', '--', $repo, $source) (Join-Path $run 'clone.log')
     Invoke-Checked git @('-C', $source, 'checkout', '--detach', $commit) (Join-Path $run 'checkout.log')
     & (Join-Path $source 'tools\Release.ps1') -Version $version -Unity $paths.UNITY_EDITOR -Ksp2Root $game `
-        -FsrRuntimeZip $FsrRuntimeZip `
+        -LegacyUnity $paths.UNITY_EDITOR_LEGACY -LegacyKsp2Root $paths.KSP2_LEGACY_ROOT -FsrRuntimeZip $FsrRuntimeZip `
         -RuntimeEditors @((Split-Path $paths.UNITY_EDITOR), (Split-Path $paths.UNITY_EDITOR_LEGACY)) *>&1 |
         Tee-Object -FilePath (Join-Path $run 'release.log') | Out-Host
     $releases = @(Get-ChildItem -LiteralPath (Join-Path $source 'Deploy\releases') -Directory)

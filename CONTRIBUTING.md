@@ -47,9 +47,11 @@ and a stock-part launchpad save facing the northwest hills. `redux-cli doctor --
 reports the launcher configuration and game-profile paths. Close KSP2, Unity
 and the Redux launcher before running.
 
-Complete release packages include runtimes for both supported Redux versions.
-Set `UNITY_EDITOR` to Unity 6000.5.8f1 and `UNITY_EDITOR_LEGACY` to 6000.4.1f1;
-both need Windows Build Support (Mono). The harness builds against the candidate
+Complete release packages include a mod build and runtimes for both supported
+Redux versions. Set `UNITY_EDITOR` to Unity 6000.5.8f1 and `UNITY_EDITOR_LEGACY`
+to 6000.4.1f1; both need Windows Build Support (Mono). Point `KSP2_LEGACY_ROOT`
+at an installed Redux 0.2.8.5 game (Unity 6000.4.1f1 player); it is only read as
+compile references for the legacy build. The harness builds against the candidate
 game using the current editor; no additional compiler or SDK is needed.
 
 ```powershell
@@ -88,11 +90,19 @@ To build a complete release locally, pass your installed game and editor paths:
 ./tools/Release.ps1 -Version X.Y.Z `
     -Unity 'D:\Unity\6000.5.8f1\Editor\Unity.exe' `
     -Ksp2Root 'C:\Games\Kerbal Space Program 2' `
-    -RuntimeEditors @('D:\Unity\6000.5.8f1\Editor', 'D:\Unity\6000.4.1f1\Editor') `
+    -LegacyUnity 'D:\Unity\6000.4.1f1\Editor\Unity.exe' `
+    -LegacyKsp2Root 'C:\Games\Kerbal Space Program 2 - Redux 0.2.8.5' `
     -FsrRuntimeZip 'D:\Builds\BetterAA-FSR-Runtime-X.Y.Z-win-x64.zip'
 ```
 
-Run this from PowerShell 7.4+. Results go under `Deploy/releases`. Local
+Run this from PowerShell 7.4+. Results go under `Deploy/releases`. Unity asset
+bundles only load in players of the editor version that built them, so each
+Redux version gets its own mod build: the pinned editor builds in this checkout
+against `-Ksp2Root`, then [Build-Legacy.ps1](tools/Build-Legacy.ps1) builds the
+same commit with the 6000.4.1f1 editor against an installed Redux 0.2.8.5 player
+(`-LegacyKsp2Root`) in a clone under `Library/BetterAA`. Both installs are only
+read. Packaging refuses a bundle whose Unity version differs from its target
+engine. Local
 preparation works in a detached checkout and needs no GitHub authentication or
 remote. It does not fetch, push, create tags or contact GitHub. Its changelog uses the curated release notes. Keep build steps, test counts,
 internal implementation details and branch history out of player-facing documents.
@@ -100,10 +110,11 @@ Unity's first package resolution
 still needs network access. Ordinary builds need only the current editor.
 
 Every release produces one complete mod-and-runtime ZIP per supported Redux
-version. The NVIDIA libraries come from the pinned editors; AMD libraries come
-from the version-matched native bridge build. Packaging validates both components,
-all vendor pins, original notices and a complete payload hash manifest. The internal
-managed/native component ZIPs are not release downloads.
+version. Its mod assembly and shader bundle come from that engine's editor; the
+NVIDIA libraries come from the pinned editors; AMD libraries come from the
+engine-independent native bridge build. Packaging validates every component,
+the bundle's engine, all vendor pins, original notices and a complete payload
+hash manifest. The internal managed/native component ZIPs are not release downloads.
 When adding support for a new Unity player, review its vendor terms and update
 `tools/runtime-targets.json` from verified official player files.
 The script requires clean source, runs the checks and build, and verifies that

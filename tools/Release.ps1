@@ -4,6 +4,8 @@ param(
     [Parameter(Mandatory)] [string] $Version,
     [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
     [string] $Ksp2Root,
+    [string] $LegacyUnity = 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor\Unity.exe',
+    [Parameter(Mandatory)] [string] $LegacyKsp2Root,
     [string[]] $RuntimeEditors,
     [Parameter(Mandatory)] [string] $FsrRuntimeZip,
     [switch] $Publish,
@@ -13,8 +15,18 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Release-Helpers.ps1')
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $RuntimeEditors) {
-    $RuntimeEditors = @((Split-Path $Unity), 'C:\Program Files\Unity\Hub\Editor\6000.4.1f1\Editor')
+    $RuntimeEditors = @((Split-Path $Unity), (Split-Path $LegacyUnity))
 }
+# Each complete download is built by the editor matching its Redux player. The pinned
+# editor builds in this checkout; the legacy editor builds the same commit in a clone.
+$engine = Get-ProjectEngine $repo
+$legacyEngine = (Get-EditorEngine $LegacyUnity)[0]
+$targets = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'runtime-targets.json') -Raw | ConvertFrom-Json -AsHashtable
+if ((Get-EditorEngine $Unity)[0] -ne $engine) { throw "Use the pinned Unity $engine editor." }
+$supported = @($targets.Keys | Sort-Object) -join ' '
+if ($supported -ne (@(@($engine, $legacyEngine) | Sort-Object) -join ' ')) { throw "Supported engines are $supported; editors given for $engine and $legacyEngine." }
+if ($Ksp2Root) { Assert-PlayerEngine $Ksp2Root $engine }
+Assert-PlayerEngine $LegacyKsp2Root $legacyEngine
 # Validate all supported runtime sets before building. No downloads or game writes.
 & python -X utf8 (Join-Path $PSScriptRoot 'package-runtimes.py') --editors @RuntimeEditors
 if ($LASTEXITCODE -ne 0) { throw 'Runtime source validation failed.' }
@@ -76,26 +88,47 @@ if ($Publish) {
 & (Join-Path $PSScriptRoot 'Test-Release.ps1')
 & (Join-Path $PSScriptRoot 'Build.ps1') -Unity $Unity -Ksp2Root $Ksp2Root
 [void](Assert-ReleaseSource $repo $commit)
+& (Join-Path $PSScriptRoot 'Build-Legacy.ps1') -Unity $LegacyUnity -Ksp2Root $LegacyKsp2Root -Commit $commit
+[void](Assert-ReleaseSource $repo $commit)
+$components = @{
+    $engine = Join-Path $repo "Deploy\ReduxBetterAA-$Version.zip"
+    $legacyEngine = Join-Path $repo "Deploy\engines\$legacyEngine\ReduxBetterAA-$Version.zip"
+}
 $output = Join-Path $repo ('Deploy\releases\' + $tag + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-& python -X utf8 (Join-Path $PSScriptRoot 'package-complete.py') --mod (Join-Path $repo "Deploy\ReduxBetterAA-$Version.zip") `
+$modArguments = @($components.Keys | Sort-Object | ForEach-Object { @('--mod', "$_=$($components[$_])") })
+& python -X utf8 (Join-Path $PSScriptRoot 'package-complete.py') @modArguments `
     --editors @RuntimeEditors --fsr-runtime $FsrRuntimeZip --output $output --commit $commit --version $Version
 if ($LASTEXITCODE -ne 0) { throw 'Complete release packaging failed.' }
 $completeAssets = @(Get-ChildItem -LiteralPath $output -Filter 'ReduxBetterAA-*.zip' -File | Sort-Object Name)
 # Public changelogs describe player-visible changes; Git retains development history.
 @("# $tag", '', (Get-Content -LiteralPath $notesPath -Raw).TrimEnd()) |
     Set-Content -LiteralPath (Join-Path $output 'CHANGELOG.md') -Encoding utf8NoBOM
-[xml]$tests = Get-Content -LiteralPath (Join-Path $repo 'Logs\beta-editmode.xml') -Raw
+$editModeResults = [ordered]@{}
+foreach ($built in @(@($engine, 'Logs\beta-editmode.xml'), @($legacyEngine, "Logs\beta-editmode-$legacyEngine.xml"))) {
+    [xml]$tests = Get-Content -LiteralPath (Join-Path $repo $built[1]) -Raw
+    if ([int]$tests.'test-run'.failed -ne 0 -or [int]$tests.'test-run'.passed -lt 1) { throw "EditMode tests did not pass on Unity $($built[0])." }
+    $editModeResults[$built[0]] = [ordered]@{ passed = [int]$tests.'test-run'.passed; failed = [int]$tests.'test-run'.failed }
+}
 $info = [ordered]@{
     version = $Version; sourceCommit = $commit; sourceClean = $true
-    unityEditor = ((Get-Content -LiteralPath (Join-Path $repo 'ProjectSettings\ProjectVersion.txt'))[0] -replace '^m_EditorVersion: ', '')
-    editModePassed = [int]$tests.'test-run'.passed; editModeFailed = [int]$tests.'test-run'.failed
+    unityEditor = $engine; legacyUnityEditor = $legacyEngine
+    engines = [ordered]@{}
+    editModePassed = $editModeResults[$engine].passed; editModeFailed = $editModeResults[$engine].failed
     portableChecksPassed = $true; nativeLibrariesIncluded = $true
     completePackages = @($completeAssets.Name)
     fsrRuntimeSha256 = (Get-FileHash -LiteralPath $FsrRuntimeZip).Hash.ToLowerInvariant()
     previousRelease = $previousTag
     changelogSource = 'curated-release-notes'
 }
-$info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
+foreach ($built in ($components.Keys | Sort-Object)) {
+    $info.engines[$built] = [ordered]@{
+        reduxVersion = $targets[$built].redux
+        package = "ReduxBetterAA-$Version-Redux-$($targets[$built].redux).zip"
+        componentSha256 = (Get-FileHash -LiteralPath $components[$built]).Hash.ToLowerInvariant()
+        editModePassed = $editModeResults[$built].passed; editModeFailed = $editModeResults[$built].failed
+    }
+}
+$info | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $output 'build-info.json') -Encoding utf8NoBOM
 $assets = @(Get-ChildItem -LiteralPath $output -File | Sort-Object Name)
 $checksums = @($assets | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.Name })
 $checksums | Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Encoding utf8NoBOM

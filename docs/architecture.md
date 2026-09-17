@@ -209,12 +209,15 @@ ordinary mode selection to judge terrain stability or performance.
 Builds use Unity's player-script compiler and pinned Addressables. Bundle
 identities include the mod's group/project/entry identity to avoid collisions
 with other mods. The internal managed ZIP contains only its assembly, manifest, shader bundle,
-catalog and installation/license files. Public release ZIPs combine that component
-with the matching engine NVIDIA libraries and AMD native-AA bridge/runtime. Each
+catalog and license files. Unity players reject bundles built by a newer editor,
+so each supported Redux version has its own managed component, built from the
+same commit by the editor matching that player and compiled against that Redux
+installation. Public release ZIPs combine each component with the matching engine
+NVIDIA libraries and the engine-independent AMD native-AA bridge/runtime. Each
 Redux version has one complete download. Vendor bytes are pinned and original
 notices are retained. The full release manifest covers every payload path/hash;
-validators reject engine swaps, extra binaries and malformed archives. Internal
-component ZIPs are never public release assets.
+validators reject engine swaps (including a bundle from another editor), extra
+binaries and malformed archives. Internal component ZIPs are never public release assets.
 Build and release instructions live in [CONTRIBUTING.md](../CONTRIBUTING.md).
 The candidate test pipeline clones the mod and external harness into a disposable
 workspace, installs Redux into a clean game copy, and builds complete local release

@@ -48,9 +48,22 @@ class CompleteTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def combined(self, output='complete'):
-        mod = self.build(suffix=output)
-        return implementation.build(mod, self.editors, self.fsr, self.root / output, self.commit, '0.6.1')
+    @staticmethod
+    def unityfs(engine):
+        # UnityFS header: signature, format version, then the player and generator versions.
+        return b'UnityFS\x00\x00\x00\x00\x08' + b'5.x.x\x00' + engine.encode() + b'\x00fixture'
+
+    def components(self, output='complete', engines=None):
+        # Each engine's component carries the bundle its own editor produced.
+        components = {}
+        for unity in self.targets:
+            bundle = self.unityfs((engines or {}).get(unity, unity))
+            components[unity] = self.build(self.files | {self.bundle: bundle}, suffix=f'{output}-{unity}')
+        return components
+
+    def combined(self, output='complete', engines=None):
+        mods = self.components(output, engines)
+        return implementation.build(mods, self.editors, self.fsr, self.root / output, self.commit, '0.6.1')
 
     def test_complete_downloads_are_engine_specific_and_repeatable(self):
         first, second = self.combined(), self.combined('repeat')
@@ -63,6 +76,41 @@ class CompleteTests(unittest.TestCase):
             self.assertIn(package.PREFIX + 'ReduxBetterAA.dll', files)
             self.assertIn(implementation.runtimes.FSR_PREFIX + 'ReduxBetterAA.FsrBridge.dll', files)
             self.assertIn(manifest['reduxVersion'], a.name)
+            self.assertEqual(implementation.component_engine(files), manifest['unityVersion'])
+
+    def test_bundle_from_another_editor_cannot_ship_for_an_engine(self):
+        # A newer editor's bundle in the legacy download is exactly the v0.6.2 packaging defect.
+        with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.4.1f1'):
+            self.combined('newer', {'6000.4.1f1': '6000.5.8f1'})
+        with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.5.8f1'):
+            self.combined('older', {'6000.5.8f1': '6000.4.1f1'})
+        with self.assertRaisesRegex(ValueError, 'not a UnityFS archive'):
+            implementation.build(self.components('plain') | {'6000.4.1f1': self.build(suffix='plain')},
+                                 self.editors, self.fsr, self.root / 'plain', self.commit, '0.6.1')
+        # One component cannot serve both engines.
+        shared = self.components('shared')['6000.5.8f1']
+        with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.4.1f1'):
+            implementation.build({unity: shared for unity in self.targets}, self.editors, self.fsr,
+                                 self.root / 'shared', self.commit, '0.6.1')
+        with self.assertRaisesRegex(ValueError, 'one mod component per supported engine'):
+            implementation.build({'6000.5.8f1': shared}, self.editors, self.fsr, self.root / 'partial', self.commit, '0.6.1')
+        # A fully rehashed download that swaps in another engine's bundle is still rejected.
+        released = self.combined('swap')
+        legacy = next(path for path in released if '0.2.8.5' in path.name)
+        files = package.read_zip(legacy)
+        bundle = next(name for name in files if name.endswith('.bundle'))
+        files[bundle] = self.unityfs('6000.5.8f1')
+        inner = json.loads(files.pop(package.PREFIX + 'package-manifest.json'))
+        inner['files'] = [{'path': n[len(package.PREFIX):], 'bytes': len(d), 'sha256': package.digest(d)}
+                          for n, d in sorted(files.items())
+                          if n.startswith(package.PREFIX) and not n.startswith(implementation.runtimes.FSR_PREFIX)]
+        files[package.PREFIX + 'package-manifest.json'] = package.encode_json(inner)
+        manifest = json.loads(files.pop(implementation.MANIFEST))
+        manifest['files'] = [{'path': n, 'bytes': len(d), 'sha256': package.digest(d)} for n, d in files.items()]
+        files[implementation.MANIFEST] = package.encode_json(manifest)
+        package.write_zip(self.root / 'swapped-bundle.zip', files)
+        with self.assertRaisesRegex(ValueError, 'different Unity version'):
+            implementation.verify(self.root / 'swapped-bundle.zip', self.commit, '0.6.1')
 
     def test_swapped_engine_dll_and_unexpected_payload_fail_even_if_rehashed(self):
         original = self.combined()[0]
@@ -78,12 +126,12 @@ class CompleteTests(unittest.TestCase):
                 implementation.verify(altered, self.commit, '0.6.1')
 
     def test_all_output_collisions_checked_before_any_write(self):
-        component = self.build()
+        components = self.components('collision')
         output = self.root / 'collision'
         output.mkdir()
         existing = output / 'ReduxBetterAA-0.6.1-Redux-0.2.8.5.zip'
         existing.write_bytes(b'preserve')
         with self.assertRaises(FileExistsError):
-            implementation.build(component, self.editors, self.fsr, output, self.commit, '0.6.1')
+            implementation.build(components, self.editors, self.fsr, output, self.commit, '0.6.1')
         self.assertEqual(list(output.iterdir()), [existing])
         self.assertEqual(existing.read_bytes(), b'preserve')

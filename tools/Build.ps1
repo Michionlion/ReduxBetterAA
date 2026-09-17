@@ -51,7 +51,7 @@ if ($addressables.Count -ne 1) {
     if ($addressables.Count -ne 1) { throw 'The pinned Addressables package did not resolve.' }
 }
 if ($Ksp2Root) {
-    & (Join-Path $PSScriptRoot 'Import-GameReferences.ps1') -Ksp2Root $Ksp2Root -UnityEditorRoot (Split-Path -Parent $Unity)
+    & (Join-Path $PSScriptRoot 'Import-GameReferences.ps1') -Ksp2Root $Ksp2Root -UnityEditorRoot (Split-Path -Parent $Unity) -EditorVersion $expectedEditor
 }
 if (-not (Test-Path -LiteralPath (Join-Path $repo 'Packages\KSP2_x64\package.json'))) {
     throw 'On the first build, pass -Ksp2Root <installed Redux game folder>.'

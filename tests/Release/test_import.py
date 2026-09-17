@@ -32,7 +32,7 @@ class ImportTests(unittest.TestCase):
             shutil.copyfile(ROOT / "tools" / script.name, script)
             subprocess.run([
                 "pwsh", "-NoProfile", "-File", str(script),
-                "-Ksp2Root", str(game), "-UnityEditorRoot", str(editor),
+                "-Ksp2Root", str(game), "-UnityEditorRoot", str(editor), "-EditorVersion", "6000.4.1f1",
             ], check=True, capture_output=True, text=True)
             package = project / "Packages/KSP2_x64"
             self.assertEqual([p.name for p in package.glob("*.dll")], ["Assembly-CSharp.dll"])
@@ -43,7 +43,10 @@ class ImportTests(unittest.TestCase):
             self.assertTrue(metadata.endswith("\n"), "Unity rejects unterminated metadata")
             self.assertIn("PluginImporter:", metadata)
             self.assertIn("isExplicitlyReferenced: 1", metadata)
-            self.assertEqual(json.loads((package / "package.json").read_text())["name"], "ksp2_x64")
+            manifest = json.loads((package / "package.json").read_text())
+            self.assertEqual(manifest["name"], "ksp2_x64")
+            # A legacy editor refuses packages that declare a newer minimum Unity version.
+            self.assertEqual(manifest["unity"], "6000.4")
 
 
 if __name__ == "__main__":
