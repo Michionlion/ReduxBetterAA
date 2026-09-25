@@ -11,21 +11,24 @@ namespace ReduxBetterAA.Patches
     internal static class TerrainMotionCompatibilityPatch
     {
         private static readonly Guid AuditedMvid = new Guid("7d0cb6df-eda7-43ac-8386-a1c00da65d32");
+        private static readonly Guid Snapshot26w39bMvid = new Guid("78eb8b44-bbcf-415c-9008-2dcb308caf3e");
         private const BindingFlags DeclaredInstance = BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.NonPublic;
 
-        internal static bool SupportsModule(Guid mvid) => mvid == AuditedMvid;
+        internal static bool SupportsModule(Guid mvid) => mvid == AuditedMvid || mvid == Snapshot26w39bMvid;
 
         internal static bool TryResolveTargets(out MethodInfo generation, out MethodInfo depth, out MethodInfo color)
         {
             generation = depth = color = null;
             Type owner = typeof(PQSRenderer);
             if (!SupportsModule(owner.Module.ModuleVersionId)) return false;
+            // 26w39b retains the audited draw bodies; unrelated methods shift their tokens.
+            int tokenOffset = owner.Module.ModuleVersionId == Snapshot26w39bMvid ? 482 : 0;
             generation = owner.GetMethod("RenderPQS", DeclaredInstance);
             depth = owner.GetMethod("DrawPqsDepthNow", DeclaredInstance, null, new[] { typeof(Material), typeof(Camera) }, null);
             color = owner.GetMethod("DrawPQSQuads", DeclaredInstance, null,
                 new[] { typeof(Material), typeof(int), typeof(Camera), typeof(MaterialPropertyBlock) }, null);
             // Tokens are meaningful only together with this exact module MVID.
-            return Matches(generation, 100719022, 7) && Matches(depth, 100719041, 2) && Matches(color, 100719046, 4) &&
+            return Matches(generation, 100719022 + tokenOffset, 7) && Matches(depth, 100719041 + tokenOffset, 2) && Matches(color, 100719046 + tokenOffset, 4) &&
                 owner.GetField("DepthBuffer", BindingFlags.Public | BindingFlags.Instance)?.FieldType == typeof(RenderTexture) &&
                 owner.GetField("SourceCamera", BindingFlags.Public | BindingFlags.Instance)?.FieldType == typeof(Camera);
         }

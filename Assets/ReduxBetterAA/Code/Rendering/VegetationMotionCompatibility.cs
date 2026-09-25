@@ -68,9 +68,9 @@ namespace ReduxBetterAA.Rendering
         public long ReroutedCalls => _reroutedCalls;
         public long TransientBypasses => _transientBypasses;
         public string Status => _status;
-        // The official Built-in motion shader is byte-identical in these two releases.
+        // The shader retains the old depth bias only on engines before 6000.6.
         internal static bool SupportsUnityVersion(string version) =>
-            version == "6000.4.1f1" || version == "6000.5.8f1";
+            version == "6000.4.1f1" || version == "6000.5.8f1" || version == "6000.6.0f1";
 
         public void Initialize()
         {

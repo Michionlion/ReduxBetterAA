@@ -143,6 +143,8 @@ namespace ReduxBetterAA.Diagnostics
         public bool vegetationMotionRepairAvailable;
         public long vegetationMotionReroutedCalls;
         public string vegetationMotionRepairStatus;
+        public bool terrainMotionObservationAvailable;
+        public string terrainMotionObservationStatus;
         public bool motionVectorSanitizerEnabled;
         public string motionVectorSanitizerStatus;
         public MotionMatrixRecord motionMatrix;

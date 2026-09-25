@@ -110,8 +110,10 @@ changes only `camera.projectionMatrix`: no extra draw, terrain shader replacemen
 physics change or reduction in temporal sample coverage.
 
 **Terrain motion.** `TerrainMotionCompatibility` observes the existing PQS
-generation, depth and color submissions on the inspected Unity 6000.5.8f1
-renderer. Consecutive matching frames provide a previous-world transform. The
+generation, depth and color submissions on the audited 26w36c and 26w39b
+renderers (Unity 6000.5.8f1 and 6000.6.0f1). Exact module IDs and method tokens
+restrict the patch to those inspected assemblies. The three draw bodies are unchanged
+in 26w39b. Consecutive matching frames provide a previous-world transform. The
 motion sanitizer repairs only depth-matched terrain, preserving foreground vessel
 vectors. Missing/ambiguous observations, origin rebases and lifecycle resets
 disable the repair until coherent history is available. No additional terrain
@@ -143,6 +145,9 @@ with an identity previous transform and camera-centred current translation,
 leaving valid fullscreen camera motion underneath. Unity-version/signature and
 shader-ownership checks bound this repair. It defaults on for active AA except
 supersampling, and turns off with AA Off. This is separate from the terrain fix.
+The 6000.6.0f1 variant follows Unity's removal of the motion-vector depth bias;
+older editor builds retain that bias. The vegetation submission body is unchanged
+in 26w39b.
 
 Sources: [terrain patch](../Assets/ReduxBetterAA/Code/Patches/TerrainDepthJitterPatch.cs),
 [projection scope](../Assets/ReduxBetterAA/Code/Rendering/AuxiliaryProjectionScope.cs),

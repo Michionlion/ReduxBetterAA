@@ -129,6 +129,11 @@ def snapshot(data, row, assembly_hash):
     require(len(overlays) == int(scene == 'Map3DView' and selected != 'Off'), 'Map overlay missing or duplicated')
     if selected in TEMPORAL:
         require(all(flag in camera['depthTextureMode'] for flag in ('Depth', 'MotionVectors')), 'Temporal depth/motion flags missing')
+        if scene == 'FlightView' and data['runtime'].get('unityVersion') == '6000.6.0f1':
+            require(temporal['terrainMotionObservationAvailable'], 'Audited terrain motion observation unavailable')
+            require(temporal['vegetationMotionRepairAvailable'] and temporal['vegetationMotionRepairEnabled'],
+                    'Foliage motion repair unavailable or disabled')
+            require(temporal['vegetationMotionReroutedCalls'] > 0, 'Foliage repair did not execute')
     if selected == 'Off':
         for key in ('customEstimatedMemoryBytes', 'dlaaEstimatedMemoryBytes', 'fsr2EstimatedMemoryBytes',
                     'motionVectorSanitizerEstimatedMemoryBytes', 'depthDisocclusionMaskEstimatedMemoryBytes'):

@@ -97,7 +97,7 @@ namespace ReduxBetterAA.Rendering
             try
             {
                 string reason = "The audited Unity renderer version is unavailable.";
-                if (Application.unityVersion == "6000.5.8f1")
+                if (Application.unityVersion == "6000.5.8f1" || Application.unityVersion == "6000.6.0f1")
                     _harmony = new Harmony(HarmonyId);
                 if (_harmony == null || !TerrainMotionCompatibilityPatch.TryInstall(_harmony, out reason))
                 {

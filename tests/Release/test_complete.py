@@ -19,7 +19,7 @@ class CompleteTests(unittest.TestCase):
         test_packaging.PackagingTests.setUp(self)
         self.editors = []
         self.targets = {}
-        for unity, redux in [('6000.5.8f1', '0.2.9.0'), ('6000.4.1f1', '0.2.8.5')]:
+        for unity, redux in [('6000.6.0f1', '0.2.9.0'), ('6000.4.1f1', '0.2.8.5')]:
             editor = self.root / unity / 'Editor'
             player = editor / implementation.runtimes.PLAYER
             player.mkdir(parents=True)
@@ -81,25 +81,25 @@ class CompleteTests(unittest.TestCase):
     def test_bundle_from_another_editor_cannot_ship_for_an_engine(self):
         # A newer editor's bundle in the legacy download is exactly the v0.6.2 packaging defect.
         with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.4.1f1'):
-            self.combined('newer', {'6000.4.1f1': '6000.5.8f1'})
-        with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.5.8f1'):
-            self.combined('older', {'6000.5.8f1': '6000.4.1f1'})
+            self.combined('newer', {'6000.4.1f1': '6000.6.0f1'})
+        with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.6.0f1'):
+            self.combined('older', {'6000.6.0f1': '6000.4.1f1'})
         with self.assertRaisesRegex(ValueError, 'not a UnityFS archive'):
             implementation.build(self.components('plain') | {'6000.4.1f1': self.build(suffix='plain')},
                                  self.editors, self.fsr, self.root / 'plain', self.commit, '0.6.1')
         # One component cannot serve both engines.
-        shared = self.components('shared')['6000.5.8f1']
+        shared = self.components('shared')['6000.6.0f1']
         with self.assertRaisesRegex(ValueError, 'not built with Unity 6000.4.1f1'):
             implementation.build({unity: shared for unity in self.targets}, self.editors, self.fsr,
                                  self.root / 'shared', self.commit, '0.6.1')
         with self.assertRaisesRegex(ValueError, 'one mod component per supported engine'):
-            implementation.build({'6000.5.8f1': shared}, self.editors, self.fsr, self.root / 'partial', self.commit, '0.6.1')
+            implementation.build({'6000.6.0f1': shared}, self.editors, self.fsr, self.root / 'partial', self.commit, '0.6.1')
         # A fully rehashed download that swaps in another engine's bundle is still rejected.
         released = self.combined('swap')
         legacy = next(path for path in released if '0.2.8.5' in path.name)
         files = package.read_zip(legacy)
         bundle = next(name for name in files if name.endswith('.bundle'))
-        files[bundle] = self.unityfs('6000.5.8f1')
+        files[bundle] = self.unityfs('6000.6.0f1')
         inner = json.loads(files.pop(package.PREFIX + 'package-manifest.json'))
         inner['files'] = [{'path': n[len(package.PREFIX):], 'bytes': len(d), 'sha256': package.digest(d)}
                           for n, d in sorted(files.items())

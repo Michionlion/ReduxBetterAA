@@ -121,6 +121,8 @@ namespace ReduxBetterAA.Diagnostics
                     : vegetationRepair.Status,
                 motionVectorSanitizerEnabled =
                     coordinator.MotionVectorSanitizerEnabled,
+                terrainMotionObservationAvailable = TerrainMotionCompatibility.Current?.Available == true,
+                terrainMotionObservationStatus = TerrainMotionCompatibility.Current?.Status ?? "Terrain motion observation unavailable",
                 motionVectorSanitizerStatus =
                     coordinator.MotionVectorSanitizerStatus,
                 motionMatrix = CaptureMotionMatrix(in matrix),

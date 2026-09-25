@@ -4,7 +4,7 @@
 
 1. Install [KSP2 Redux](https://github.com/KSP2Redux/Redux) 0.2.9.0 into your KSP2
    installation and close the game.
-2. Install Git, PowerShell 7.4+, Python 3 and activate Unity **6000.5.8f1**
+2. Install Git, PowerShell 7.4+, Python 3 and activate Unity **6000.6.0f1**
    with Windows Build Support (Mono) through [Unity Hub](https://unity.com/download).
 3. Clone this repository and run:
 
@@ -15,13 +15,16 @@ pwsh -NoProfile -File tools/Build.ps1 -Ksp2Root 'C:\Games\Kerbal Space Program 2
 ```
 
 Use your actual game directory. If Unity is installed elsewhere, also pass
-`-Unity 'D:\Unity\6000.5.8f1\Editor\Unity.exe'`.
+`-Unity 'D:\Unity\6000.6.0f1\Editor\Unity.exe'`.
 
 The first build resolves the pinned Unity packages and copies compile references
 from the installed Redux player into ignored `Packages/KSP2_x64`. No game files
 are modified. The build needs no assembly publicizer, test harness, saved
 campaign or additional SDK checkout.
 Subsequent builds can omit `-Ksp2Root`; pass it again after updating Redux.
+Unity 6000.6 supplies Burst 2.0 and Test Framework 1.8 as built-ins; the manifest
+retains the registry versions needed by the legacy editor. Scriptable Build Pipeline
+3.0.3 is pinned explicitly for both builds.
 
 The build prepares Addressables, runs the EditMode tests, compiles player scripts
 with Unity, then validates and packages the result. Extract
@@ -48,7 +51,7 @@ reports the launcher configuration and game-profile paths. Close KSP2, Unity
 and the Redux launcher before running.
 
 Complete release packages include a mod build and runtimes for both supported
-Redux versions. Set `UNITY_EDITOR` to Unity 6000.5.8f1 and `UNITY_EDITOR_LEGACY`
+Redux versions. Set `UNITY_EDITOR` to Unity 6000.6.0f1 and `UNITY_EDITOR_LEGACY`
 to 6000.4.1f1; both need Windows Build Support (Mono). Point `KSP2_LEGACY_ROOT`
 at an installed Redux 0.2.8.5 game (Unity 6000.4.1f1 player); it is only read as
 compile references for the legacy build. The harness builds against the candidate
@@ -88,7 +91,7 @@ To build a complete release locally, pass your installed game and editor paths:
 
 ```powershell
 ./tools/Release.ps1 -Version X.Y.Z `
-    -Unity 'D:\Unity\6000.5.8f1\Editor\Unity.exe' `
+    -Unity 'D:\Unity\6000.6.0f1\Editor\Unity.exe' `
     -Ksp2Root 'C:\Games\Kerbal Space Program 2' `
     -LegacyUnity 'D:\Unity\6000.4.1f1\Editor\Unity.exe' `
     -LegacyKsp2Root 'C:\Games\Kerbal Space Program 2 - Redux 0.2.8.5' `

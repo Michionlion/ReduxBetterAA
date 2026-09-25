@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe',
+    [string] $Unity = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe',
     [string] $Ksp2Root
 )
 Set-StrictMode -Version Latest

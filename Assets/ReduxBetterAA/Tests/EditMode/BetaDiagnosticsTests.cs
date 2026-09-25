@@ -228,6 +228,8 @@ namespace ReduxBetterAA.Tests
 
         [TestCase("6000.4.1f1", true)]
         [TestCase("6000.5.8f1", true)]
+        [TestCase("6000.6.0f1", true)]
+        [TestCase("6000.6.1f1", false)]
         [TestCase("6000.4.2f1", false)]
         [TestCase(null, false)]
         public void FoliageShaderIsRestrictedToItsExactEngine(string version, bool expected)

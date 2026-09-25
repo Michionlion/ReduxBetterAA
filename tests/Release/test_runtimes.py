@@ -17,7 +17,7 @@ class RuntimeTests(unittest.TestCase):
     def test_exact_payload_and_reject_changed_source(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            editor = root / '6000.5.8f1/Editor'
+            editor = root / '6000.6.0f1/Editor'
             player = editor / runtimes.PLAYER
             player.mkdir(parents=True)
             names = {'NVUnityPlugin.dll', 'nvngx_dlss.dll'}
@@ -28,7 +28,7 @@ class RuntimeTests(unittest.TestCase):
                 hashes[name] = hashlib.sha256(data).hexdigest()
             (player / 'unrelated.pdb').write_bytes(b'exclude me')
             (player / 'AMDUnityPlugin.dll').write_bytes(b'legacy runtime must not ship')
-            with patch.object(runtimes, 'TARGETS', {'6000.5.8f1': {'redux': '0.2.9.0', 'hashes': hashes}}):
+            with patch.object(runtimes, 'TARGETS', {'6000.6.0f1': {'redux': '0.2.9.0', 'hashes': hashes}}):
                 payloads = runtimes.collect([editor])
                 runtimes.package(payloads, root / 'output')
                 archive = next((root / 'output').glob('*.zip'))
@@ -51,7 +51,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_missing_legacy_amd_library_does_not_block_packaging(self):
         with tempfile.TemporaryDirectory() as directory:
-            editor = Path(directory) / '6000.5.8f1/Editor'
+            editor = Path(directory) / '6000.6.0f1/Editor'
             player = editor / runtimes.PLAYER
             player.mkdir(parents=True)
             hashes = {}
@@ -59,14 +59,14 @@ class RuntimeTests(unittest.TestCase):
                 data = name.encode()
                 (player / name).write_bytes(data)
                 hashes[name] = hashlib.sha256(data).hexdigest()
-            with patch.object(runtimes, 'TARGETS', {'6000.5.8f1': {'redux': '0.2.9.0', 'hashes': hashes}}):
+            with patch.object(runtimes, 'TARGETS', {'6000.6.0f1': {'redux': '0.2.9.0', 'hashes': hashes}}):
                 payload = next(iter(runtimes.collect([editor]).values()))
                 self.assertEqual(set(payload), runtimes.RUNTIME_DLLS | {runtimes.NOTICE})
 
     def test_manifest_cannot_reintroduce_legacy_or_unapproved_runtime(self):
         for unexpected in ('AMDUnityPlugin.dll', 'amd_fidelityfx_upscaler_dx12.dll', 'other.dll'):
             hashes = {name: '0' * 64 for name in runtimes.RUNTIME_DLLS | {unexpected}}
-            with self.subTest(unexpected=unexpected), patch.object(runtimes, 'TARGETS', {'6000.5.8f1': {'hashes': hashes}}):
+            with self.subTest(unexpected=unexpected), patch.object(runtimes, 'TARGETS', {'6000.6.0f1': {'hashes': hashes}}):
                 with self.assertRaisesRegex(ValueError, 'exactly the two NVIDIA'):
                     runtimes.collect([])
 
@@ -85,7 +85,7 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             runtimes.collect([])
         with self.assertRaises(ValueError):
-            runtimes.collect(['6000.5.8f1/Editor'] * 2)
+            runtimes.collect(['6000.6.0f1/Editor'] * 2)
 
     def test_modern_fsr_archive_requires_exact_files_pinned_vendor_and_matching_version(self):
         with tempfile.TemporaryDirectory() as directory:

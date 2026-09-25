@@ -236,6 +236,14 @@ namespace ReduxBetterAA.Tests
         }
 
         [Test]
+        public void CurrentPlayerTerrainBoundariesMatchTheAudit()
+        {
+            // The legacy player intentionally has no audited terrain observer.
+            if (Application.unityVersion == "6000.4.1f1") return;
+            Assert.That(TerrainMotionCompatibilityPatch.TryResolveTargets(out _, out _, out _), Is.True);
+        }
+
+        [Test]
         public void InvalidMatricesAndUnauditedModuleRemainUnavailable()
         {
             Assert.That(Service.TryPreviousWorldFromCurrent(Matrix4x4.identity, Matrix4x4.zero, out _), Is.False);

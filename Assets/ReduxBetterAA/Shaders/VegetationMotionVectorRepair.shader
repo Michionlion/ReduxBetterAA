@@ -1,4 +1,4 @@
-// Production derivative of Unity 6000.4.1f1 / 6000.5.8f1's byte-identical
+// Production derivative of Unity 6000.4.1f1 / 6000.5.8f1 / 6000.6.0f1's
 // Hidden/Internal-MotionVectors shader. Unity's original shader source is
 // MIT-licensed by Unity Technologies.
 //
@@ -23,7 +23,9 @@ Shader "Hidden/ReduxBetterAA/VegetationMotionVectorRepair"
         float4x4 _PreviousM;
         bool _HasLastPositionData;
         bool _ForceNoMotion;
-        float _MotionVectorDepthBias;
+        #if UNITY_VERSION < 600060
+            float _MotionVectorDepthBias;
+        #endif
 
         struct MotionVectorData
         {
@@ -48,10 +50,12 @@ Shader "Hidden/ReduxBetterAA/VegetationMotionVectorRepair"
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
             o.pos = UnityObjectToClipPos(v.vertex);
 
+            #if UNITY_VERSION < 600060
             #if defined(UNITY_REVERSED_Z)
                 o.pos.z -= _MotionVectorDepthBias * o.pos.w;
             #else
                 o.pos.z += _MotionVectorDepthBias * o.pos.w;
+            #endif
             #endif
 
             float4 currentWorld = mul(unity_ObjectToWorld, v.vertex);

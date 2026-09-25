@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$Ksp2Root,
-    [string]$UnityEditorRoot = 'C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor',
+    [string]$UnityEditorRoot = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor',
     [string]$EditorVersion
 )
 

@@ -19,7 +19,9 @@ Shader "Hidden/ReduxBetterAA/Phase1MotionVectorPassProbe"
         float4x4 _PreviousM;
         bool _HasLastPositionData;
         bool _ForceNoMotion;
-        float _MotionVectorDepthBias;
+        #if UNITY_VERSION < 600060
+            float _MotionVectorDepthBias;
+        #endif
 
         int _ReduxBetterAAMotionProbeMode;
         float4x4 _ReduxBetterAAManagedPreviousVP;
@@ -47,10 +49,12 @@ Shader "Hidden/ReduxBetterAA/Phase1MotionVectorPassProbe"
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
             o.pos = UnityObjectToClipPos(v.vertex);
 
+            #if UNITY_VERSION < 600060
             #if defined(UNITY_REVERSED_Z)
                 o.pos.z -= _MotionVectorDepthBias * o.pos.w;
             #else
                 o.pos.z += _MotionVectorDepthBias * o.pos.w;
+            #endif
             #endif
 
             float4 currentWorld = mul(unity_ObjectToWorld, v.vertex);

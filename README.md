@@ -15,6 +15,9 @@ https://github.com/user-attachments/assets/5ee785f9-2401-4c36-a9f2-39612660a2c7
 
 Each ZIP includes the mod and the libraries needed for DLAA and FSR. You only need one download.
 
+The 0.2.9.0 package targets snapshot **26w39b** (Unity **6000.6.0f1**).
+Update Redux before installing it. Older Unity 6000.5.8f1 snapshots need Better AA 0.6.2.
+
 New installs start with **TAA** selected. Updates keep your saved selection, including Off. To update, move the old `ReduxBetterAA` folder outside `mods` before extracting the ZIP, then restore your configuration if desired.
 
 ## Modes
