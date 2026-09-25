@@ -49,6 +49,8 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
         float4x4 _CurrentInverseViewProjection;
         float4x4 _PreviousViewProjection;
         float _MatrixHistoryValid;
+        float4x4 _SkyReprojection;
+        float _SkyHistoryValid;
 
         float2 ResolveUv(float2 uv)
         {
@@ -86,6 +88,18 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
         bool MotionIsInvalid(float2 motion)
         {
             return any(motion != motion) || any(abs(motion) > 2.0);
+        }
+
+        float3 ClipHistory(float3 history, float3 minimum, float3 maximum)
+        {
+            // Intersect the history-to-box-center ray with the neighborhood box.
+            // Independent channel clamps can turn a rejected bright color into
+            // a different hue; one scale keeps its YCoCg direction intact.
+            float3 center = (minimum + maximum) * 0.5;
+            float3 extent = max((maximum - minimum) * 0.5, 0.000001);
+            float3 offset = history - center;
+            float3 distance = abs(offset / extent);
+            return center + offset / max(1.0, max(distance.x, max(distance.y, distance.z)));
         }
 
         float2 CalculateCameraMotion(float2 uv, float rawDepth, out float valid)
@@ -268,6 +282,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             );
             float currentDepth = Linear01Depth(rawDepth);
             float hasDepth = HasSceneDepth(currentDepth);
+            float skyHistory = (1.0 - hasDepth) * _SkyHistoryValid;
 
             float2 motionUv = currentUv;
             float closestRawDepth = rawDepth;
@@ -287,6 +302,9 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             float2 rasterCenter = (floor(currentUv * _SourceDimensions.xy) + 0.5) * _SourceDimensions.zw;
             float3 reconstructed = 0.0;
             float reconstructionWeight = 0.0;
+            // A narrower current footprint balances repeated history filtering
+            // on point stars; the surface reconstruction keeps its existing width.
+            float filterSharpness = lerp(_CurrentFilterSharpness, 4.5, skyHistory);
             [unroll]
             for (int y = -1; y <= 1; y++)
             {
@@ -315,7 +333,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                         saturate(rasterCenter + offset)
                     ).rgb);
                     float2 distance = (rasterCenter + offset - currentUv) * _SourceDimensions.xy;
-                    float weight = exp2(-_CurrentFilterSharpness * dot(distance, distance));
+                    float weight = exp2(-filterSharpness * dot(distance, distance));
                     reconstructed += sampleYCoCg * weight;
                     reconstructionWeight += weight;
                     allMinimum = min(allMinimum, sampleYCoCg);
@@ -345,6 +363,18 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             evaluation.current.rgb = YCoCgToRgb(reconstructed / reconstructionWeight);
             float edgeBlend = saturate(_DepthEdgeStability * localDepthEdge);
             float2 motion = tex2D(_ReduxBetterAAMotionVectors, motionUv).rg;
+            // Cleared-depth background has no finite surface position. Reproject
+            // its direction with rotation/projection only: neither camera
+            // translation nor a nearby vessel's dilated velocity moves the sky.
+            [branch]
+            if (skyHistory > 0.5)
+            {
+                float4 previousSky = mul(_SkyReprojection, float4(uv * 2.0 - 1.0, 1.0, 1.0));
+                if (previousSky.w > 0.000001)
+                    motion = uv - (previousSky.xy / previousSky.w * 0.5 + 0.5);
+                else
+                    motion = 3.0; // Behind the previous camera: reject history.
+            }
             bool invalidMotion = MotionIsInvalid(motion);
             float motionPixels = invalidMotion
                 ? 1e20
@@ -352,7 +382,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
 
             // Very large launchpad vectors are known to be invalid. A camera-only
             // matrix reprojection is safer than retaining or blindly zeroing them.
-            if (invalidMotion || motionPixels > _MaximumMotionPixels)
+            if (skyHistory < 0.5 && (invalidMotion || motionPixels > _MaximumMotionPixels))
             {
                 float cameraMotionValid;
                 float2 cameraMotion = CalculateCameraMotion(
@@ -418,21 +448,36 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 luminanceSquaredMean - luminanceMean * luminanceMean,
                 0.0
             ));
+            // Sparse stars must keep the available peak range. A tight luminance
+            // variance box clips their accumulated energy at every jitter phase.
+            float skyRest = 1.0 - saturate(motionPixels * 4.0);
+            float varianceGamma = lerp(_VarianceGamma, max(_VarianceGamma, 2.5), skyHistory * skyRest);
             neighborhoodMinimum.x = max(
                 neighborhoodMinimum.x,
-                luminanceMean - _VarianceGamma * sigma
+                luminanceMean - varianceGamma * sigma
             );
             neighborhoodMaximum.x = min(
                 neighborhoodMaximum.x,
-                luminanceMean + _VarianceGamma * sigma
+                luminanceMean + varianceGamma * sigma
             );
 
             float3 historyYCoCg = RgbToYCoCg(evaluation.reprojected.rgb);
-            float3 clampedYCoCg = clamp(
+            float3 clampedYCoCg = ClipHistory(
                 historyYCoCg,
                 neighborhoodMinimum,
                 neighborhoodMaximum
             );
+            // Reliable stationary sky directions can retain a point even when
+            // jitter moves its peak between texels. Bound it by local energy,
+            // not this frame's single brightest sample. Flat/changed background
+            // and silhouettes keep ordinary clipping, so vanished light cannot
+            // persist as a trail and uniform color changes still refresh.
+            float skyLimit = max(0.0, luminanceMean + 6.0 * sigma);
+            float3 supportedSky = historyYCoCg * min(1.0,
+                skyLimit / max(historyYCoCg.x, 0.000001));
+            float starSupport = saturate(sigma / max(luminanceMean, 0.00001));
+            clampedYCoCg = lerp(clampedYCoCg, supportedSky,
+                skyHistory * skyRest * starSupport * (1.0 - localDepthEdge));
             evaluation.clampedHistory = float4(
                 max(YCoCgToRgb(clampedYCoCg), 0.0),
                 evaluation.reprojected.a
@@ -470,6 +515,10 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                     edgeBlend
                 );
             }
+            // A newly uncovered background pixel must never retain a vessel's
+            // color. The bilinear footprint must be clear depth in both frames.
+            if (hasDepth < 0.5)
+                depthAccepted *= 1.0 - HasSceneDepth(historyDepth);
             evaluation.depthRejected = 1.0 - depthAccepted;
             evaluation.depthEdge = localDepthEdge;
 
@@ -486,10 +535,18 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
                 motionFactor
             );
             baseWeight = lerp(_NoDepthHistory, baseWeight, hasDepth);
+            // Long accumulation helps at rest; a moving point needs fresh color
+            // before repeated resampling widens it into a trail.
+            // A static, rotation-tracked sky needs a longer sample window than
+            // surfaces. Preserve zero stability and limit history weight to 0.99.
+            float skyStationary = min(0.99, _StationaryHistory *
+                (1.0 + 0.8 * (1.0 - _StationaryHistory)));
+            float skyWeight = lerp(min(_StationaryHistory, 0.5), skyStationary, skyRest);
+            baseWeight = lerp(baseWeight, skyWeight, skyHistory);
             baseWeight = lerp(
                 baseWeight,
                 max(baseWeight, _StationaryHistory),
-                edgeBlend * (1.0 - motionFactor)
+                edgeBlend * (1.0 - motionFactor) * hasDepth
             );
 
             float currentLuminance = Luminance(evaluation.current.rgb);
@@ -507,6 +564,7 @@ Shader "Hidden/ReduxBetterAA/CustomTaa"
             float samplingVariation = _VarianceGamma * sigma *
                 (1.0 - smoothstep(0.0, max(_SamplingNoiseMotionLimit, 0.0001), motionPixels));
             samplingVariation = max(samplingVariation, _MovingSamplingNoise * sigma);
+            samplingVariation = max(samplingVariation, skyHistory * varianceGamma * sigma);
             evaluation.reactive = saturate(max(0.0,
                 abs(currentLuminance - historyLuminance) - samplingVariation
             ) * _ReactiveScale);

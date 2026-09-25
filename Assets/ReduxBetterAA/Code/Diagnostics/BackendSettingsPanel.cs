@@ -164,7 +164,7 @@ namespace ReduxBetterAA.Diagnostics
                 "Sharpening", config.Sharpening, 0.0f, 1.0f
             );
             float noDepthHistory = DrawParameter(
-                "No-depth history cap", config.NoDepthHistory, 0.0f, 0.99f
+                "Untracked background history", config.NoDepthHistory, 0.0f, 0.99f
             );
 
             GUILayout.Space(6f);

@@ -53,6 +53,8 @@ namespace ReduxBetterAA.Backends
             Shader.PropertyToID("_PreviousViewProjection");
         private static readonly int MatrixHistoryValid =
             Shader.PropertyToID("_MatrixHistoryValid");
+        private static readonly int SkyReprojection = Shader.PropertyToID("_SkyReprojection");
+        private static readonly int SkyHistoryValid = Shader.PropertyToID("_SkyHistoryValid");
 
         private readonly ReduxLogger _logger;
         private readonly Action _availabilityChanged;
@@ -91,6 +93,11 @@ namespace ReduxBetterAA.Backends
         private Matrix4x4 _currentViewProjection;
         private Matrix4x4 _currentInverseViewProjection;
         private Matrix4x4 _previousViewProjection;
+        private Matrix4x4 _currentSkyViewProjection;
+        private Matrix4x4 _currentInverseSkyViewProjection;
+        private Matrix4x4 _previousSkyViewProjection;
+        private bool _currentSkyMatrixValid;
+        private bool _skyMatrixHistoryValid;
         private bool _currentMatrixValid;
         private bool _matrixHistoryValid;
         private bool _projectionJitterSupported;
@@ -245,6 +252,7 @@ namespace ReduxBetterAA.Backends
         {
             _historyValid = false;
             _matrixHistoryValid = false;
+            _skyMatrixHistoryValid = false;
             _motionVectorSanitizer.ResetCameraHistory();
         }
 
@@ -338,6 +346,10 @@ namespace ReduxBetterAA.Backends
                 MatrixHistoryValid,
                 _currentMatrixValid && _matrixHistoryValid ? 1.0f : 0.0f
             );
+            _material.SetMatrix(SkyReprojection,
+                _previousSkyViewProjection * _currentInverseSkyViewProjection);
+            _material.SetFloat(SkyHistoryValid,
+                _currentSkyMatrixValid && _skyMatrixHistoryValid ? 1.0f : 0.0f);
 
             // Read and write histories are distinct. Resolve directly to the next
             // history, then sharpen only the presented output, never the history.
@@ -365,6 +377,8 @@ namespace ReduxBetterAA.Backends
                 _previousViewProjection = _currentViewProjection;
                 _matrixHistoryValid = true;
             }
+            _previousSkyViewProjection = _currentSkyViewProjection;
+            _skyMatrixHistoryValid = _currentSkyMatrixValid;
         }
 
         public void Deactivate()
@@ -389,6 +403,8 @@ namespace ReduxBetterAA.Backends
             _historyValid = false;
             _currentMatrixValid = false;
             _matrixHistoryValid = false;
+            _currentSkyMatrixValid = false;
+            _skyMatrixHistoryValid = false;
             _motionVectorSanitizer.ResetCameraHistory();
             _active = false;
         }
@@ -481,6 +497,11 @@ namespace ReduxBetterAA.Backends
                 _currentInverseViewProjection = _currentViewProjection.inverse;
                 _currentMatrixValid = MatrixIsFinite(_currentViewProjection) &&
                     MatrixIsFinite(_currentInverseViewProjection);
+                _currentSkyViewProjection = RotationViewProjection(camera.worldToCameraMatrix,
+                    GL.GetGPUProjectionMatrix(nonJitteredProjection, camera.targetTexture != null));
+                _currentInverseSkyViewProjection = _currentSkyViewProjection.inverse;
+                _currentSkyMatrixValid = !camera.orthographic && MatrixIsFinite(_currentSkyViewProjection) &&
+                    MatrixIsFinite(_currentInverseSkyViewProjection);
                 _motionVectorSanitizer.CaptureCamera(
                     camera,
                     nonJitteredProjection
@@ -605,6 +626,13 @@ namespace ReduxBetterAA.Backends
             _estimatedMemoryBytes = 0;
             _historyValid = false;
             _matrixHistoryValid = false;
+            _skyMatrixHistoryValid = false;
+        }
+
+        internal static Matrix4x4 RotationViewProjection(Matrix4x4 view, Matrix4x4 projection)
+        {
+            view.m03 = view.m13 = view.m23 = 0.0f;
+            return projection * view;
         }
 
         private static bool MatrixIsFinite(Matrix4x4 matrix)

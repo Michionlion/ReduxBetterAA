@@ -40,6 +40,7 @@ It also retains screenshots for review; these do not prove temporal stability.
 | Main menu, flight, map, VAB | Scene transitions recover; no repeated exceptions, stale history or missing output. |
 | Launchpad terrain | View northwest hills from launchpad 4, zoom out enough to see slopes; compare Off/TAA/DLAA/FSR while paused and launching. No coherent flashing patches. |
 | Thin geometry and foliage | Pan around struts/antennas and vegetation; check shimmer, disappearance and trails. |
+| Skybox stars in orbit | Hold, pan, reverse and stop the camera; stars settle without brightness pumping, lost detail or foreground trails. Check a vessel crossing the sky and compare matched views. |
 | Map planet and icons | Rotate and zoom; no flashing planet patches, icon filtering or changed icon stacking. Toggle map AA. |
 | Plumes and atmospheric flight | Check trails and transparency during motion, not only when paused. |
 | Lifecycle | Repeat mode switches, resize, quickload/revert, vessel switch and time warp; rendering recovers. |

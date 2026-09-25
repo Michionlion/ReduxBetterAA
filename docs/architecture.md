@@ -165,6 +165,20 @@ provides a fallback for unusable vectors. Reset frames avoid uninitialized histo
 sharpening affects output, never accumulated color. Depth-edge handling protects
 thin moving geometry without giving every pixel the history of a nearby surface.
 
+Clear-depth background uses a separate rotation/projection history, with camera
+translation removed. It does not inherit a foreground object's dilated motion.
+At rest, stars use a longer accumulation window derived from the player's stability
+setting (zero still disables history, capped at 0.99); moving stars
+refresh faster and use a narrower current reconstruction footprint to limit blur.
+The stationary star bound uses local luminance/variance support to preserve bright
+points as jitter changes their coverage. Flat regions and silhouettes keep ordinary
+clipping; disappearing light and uniform color changes refresh promptly. Sky history
+rejects newly uncovered geometry, out-of-view directions and invalid/reset matrices;
+uniform lighting changes remain reactive. Orthographic or untracked backgrounds
+retain the conservative no-depth fallback. Color rejection clips along a ray in
+YCoCg space to avoid the hue changes caused by independent channel clamping.
+These changes reuse the existing samples and histories, with no added render pass.
+
 DLAA uses the late-bound Unity NVIDIA module. AMD native AA uses the pinned
 FSR SDK through the project-owned D3D11/D3D12 interop bridge. The managed backend
 requires equal input/output dimensions and 100% render scale. Provider probes
